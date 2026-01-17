@@ -351,6 +351,7 @@ gh pr status
 | `roslyn_get_projects_in_build_order` | Loads a solution and returns projects in build order (dependencies first) |
 | `roslyn_find_symbol` | Semantic search for types, methods, properties by name pattern |
 | `roslyn_get_references` | Find all references to a symbol at a given position |
+| `roslyn_get_callers` | Find all callers of a method (only call sites, not declarations) |
 | `roslyn_get_implementations` | Find all implementations of an interface or derived classes |
 | `roslyn_get_type_members` | Get all members (methods, properties, fields, events) of a type |
 | `roslyn_get_method_body` | Get full source code of a specific method |
@@ -452,6 +453,52 @@ Finds all references to a symbol at a given file position. Essential for impact 
   ]
 }
 ```
+
+### roslyn_get_callers
+
+Finds all callers of a method at a given position. Unlike `roslyn_get_references`, this returns only actual call sites - not declarations, docs, mocks, or type references. Essential for understanding execution flow and impact analysis before refactoring.
+
+**Input:**
+```json
+{
+  "solutionPath": "C:\\path\\to\\solution.sln",
+  "filePath": "C:\\path\\to\\UserRepository.cs",
+  "line": 25,
+  "column": 17,
+  "maxResults": 100,
+  "offset": 0,
+  "projectFilter": "MyApp.*",
+  "fileFilter": "*Service.cs"
+}
+```
+
+**Parameters:**
+- `solutionPath` (required) - Absolute path to .sln file
+- `filePath` (required) - Absolute path to the source file containing the method
+- `line` (required) - Line number (1-based) where the method is located
+- `column` (required) - Column number (1-based) where the method is located
+- `maxResults` - Maximum callers to return (default: 100, max: 1000)
+- `offset` - Skip first N results for pagination (default: 0)
+- `projectFilter` - Filter by project name, supports wildcards (`*`)
+- `fileFilter` - Filter by file path, supports wildcards (`*`)
+
+**Output (compact):**
+```json
+{
+  "success": true,
+  "symbol": "UserRepository.Save(User)",
+  "totalCallers": 47,
+  "returnedCount": 47,
+  "callers": [
+    { "file": "Services\\UserService.cs", "line": 67, "method": "CreateUser", "type": "UserService" },
+    { "file": "Jobs\\ImportJob.cs", "line": 112, "method": "ProcessBatch", "type": "ImportJob" }
+  ]
+}
+```
+
+**When to use `roslyn_get_callers` vs `roslyn_get_references`:**
+- **`roslyn_get_callers`**: When you need to know who CALLS a method (execution flow, impact analysis)
+- **`roslyn_get_references`**: When you need ALL mentions (including declarations, docs, interface definitions)
 
 ### roslyn_get_implementations
 
@@ -932,7 +979,7 @@ private static void RegisterYourTool(McpServer server)
 ## Roadmap
 
 ### High Priority Tools
-- [ ] `roslyn_get_call_hierarchy` - Find callers of a method + what it calls (impact analysis)
+- [x] `roslyn_get_callers` - Find callers of a method (impact analysis) ✓ Implemented
 - [ ] `roslyn_extract_method` - Extract code block into new method
 - [ ] `roslyn_change_signature` - Add/remove/reorder parameters with auto-fix callers
 - [ ] `roslyn_get_document_symbols` - All symbols in a specific file

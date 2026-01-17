@@ -157,3 +157,59 @@ public class MemberInfo
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? InheritedFrom { get; init; }
 }
+
+/// <summary>
+/// Result of finding callers of a method.
+/// </summary>
+public class GetCallersResult
+{
+    public bool Success { get; init; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Error { get; init; }
+
+    /// <summary>
+    /// The symbol signature (e.g., "UserRepository.Save(User)").
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Symbol { get; init; }
+
+    /// <summary>
+    /// Total number of callers found (before pagination).
+    /// </summary>
+    public int TotalCallers { get; init; }
+
+    /// <summary>
+    /// Number of callers returned in this response.
+    /// </summary>
+    public int ReturnedCount { get; init; }
+
+    public List<CallerInfo> Callers { get; init; } = [];
+}
+
+/// <summary>
+/// Information about a caller location. Compact format for large result sets.
+/// </summary>
+public class CallerInfo
+{
+    /// <summary>
+    /// File path (relative when possible).
+    /// </summary>
+    public required string File { get; init; }
+
+    /// <summary>
+    /// Line number of the call.
+    /// </summary>
+    public int Line { get; init; }
+
+    /// <summary>
+    /// Name of the method containing the call.
+    /// </summary>
+    public required string Method { get; init; }
+
+    /// <summary>
+    /// Name of the type containing the calling method.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Type { get; init; }
+}

@@ -28,6 +28,7 @@ public static partial class RoslynTools
         RegisterGetProjectsInBuildOrderTool(server);
         RegisterFindSymbolTool(server);
         RegisterGetReferencesTool(server);
+        RegisterGetCallersTool(server);
         RegisterGetImplementationsTool(server);
         RegisterGetTypeMembersTool(server);
         RegisterGetMethodBodyTool(server);
