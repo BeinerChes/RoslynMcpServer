@@ -159,3 +159,111 @@ public class ImplementationInfo
     public List<string> BaseTypes { get; init; } = [];
     public List<string> Interfaces { get; init; } = [];
 }
+
+/// <summary>
+/// Filter for member kinds to retrieve.
+/// </summary>
+public enum MemberKindFilter
+{
+    All,
+    Methods,
+    Properties,
+    Fields,
+    Events,
+    Constructors
+}
+
+/// <summary>
+/// Result of getting type members.
+/// </summary>
+public class GetTypeMembersResult
+{
+    public bool Success { get; init; }
+    public string? Error { get; init; }
+    public string? SolutionPath { get; init; }
+    public TypeInfo? Type { get; init; }
+    public int TotalMembers { get; init; }
+    public List<MemberInfo> Members { get; init; } = [];
+}
+
+/// <summary>
+/// Information about a type member.
+/// Core fields (always included): Name, Kind, Signature
+/// Optional fields (only in detailed mode): FilePath, Line, Column, Accessibility, IsStatic, IsAbstract, IsVirtual, IsOverride
+/// </summary>
+public class MemberInfo
+{
+    // Core fields - always included
+    public required string Name { get; init; }
+    public required string Kind { get; init; }
+    public required string Signature { get; init; }
+
+    // Optional fields - only included when not null (detailed mode)
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? FilePath { get; init; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? Line { get; init; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? Column { get; init; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Accessibility { get; init; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? IsStatic { get; init; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? IsAbstract { get; init; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? IsVirtual { get; init; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? IsOverride { get; init; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? InheritedFrom { get; init; }
+}
+
+/// <summary>
+/// Result of getting a method's source code.
+/// </summary>
+public class GetMethodBodyResult
+{
+    public bool Success { get; init; }
+    public string? Error { get; init; }
+    public string? SolutionPath { get; init; }
+    public string? TypeName { get; init; }
+    public string? MethodName { get; init; }
+    public string? FilePath { get; init; }
+    public int? StartLine { get; init; }
+    public int? EndLine { get; init; }
+    public string? Signature { get; init; }
+    public string? SourceCode { get; init; }
+    /// <summary>
+    /// If multiple overloads exist, lists them so user can specify which one.
+    /// </summary>
+    public List<string>? AvailableOverloads { get; init; }
+}
+
+/// <summary>
+/// Result of updating a method's source code.
+/// </summary>
+public class UpdateMethodResult
+{
+    public bool Success { get; init; }
+    public string? Error { get; init; }
+    public string? FilePath { get; init; }
+    public string? TypeName { get; init; }
+    public string? MethodName { get; init; }
+    public int? StartLine { get; init; }
+    public int? EndLine { get; init; }
+    public string? OldSignature { get; init; }
+    public string? NewSignature { get; init; }
+    /// <summary>
+    /// If multiple overloads exist, lists them so user can specify which one.
+    /// </summary>
+    public List<string>? AvailableOverloads { get; init; }
+}

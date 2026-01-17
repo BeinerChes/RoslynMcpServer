@@ -16,7 +16,12 @@
       "mcp__roslyn__roslyn_get_references",
       "Bash(wc:*)",
       "WebFetch(domain:www.anthropic.com)",
-      "mcp__roslyn__roslyn_get_implementations"
+      "mcp__roslyn__roslyn_get_implementations",
+      "mcp__roslyn__roslyn_get_type_members",
+      "mcp__roslyn__roslyn_get_method_body",
+      "mcp__roslyn__roslyn_update_method",
+      "Bash(git checkout:*)",
+      "Bash(git -C \"C:\\\\Users\\\\beine\\\\source\\\\repos\\\\Atlas3_EDEV\" checkout Atlas.Symbology/FeatureLayer.cs)"
     ]
   },
   "enableAllProjectMcpServers": true,

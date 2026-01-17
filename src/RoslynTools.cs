@@ -29,6 +29,9 @@ public static partial class RoslynTools
         RegisterFindSymbolTool(server);
         RegisterGetReferencesTool(server);
         RegisterGetImplementationsTool(server);
+        RegisterGetTypeMembersTool(server);
+        RegisterGetMethodBodyTool(server);
+        RegisterUpdateMethodTool(server);
     }
 
     /// <summary>
