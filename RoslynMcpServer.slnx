@@ -1,3 +1,4 @@
 <Solution>
   <Project Path="RoslynMcpServer.csproj" />
+  <Project Path="RoslynMcpServer.Tests\RoslynMcpServer.Tests.csproj" />
 </Solution>
