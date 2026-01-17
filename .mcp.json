@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "roslyn": {
+      "type": "stdio",
+      "command": "dotnet",
+      "args": ["run", "--project", "C:\\Users\\beine\\source\\repos\\RoslynMcpServer"]
+    }
+  }
+}
