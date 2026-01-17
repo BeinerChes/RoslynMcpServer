@@ -166,9 +166,15 @@ master            ← Historical, not used for development
 
 1. **Create GitHub Issue First**
    ```bash
-   gh issue create --title "Brief description" --body "Detailed description of the bug/improvement"
+   gh issue create --title "Brief description" --body "Detailed description" --label "bug"
    ```
    Note the issue number (e.g., `#42`)
+
+   **Required labels** (use `--label`):
+   - `bug` - Something isn't working
+   - `enhancement` - New feature or request
+   - `documentation` - Docs improvements
+   - `refactor` - Code restructuring (create this label if missing)
 
 2. **Create Feature Branch**
    ```bash
