@@ -443,3 +443,19 @@ public class BatchFixDetail
     public bool Applied { get; init; }
     public string? Error { get; init; }
 }
+
+/// <summary>
+/// Result of renaming a symbol.
+/// </summary>
+public class RenameSymbolResult
+{
+    public bool Success { get; init; }
+    public string? Error { get; init; }
+    public string? OriginalName { get; init; }
+    public string? NewName { get; init; }
+    public string? SymbolKind { get; init; }
+    public string? ContainingType { get; init; }
+    public int TotalFilesAffected { get; init; }
+    public int TotalChanges { get; init; }
+    public List<string> AffectedFiles { get; init; } = [];
+}

@@ -105,6 +105,7 @@ When working with C# files in .NET solutions, **PREFER Roslyn MCP tools over nat
 | Check for errors | `roslyn_get_diagnostics` | `Bash` dotnet build |
 | Fix one warning | `roslyn_apply_code_fix` | Manual `Edit` |
 | Fix many warnings | `roslyn_batch_apply_code_fixes` | Loop of single fixes |
+| Rename symbol | `roslyn_rename_symbol` | Manual find/replace |
 
 **Only use native tools for:**
 - Non-C# files (JSON, XML, markdown, .csproj)
@@ -128,6 +129,7 @@ Without this, Claude may default to native `Read`/`Edit` tools which are less pr
 | `roslyn_get_diagnostics` | Compile and get warnings/errors with counts |
 | `roslyn_apply_code_fix` | Apply Roslyn's suggested fix for a single diagnostic |
 | `roslyn_batch_apply_code_fixes` | Batch apply fixes for all diagnostics of a specific type |
+| `roslyn_rename_symbol` | Rename a symbol across the entire solution with all references |
 | `roslyn_get_projects_in_build_order` | Get solution structure and dependencies |
 
 ## Usage Examples
@@ -182,6 +184,14 @@ Fix the CS0168 warning at line 42 in VectorTileLayer.cs
 ```
 
 Claude will use `roslyn_apply_code_fix` to automatically apply Roslyn's suggested fix.
+
+### Rename a Symbol
+
+```
+Rename the GetData method in DataService to FetchDataAsync
+```
+
+Claude will use `roslyn_rename_symbol` to safely rename the method and update all references across the solution.
 
 ## Tool Details
 
@@ -294,6 +304,25 @@ If multiple fixes are available, the tool returns the list. Specify `fixIndex` t
 **When to use:**
 - **Batch**: Fix all occurrences of a warning type (e.g., all CS0168 unused variables)
 - **Single**: Fix one diagnostic, or choose between multiple fix options
+
+### roslyn_rename_symbol
+
+```json
+{
+  "solutionPath": "C:\\path\\to\\solution.sln",
+  "filePath": "C:\\path\\to\\DataService.cs",
+  "line": 15,
+  "column": 22,
+  "newName": "FetchDataAsync"
+}
+```
+
+**Workflow:**
+1. Use `roslyn_find_symbol` to locate the symbol you want to rename
+2. Call `roslyn_rename_symbol` with the file path, line, column, and new name
+3. The tool applies the rename immediately and returns a list of affected files
+
+The tool updates all references across the entire solution automatically.
 
 ## Troubleshooting
 

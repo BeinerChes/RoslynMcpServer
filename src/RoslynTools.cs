@@ -36,6 +36,7 @@ public static partial class RoslynTools
         RegisterAddMemberTool(server);
         RegisterApplyCodeFixTool(server);
         RegisterBatchApplyCodeFix(server);
+        RegisterRenameSymbolTool(server);
     }
 
     /// <summary>

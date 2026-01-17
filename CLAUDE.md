@@ -22,6 +22,7 @@ When working with C# files in .NET solutions, **PREFER Roslyn MCP tools over nat
 | Check for errors | `roslyn_get_diagnostics` | `Bash` dotnet build |
 | Fix one warning | `roslyn_apply_code_fix` | Manual `Edit` |
 | Fix many warnings | `roslyn_batch_apply_code_fixes` | Loop of single fixes |
+| Rename symbol | `roslyn_rename_symbol` | Manual find/replace |
 | Write XML docs | `roslyn_get_type_members` + `roslyn_get_method_body` | `Read` file |
 
 **Only use native tools for:**
@@ -92,6 +93,7 @@ RoslynMcpServer/
     ├── RoslynTools.AddMember.cs                  # Add member tool
     ├── RoslynTools.CodeFix.cs                    # Single code fix tool
     ├── RoslynTools.BatchCodeFix.cs               # Batch code fix tool
+    ├── RoslynTools.Rename.cs                     # Rename symbol tool
     ├── SolutionAnalyzerService.cs                # Core service + projects
     ├── SolutionAnalyzerService.Symbols.cs        # Symbol search logic
     ├── SolutionAnalyzerService.References.cs     # References logic
@@ -102,7 +104,8 @@ RoslynMcpServer/
     ├── SolutionAnalyzerService.Diagnostics.cs    # Diagnostics logic
     ├── SolutionAnalyzerService.AddMember.cs      # Add member logic
     ├── SolutionAnalyzerService.CodeFix.cs        # Single code fix logic
-    └── SolutionAnalyzerService.BatchCodeFix.cs   # Batch code fix logic
+    ├── SolutionAnalyzerService.BatchCodeFix.cs   # Batch code fix logic
+    └── SolutionAnalyzerService.Rename.cs         # Rename symbol logic
 ```
 
 ## Build Commands
@@ -160,6 +163,7 @@ The MCP server runs as a background process. To apply code changes:
 | `roslyn_add_member` | Add a new method/property/field to a type with auto-formatting |
 | `roslyn_apply_code_fix` | Apply Roslyn's suggested fix for a single diagnostic |
 | `roslyn_batch_apply_code_fixes` | Batch apply fixes for all diagnostics of a specific type |
+| `roslyn_rename_symbol` | Rename a symbol across the entire solution with all references |
 
 ### roslyn_find_symbol
 
@@ -625,6 +629,51 @@ Batch applies Roslyn code fixes for all diagnostics of a specific type. Much fas
 - **Batch (`roslyn_batch_apply_code_fixes`)**: Fixing all occurrences of a specific warning type (e.g., all CS0168)
 - **Single (`roslyn_apply_code_fix`)**: Fixing one specific diagnostic, or when you need to choose between multiple fix options
 
+### roslyn_rename_symbol
+
+Renames a symbol (type, method, property, field, parameter, variable) at a specific file position across the entire solution. Updates all references automatically. Essential for safe refactoring without breaking code.
+
+**Input:**
+```json
+{
+  "solutionPath": "C:\\path\\to\\solution.sln",
+  "filePath": "C:\\path\\to\\MyClass.cs",
+  "line": 15,
+  "column": 22,
+  "newName": "FetchDataAsync"
+}
+```
+
+**Parameters:**
+- `solutionPath` (required) - Absolute path to .sln file
+- `filePath` (required) - Absolute path to the source file containing the symbol
+- `line` (required) - Line number (1-based) where the symbol is located
+- `column` (required) - Column number (1-based) where the symbol is located
+- `newName` (required) - The new name for the symbol
+
+**Output:**
+```json
+{
+  "success": true,
+  "originalName": "GetData",
+  "newName": "FetchDataAsync",
+  "symbolKind": "Method",
+  "containingType": "MyNamespace.DataService",
+  "totalFilesAffected": 12,
+  "totalChanges": 47,
+  "affectedFiles": [
+    "C:\\path\\to\\DataService.cs",
+    "C:\\path\\to\\DataController.cs",
+    "C:\\path\\to\\Tests\\DataServiceTests.cs"
+  ]
+}
+```
+
+**Workflow:**
+1. Use `roslyn_find_symbol` to locate the symbol you want to rename
+2. Call `roslyn_rename_symbol` with the file path, line, column, and new name
+3. The tool applies the rename immediately and returns affected files
+
 ## Key Concepts
 
 ### MCP Protocol
@@ -688,6 +737,5 @@ private static void RegisterYourTool(McpServer server)
 
 - [ ] `roslyn_get_document_symbols` - Symbols in a specific file
 - [ ] `roslyn_get_call_hierarchy` - Who calls this method
-- [ ] `roslyn_rename_symbol` - Rename a symbol across the entire solution
 - [ ] Caching for compilation results
 - [ ] Progress reporting for large solutions

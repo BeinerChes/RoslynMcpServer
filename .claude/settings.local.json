@@ -32,7 +32,8 @@
       "mcp__roslyn__roslyn_apply_code_fix",
       "WebSearch",
       "WebFetch(domain:github.com)",
-      "mcp__roslyn__roslyn_batch_apply_code_fixes"
+      "mcp__roslyn__roslyn_batch_apply_code_fixes",
+      "mcp__roslyn__roslyn_rename_symbol"
     ]
   },
   "enableAllProjectMcpServers": true,
