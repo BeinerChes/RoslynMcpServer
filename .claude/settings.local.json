@@ -3,7 +3,24 @@
     "allow": [
       "Bash(dotnet build:*)",
       "Bash(dotnet run:*)",
-      "Bash(claude mcp add:*)"
+      "Bash(claude mcp add:*)",
+      "mcp__roslyn__roslyn_echo",
+      "mcp__roslyn__roslyn_get_server_info",
+      "Bash(dir /b \"C:\\\\Users\\\\beine\\\\source\\\\repos\\\\RoslynMcpServer\\\\Directory.Packages.props\")",
+      "Bash(dir /b \"C:\\\\Users\\\\beine\\\\source\\\\repos\\\\Directory.Packages.props\")",
+      "Bash(findstr:*)",
+      "Bash(taskkill:*)",
+      "Bash(tasklist:*)",
+      "mcp__roslyn__roslyn_get_projects_in_build_order",
+      "mcp__roslyn__roslyn_find_symbol",
+      "mcp__roslyn__roslyn_get_references",
+      "Bash(wc:*)",
+      "WebFetch(domain:www.anthropic.com)",
+      "mcp__roslyn__roslyn_get_implementations"
     ]
-  }
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "roslyn"
+  ]
 }

@@ -6,7 +6,7 @@ namespace RoslynMcpServer;
 /// <summary>
 /// Registers all Roslyn-related MCP tools.
 /// </summary>
-public static class RoslynTools
+public static partial class RoslynTools
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -14,13 +14,21 @@ public static class RoslynTools
         WriteIndented = true
     };
 
+    private static SolutionAnalyzerService? _analyzerService;
+
     /// <summary>
     /// Registers all tools with the MCP server.
     /// </summary>
-    public static void RegisterAll(McpServer server)
+    public static void RegisterAll(McpServer server, SolutionAnalyzerService? analyzerService = null)
     {
+        _analyzerService = analyzerService ?? new SolutionAnalyzerService();
+
         RegisterEchoTool(server);
         RegisterGetServerInfoTool(server);
+        RegisterGetProjectsInBuildOrderTool(server);
+        RegisterFindSymbolTool(server);
+        RegisterGetReferencesTool(server);
+        RegisterGetImplementationsTool(server);
     }
 
     /// <summary>
@@ -118,6 +126,64 @@ public static class RoslynTools
                     {
                         new { type = "text", text = JsonSerializer.Serialize(info, JsonOptions) }
                     }
+                };
+            });
+    }
+
+    /// <summary>
+    /// Gets all projects in a solution in build order (dependencies first).
+    /// </summary>
+    private static void RegisterGetProjectsInBuildOrderTool(McpServer server)
+    {
+        server.RegisterTool(
+            "roslyn_get_projects_in_build_order",
+            new ToolDefinition
+            {
+                Description = "Loads a .NET solution file and returns all projects in build order (dependencies first). Each project includes its name, file path, language, and direct dependencies.",
+                InputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        solutionPath = new
+                        {
+                            type = "string",
+                            description = "Absolute path to the .sln or .slnx solution file"
+                        }
+                    },
+                    required = new[] { "solutionPath" }
+                },
+                Annotations = new ToolAnnotations
+                {
+                    ReadOnlyHint = true,
+                    IdempotentHint = true
+                }
+            },
+            async args =>
+            {
+                var solutionPath = args?["solutionPath"]?.GetValue<string>();
+
+                if (string.IsNullOrWhiteSpace(solutionPath))
+                {
+                    return new
+                    {
+                        content = new[]
+                        {
+                            new { type = "text", text = "Error: solutionPath is required" }
+                        },
+                        isError = true
+                    };
+                }
+
+                var result = await _analyzerService!.GetProjectsInBuildOrderAsync(solutionPath);
+
+                return new
+                {
+                    content = new[]
+                    {
+                        new { type = "text", text = JsonSerializer.Serialize(result, JsonOptions) }
+                    },
+                    isError = !result.Success
                 };
             });
     }
