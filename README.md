@@ -119,6 +119,7 @@ Or manually copy `CLAUDE_TEMPLATE.md` from this repository and customize it for 
 |------|-------------|
 | `roslyn_find_symbol` | Search for types, methods, properties by name pattern |
 | `roslyn_get_references` | Find all usages of a symbol across the solution |
+| `roslyn_get_callers` | Find all callers of a method (only call sites, not declarations) |
 | `roslyn_get_implementations` | Find all implementations of an interface or derived classes |
 | `roslyn_get_type_members` | List all members (methods, properties, fields) of a type |
 | `roslyn_get_method_body` | Get the full source code of a specific method |
@@ -401,7 +402,7 @@ The server uses:
 
 | Tool | Description | Use Case |
 |------|-------------|----------|
-| `roslyn_get_call_hierarchy` | Find callers of a method + what it calls | Impact analysis before changes |
+| ~~`roslyn_get_callers`~~ | ~~Find callers of a method~~ | ✓ Implemented |
 | `roslyn_extract_method` | Extract code block into new method | Refactoring large methods |
 | `roslyn_change_signature` | Add/remove/reorder parameters | API changes with auto-fix callers |
 | `roslyn_get_document_symbols` | All symbols in a specific file | Quick file overview |
