@@ -33,7 +33,12 @@
       "WebSearch",
       "WebFetch(domain:github.com)",
       "mcp__roslyn__roslyn_batch_apply_code_fixes",
-      "mcp__roslyn__roslyn_rename_symbol"
+      "mcp__roslyn__roslyn_rename_symbol",
+      "Bash(dir:*)",
+      "Bash(git -C \"C:\\\\Users\\\\beine\\\\source\\\\repos\\\\Atlas3_EDEV\" diff Atlas.Data/NamedList.cs)",
+      "Bash(gh auth status:*)",
+      "Bash(cmd /c \"gh auth status\")",
+      "Bash(git add:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

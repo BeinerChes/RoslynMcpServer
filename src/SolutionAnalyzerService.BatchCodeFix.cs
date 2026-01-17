@@ -1,7 +1,9 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
+using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.MSBuild;
+using System.Collections.Immutable;
 
 namespace RoslynMcpServer;
 
@@ -69,6 +71,15 @@ public partial class SolutionAnalyzerService
             // Collect all matching diagnostics across the solution
             var allDiagnostics = new List<(Document document, Diagnostic diagnostic)>();
 
+            // Check if we need to run .NET analyzers (for CA* diagnostics)
+            var needAnalyzers = diagnosticId.StartsWith("CA", StringComparison.OrdinalIgnoreCase);
+            ImmutableArray<DiagnosticAnalyzer> netAnalyzers = [];
+            if (needAnalyzers)
+            {
+                netAnalyzers = AnalyzerLoader.GetNetAnalyzers();
+                Console.Error.WriteLine($"Running {netAnalyzers.Length} .NET analyzers for batch fix...");
+            }
+
             foreach (var project in solution.Projects)
             {
                 // Apply project filter
@@ -81,7 +92,19 @@ public partial class SolutionAnalyzerService
                 var compilation = await project.GetCompilationAsync();
                 if (compilation == null) continue;
 
-                foreach (var diagnostic in compilation.GetDiagnostics())
+                // Get diagnostics - either from compiler or from analyzers
+                IEnumerable<Diagnostic> projectDiagnostics;
+                if (needAnalyzers && netAnalyzers.Length > 0)
+                {
+                    projectDiagnostics = await GetAnalyzerDiagnosticsForBatchAsync(
+                        compilation, netAnalyzers, diagnosticId);
+                }
+                else
+                {
+                    projectDiagnostics = compilation.GetDiagnostics();
+                }
+
+                foreach (var diagnostic in projectDiagnostics)
                 {
                     if (!diagnostic.Id.Equals(diagnosticId, StringComparison.OrdinalIgnoreCase))
                         continue;
@@ -171,12 +194,24 @@ public partial class SolutionAnalyzerService
                         continue;
                     }
 
-                    // Get diagnostics from current compilation
-                    var currentDiagnostics = currentSemanticModel.Compilation.GetDiagnostics()
-                        .Where(d => d.Id.Equals(diagnosticId, StringComparison.OrdinalIgnoreCase) &&
-                                   d.Location.IsInSource &&
-                                   d.Location.SourceTree?.FilePath == currentDocument.FilePath)
-                        .ToList();
+                    // Get diagnostics from current compilation (use analyzers for CA*)
+                    List<Diagnostic> currentDiagnostics;
+                    if (needAnalyzers && netAnalyzers.Length > 0)
+                    {
+                        var analyzerDiags = await GetAnalyzerDiagnosticsForBatchAsync(
+                            currentSemanticModel.Compilation, netAnalyzers, diagnosticId);
+                        currentDiagnostics = analyzerDiags
+                            .Where(d => d.Location.SourceTree?.FilePath == currentDocument.FilePath)
+                            .ToList();
+                    }
+                    else
+                    {
+                        currentDiagnostics = currentSemanticModel.Compilation.GetDiagnostics()
+                            .Where(d => d.Id.Equals(diagnosticId, StringComparison.OrdinalIgnoreCase) &&
+                                       d.Location.IsInSource &&
+                                       d.Location.SourceTree?.FilePath == currentDocument.FilePath)
+                            .ToList();
+                    }
 
                     if (currentDiagnostics.Count == 0)
                     {
@@ -342,6 +377,46 @@ public partial class SolutionAnalyzerService
                 SolutionPath = solutionPath,
                 DiagnosticId = diagnosticId
             };
+        }
+    }
+
+    /// <summary>
+    /// Runs .NET analyzers and returns diagnostics for a specific diagnostic ID.
+    /// </summary>
+    private static async Task<IEnumerable<Diagnostic>> GetAnalyzerDiagnosticsForBatchAsync(
+        Compilation compilation,
+        ImmutableArray<DiagnosticAnalyzer> analyzers,
+        string diagnosticId)
+    {
+        try
+        {
+            // Enable the specific diagnostic at Warning level
+            var diagnosticOptions = new Dictionary<string, ReportDiagnostic>
+            {
+                [diagnosticId] = ReportDiagnostic.Warn
+            };
+
+            var modifiedCompilation = compilation.WithOptions(
+                compilation.Options.WithSpecificDiagnosticOptions(diagnosticOptions));
+
+            var options = new CompilationWithAnalyzersOptions(
+                new AnalyzerOptions([]),
+                onAnalyzerException: null,
+                concurrentAnalysis: true,
+                logAnalyzerExecutionTime: false,
+                reportSuppressedDiagnostics: false);
+
+            var compilationWithAnalyzers = modifiedCompilation.WithAnalyzers(analyzers, options);
+            var diagnostics = await compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync();
+
+            return diagnostics.Where(d =>
+                d.Id.Equals(diagnosticId, StringComparison.OrdinalIgnoreCase) &&
+                d.Location.IsInSource);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Error running analyzers for batch fix: {ex.Message}");
+            return [];
         }
     }
 }

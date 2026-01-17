@@ -112,19 +112,25 @@ public static partial class RoslynTools
             },
             async args =>
             {
+                // Try loading analyzers to get diagnostics
+                var analyzers = AnalyzerLoader.GetNetAnalyzers();
+
                 var info = new
                 {
                     name = "roslyn-mcp-server",
-                    version = "0.1.0",
+                    version = McpServer.Version,
                     description = "MCP server for C# solution analysis using Roslyn",
                     runtime = Environment.Version.ToString(),
                     os = Environment.OSVersion.ToString(),
+                    netAnalyzersLoaded = analyzers.Length,
                     capabilities = new[]
                     {
-                        "Solution analysis (coming soon)",
-                        "Symbol finding (coming soon)",
-                        "Reference tracking (coming soon)",
-                        "Build order analysis (coming soon)"
+                        "Solution and project analysis",
+                        "Symbol finding with semantic search",
+                        "Reference and implementation tracking",
+                        "Diagnostics with .NET analyzers (CA* rules)",
+                        "Code fixes and batch fixes",
+                        "Refactoring (rename, add member, update method)"
                     }
                 };
 

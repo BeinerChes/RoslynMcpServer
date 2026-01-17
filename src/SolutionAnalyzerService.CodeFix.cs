@@ -1,6 +1,7 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
+using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.MSBuild;
 using Microsoft.CodeAnalysis.Text;
 using System.Collections.Immutable;
@@ -97,6 +98,18 @@ public partial class SolutionAnalyzerService
                 .Where(d => d.Location.IsInSource &&
                            d.Location.SourceTree?.FilePath == filePath)
                 .ToList();
+
+            // If looking for CA* diagnostics, also run .NET analyzers
+            if (string.IsNullOrEmpty(diagnosticId) || diagnosticId.StartsWith("CA", StringComparison.OrdinalIgnoreCase))
+            {
+                var netAnalyzers = AnalyzerLoader.GetNetAnalyzers();
+                if (netAnalyzers.Length > 0)
+                {
+                    Console.Error.WriteLine($"Running {netAnalyzers.Length} .NET analyzers for code fix...");
+                    var analyzerDiagnostics = await RunAnalyzersForCodeFixAsync(compilation, netAnalyzers, filePath);
+                    allDiagnostics.AddRange(analyzerDiagnostics);
+                }
+            }
 
             // Find diagnostics at or near the specified location
             var diagnosticsAtLocation = allDiagnostics
@@ -311,7 +324,7 @@ public partial class SolutionAnalyzerService
     }
 
     /// <summary>
-    /// Gets all available code fix providers from Roslyn.
+    /// Gets all available code fix providers from Roslyn and NetAnalyzers.
     /// </summary>
     private static ImmutableArray<CodeFixProvider> GetCodeFixProviders()
     {
@@ -320,14 +333,41 @@ public partial class SolutionAnalyzerService
 
         var providers = new List<CodeFixProvider>();
 
-        // Load code fix providers from the Features assembly
-        var featuresAssembly = typeof(Microsoft.CodeAnalysis.CSharp.CSharpExtensions).Assembly;
-
-        // Try to find the CSharp.Features assembly
+        // Load code fix providers from CSharp.Features assembly (for CS* diagnostics)
         try
         {
             var csharpFeaturesAssembly = Assembly.Load("Microsoft.CodeAnalysis.CSharp.Features");
-            var providerTypes = csharpFeaturesAssembly.GetTypes()
+            LoadCodeFixProvidersFromAssembly(csharpFeaturesAssembly, providers);
+            Console.Error.WriteLine($"Loaded {providers.Count} code fix providers from CSharp.Features");
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Warning: Could not load CSharp.Features code fix providers: {ex.Message}");
+        }
+
+        // Load code fix providers from bundled NetAnalyzers (for CA* diagnostics)
+        var netAnalyzerAssemblies = AnalyzerLoader.GetLoadedAssemblies();
+        foreach (var assembly in netAnalyzerAssemblies)
+        {
+            var countBefore = providers.Count;
+            LoadCodeFixProvidersFromAssembly(assembly, providers);
+            var loaded = providers.Count - countBefore;
+            if (loaded > 0)
+            {
+                Console.Error.WriteLine($"Loaded {loaded} code fix providers from {assembly.GetName().Name}");
+            }
+        }
+
+        Console.Error.WriteLine($"Total code fix providers: {providers.Count}");
+        _codeFixProviders = providers.ToImmutableArray();
+        return _codeFixProviders.Value;
+    }
+
+    private static void LoadCodeFixProvidersFromAssembly(Assembly assembly, List<CodeFixProvider> providers)
+    {
+        try
+        {
+            var providerTypes = assembly.GetTypes()
                 .Where(t => !t.IsAbstract &&
                            typeof(CodeFixProvider).IsAssignableFrom(t) &&
                            t.GetConstructor(Type.EmptyTypes) != null);
@@ -336,8 +376,7 @@ public partial class SolutionAnalyzerService
             {
                 try
                 {
-                    var instance = Activator.CreateInstance(type) as CodeFixProvider;
-                    if (instance != null)
+                    if (Activator.CreateInstance(type) is CodeFixProvider instance)
                     {
                         providers.Add(instance);
                     }
@@ -348,13 +387,57 @@ public partial class SolutionAnalyzerService
                 }
             }
         }
+        catch
+        {
+            // Skip assemblies that fail to enumerate types
+        }
+    }
+
+    /// <summary>
+    /// Runs .NET analyzers on a compilation and returns diagnostics for a specific file.
+    /// </summary>
+    private static async Task<IEnumerable<Diagnostic>> RunAnalyzersForCodeFixAsync(
+        Compilation compilation,
+        ImmutableArray<DiagnosticAnalyzer> analyzers,
+        string filePath)
+    {
+        try
+        {
+            // Enable all CA* rules at Warning level
+            var diagnosticOptions = new Dictionary<string, ReportDiagnostic>();
+            foreach (var analyzer in analyzers)
+            {
+                foreach (var descriptor in analyzer.SupportedDiagnostics)
+                {
+                    if (descriptor.Id.StartsWith("CA", StringComparison.Ordinal))
+                    {
+                        diagnosticOptions[descriptor.Id] = ReportDiagnostic.Warn;
+                    }
+                }
+            }
+
+            var modifiedCompilation = compilation.WithOptions(
+                compilation.Options.WithSpecificDiagnosticOptions(diagnosticOptions));
+
+            var options = new CompilationWithAnalyzersOptions(
+                new AnalyzerOptions([]),
+                onAnalyzerException: null,
+                concurrentAnalysis: true,
+                logAnalyzerExecutionTime: false,
+                reportSuppressedDiagnostics: false);
+
+            var compilationWithAnalyzers = modifiedCompilation.WithAnalyzers(analyzers, options);
+            var diagnostics = await compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync();
+
+            // Filter to the specific file
+            return diagnostics.Where(d =>
+                d.Location.IsInSource &&
+                d.Location.SourceTree?.FilePath == filePath);
+        }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"Warning: Could not load code fix providers: {ex.Message}");
+            Console.Error.WriteLine($"Error running analyzers for code fix: {ex.Message}");
+            return [];
         }
-
-        Console.Error.WriteLine($"Loaded {providers.Count} code fix providers");
-        _codeFixProviders = providers.ToImmutableArray();
-        return _codeFixProviders.Value;
     }
 }

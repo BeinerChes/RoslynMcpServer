@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
@@ -11,6 +12,13 @@ public class McpServer
 {
     private readonly Dictionary<string, ToolDefinition> _tools = new();
     private readonly Dictionary<string, Func<JsonObject?, Task<object>>> _toolHandlers = new();
+
+    /// <summary>
+    /// Gets the server version from assembly metadata.
+    /// </summary>
+    public static string Version { get; } = Assembly.GetExecutingAssembly()
+        .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+        ?.InformationalVersion?.Split('+')[0] ?? "unknown";
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -100,7 +108,7 @@ public class McpServer
             serverInfo = new
             {
                 name = "roslyn-mcp-server",
-                version = "0.1.0"
+                version = Version
             }
         });
     }

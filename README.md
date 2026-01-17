@@ -22,6 +22,12 @@ Roslyn MCP treats **code as structured data**, enabling:
 - **Visual Studio 2022** or **Build Tools** (for MSBuild)
 - **Claude Code** CLI
 
+## Features
+
+- **Semantic Code Analysis** - Uses Roslyn compiler for accurate symbol resolution
+- **Built-in .NET Analyzers** - Includes Microsoft.CodeAnalysis.NetAnalyzers for CA* rules (CA1806, CA2000, etc.)
+- **Self-contained** - All analyzer DLLs are bundled with the server on build
+
 ## Quick Start
 
 ### 1. Clone and Build
@@ -126,7 +132,7 @@ Without this, Claude may default to native `Read`/`Edit` tools which are less pr
 | `roslyn_get_method_body` | Get the full source code of a specific method |
 | `roslyn_update_method` | Replace a method's implementation |
 | `roslyn_add_member` | Add a new method/property/field to a type |
-| `roslyn_get_diagnostics` | Compile and get warnings/errors with counts |
+| `roslyn_get_diagnostics` | Compile and get warnings/errors (CS* and CA* rules) |
 | `roslyn_apply_code_fix` | Apply Roslyn's suggested fix for a single diagnostic |
 | `roslyn_batch_apply_code_fixes` | Batch apply fixes for all diagnostics of a specific type |
 | `roslyn_rename_symbol` | Rename a symbol across the entire solution with all references |
@@ -176,6 +182,18 @@ What warnings does the Atlas.Controls project have?
 ```
 
 Claude will use `roslyn_get_diagnostics` to compile and summarize issues.
+
+### Find .NET Analyzer Warnings (CA* rules)
+
+```
+Find all CA1806 warnings in the solution
+```
+
+The server includes Microsoft.CodeAnalysis.NetAnalyzers, so it detects the same CA* rules as Visual Studio:
+- **CA1806** - Do not ignore method results
+- **CA2000** - Dispose objects before losing scope
+- **CA1062** - Validate arguments of public methods
+- And 200+ more rules...
 
 ### Auto-Fix Warnings
 
@@ -361,14 +379,28 @@ RoslynMcpServer/
 ├── src/
 │   ├── McpServer.cs              # MCP protocol (JSON-RPC over stdio)
 │   ├── Models.cs                 # DTOs
+│   ├── AnalyzerLoader.cs         # Loads bundled .NET analyzers
 │   ├── RoslynTools.*.cs          # Tool registrations (partial class)
 │   └── SolutionAnalyzerService.*.cs  # Roslyn logic (partial class)
+```
+
+After build:
+```
+bin/Debug/net10.0/
+├── RoslynMcpServer.exe
+├── analyzers/                    # Bundled .NET analyzers (copied on build)
+│   ├── cs/
+│   │   ├── Microsoft.CodeAnalysis.CSharp.NetAnalyzers.dll
+│   │   └── Microsoft.CodeAnalysis.NetAnalyzers.dll
+│   └── vb/
+│       └── ...
 ```
 
 The server uses:
 - **MSBuildWorkspace** to load solutions
 - **Roslyn Compiler APIs** for semantic analysis
 - **Roslyn Formatter** for code formatting
+- **Bundled .NET Analyzers** for CA* diagnostic rules
 - **JSON-RPC 2.0** over stdio for MCP communication
 
 ## Roadmap
