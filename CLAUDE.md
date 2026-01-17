@@ -39,6 +39,83 @@ When working with C# files in .NET solutions, **PREFER Roslyn MCP tools over nat
 4. roslyn_update_method() or Edit to add the docs
 ```
 
+## MANDATORY: Test Driven Development (TDD)
+
+**YOU MUST follow TDD for ALL code changes. No exceptions.**
+
+### Rules
+
+1. **NO CODE WITHOUT ISSUE** - Every code change MUST have an associated GitHub issue
+2. **NO CODE WITHOUT TESTS** - Every feature/fix MUST have unit tests
+3. **TESTS FIRST** - Write failing tests BEFORE writing implementation code
+4. **TEST COMMENTS** - Every test method MUST have a comment referencing the GitHub issue
+
+### TDD Workflow
+
+```
+1. Create GitHub issue describing the feature/bug
+2. Create issues/N branch
+3. Write FAILING test(s) first - with issue reference comment
+4. Run tests - verify they FAIL
+5. Write minimum code to make tests PASS
+6. Refactor if needed (tests must still pass)
+7. Commit, PR, merge
+```
+
+### Test Project Structure
+
+```
+RoslynMcpServer.Tests/
+├── RoslynMcpServer.Tests.csproj    # xUnit test project
+├── Services/                        # Tests for service classes
+│   ├── SolutionAnalyzerServiceTests.cs
+│   └── ...
+├── Tools/                           # Tests for MCP tools
+│   └── ...
+└── Models/                          # Tests for DTOs/models
+    └── ...
+```
+
+### Test Naming Convention
+
+```csharp
+// Format: MethodName_Scenario_ExpectedResult
+[Fact]
+public void FindSymbols_WithValidPattern_ReturnsMatchingSymbols()
+
+[Fact]
+public async Task GetDiagnosticsAsync_WhenSolutionNotFound_ReturnsError()
+```
+
+### Test Comment Format (REQUIRED)
+
+```csharp
+/// <summary>
+/// Tests that FindSymbols returns matching symbols for a valid pattern.
+/// Issue: #42
+/// </summary>
+[Fact]
+public void FindSymbols_WithValidPattern_ReturnsMatchingSymbols()
+{
+    // Arrange
+    // Act
+    // Assert
+}
+```
+
+### Running Tests
+
+```bash
+# Run all tests
+dotnet test
+
+# Run with coverage
+dotnet test --collect:"XPlat Code Coverage"
+
+# Run specific test class
+dotnet test --filter "FullyQualifiedName~SolutionAnalyzerServiceTests"
+```
+
 ## Code Guidelines
 
 - **YOU MUST keep .cs files under 300 lines.** Before splitting, THINK about proper refactoring:
@@ -69,6 +146,7 @@ When working with C# files in .NET solutions, **PREFER Roslyn MCP tools over nat
 - **Microsoft.CodeAnalysis.Workspaces.MSBuild** - Roslyn code analysis
 - **Microsoft.CodeAnalysis.CSharp.Workspaces** - C# language support
 - **Microsoft.Build.Locator** - Finds MSBuild installations
+- **xUnit** - Unit testing framework
 
 ## Project Structure
 
@@ -79,34 +157,43 @@ RoslynMcpServer/
 ├── RoslynMcpServer.csproj        # Project file
 ├── RoslynMcpServer.slnx          # Solution file
 ├── Program.cs                    # Entry point
-└── src/
-    ├── AnalyzerLoader.cs                         # .NET analyzers loader for CA* rules
-    ├── McpServer.cs                              # MCP protocol implementation
-    ├── Models.cs                                 # DTOs and result types
-    ├── RoslynTools.cs                            # Core tool registration
-    ├── RoslynTools.FindSymbol.cs                 # Symbol search tool
-    ├── RoslynTools.References.cs                 # References tool
-    ├── RoslynTools.Implementations.cs            # Implementations tool
-    ├── RoslynTools.TypeMembers.cs                # Type members tool
-    ├── RoslynTools.MethodBody.cs                 # Get method body tool
-    ├── RoslynTools.UpdateMethod.cs               # Update method tool
-    ├── RoslynTools.Diagnostics.cs                # Diagnostics tool
-    ├── RoslynTools.AddMember.cs                  # Add member tool
-    ├── RoslynTools.CodeFix.cs                    # Single code fix tool
-    ├── RoslynTools.BatchCodeFix.cs               # Batch code fix tool
-    ├── RoslynTools.Rename.cs                     # Rename symbol tool
-    ├── SolutionAnalyzerService.cs                # Core service + projects
-    ├── SolutionAnalyzerService.Symbols.cs        # Symbol search logic
-    ├── SolutionAnalyzerService.References.cs     # References logic
-    ├── SolutionAnalyzerService.Implementations.cs # Implementations logic
-    ├── SolutionAnalyzerService.TypeMembers.cs    # Type members logic
-    ├── SolutionAnalyzerService.MethodBody.cs     # Get method body logic
-    ├── SolutionAnalyzerService.UpdateMethod.cs   # Update method logic
-    ├── SolutionAnalyzerService.Diagnostics.cs    # Diagnostics logic
-    ├── SolutionAnalyzerService.AddMember.cs      # Add member logic
-    ├── SolutionAnalyzerService.CodeFix.cs        # Single code fix logic
-    ├── SolutionAnalyzerService.BatchCodeFix.cs   # Batch code fix logic
-    └── SolutionAnalyzerService.Rename.cs         # Rename symbol logic
+├── src/
+│   ├── AnalyzerLoader.cs                         # .NET analyzers loader for CA* rules
+│   ├── McpServer.cs                              # MCP protocol implementation
+│   ├── Models.cs                                 # DTOs and result types
+│   ├── Models.Symbols.cs                         # Symbol/reference DTOs
+│   ├── Models.Methods.cs                         # Method body/update DTOs
+│   ├── Models.Diagnostics.cs                     # Diagnostic DTOs
+│   ├── Models.CodeFix.cs                         # Code fix/rename DTOs
+│   ├── RoslynTools.cs                            # Core tool registration
+│   ├── RoslynTools.FindSymbol.cs                 # Symbol search tool
+│   ├── RoslynTools.References.cs                 # References tool
+│   ├── RoslynTools.Implementations.cs            # Implementations tool
+│   ├── RoslynTools.TypeMembers.cs                # Type members tool
+│   ├── RoslynTools.MethodBody.cs                 # Get method body tool
+│   ├── RoslynTools.UpdateMethod.cs               # Update method tool
+│   ├── RoslynTools.Diagnostics.cs                # Diagnostics tool
+│   ├── RoslynTools.AddMember.cs                  # Add member tool
+│   ├── RoslynTools.CodeFix.cs                    # Single code fix tool
+│   ├── RoslynTools.BatchCodeFix.cs               # Batch code fix tool
+│   ├── RoslynTools.Rename.cs                     # Rename symbol tool
+│   ├── SolutionAnalyzerService.cs                # Core service + projects
+│   ├── SolutionAnalyzerService.Symbols.cs        # Symbol search logic
+│   ├── SolutionAnalyzerService.References.cs     # References logic
+│   ├── SolutionAnalyzerService.Implementations.cs # Implementations logic
+│   ├── SolutionAnalyzerService.TypeMembers.cs    # Type members logic
+│   ├── SolutionAnalyzerService.MethodBody.cs     # Get method body logic
+│   ├── SolutionAnalyzerService.UpdateMethod.cs   # Update method logic
+│   ├── SolutionAnalyzerService.Diagnostics.cs    # Diagnostics logic
+│   ├── SolutionAnalyzerService.AddMember.cs      # Add member logic
+│   ├── SolutionAnalyzerService.CodeFix.cs        # Single code fix logic
+│   ├── SolutionAnalyzerService.BatchCodeFix.cs   # Batch code fix logic
+│   └── SolutionAnalyzerService.Rename.cs         # Rename symbol logic
+└── RoslynMcpServer.Tests/                        # xUnit test project
+    ├── RoslynMcpServer.Tests.csproj
+    ├── Services/                                 # Service tests
+    ├── Tools/                                    # Tool tests
+    └── Models/                                   # Model tests
 ```
 
 ## Build Commands
