@@ -312,6 +312,24 @@ master            ← Historical, not used for development
    git pull
    ```
 
+### Working with Existing GitHub Issues
+
+When fixing bugs or implementing features from **existing** GitHub issues:
+
+1. **DO NOT create new issues** - work on the existing issue
+2. **Add comments** to the issue explaining:
+   - Root cause analysis
+   - The fix applied
+   - File and line numbers changed
+3. **Reference the issue** in commit messages: `Fixes #1234`
+4. Use `gh issue comment <number> --body "..."` to add comments
+
+**Reading issue attachments (images):**
+- GitHub user-attachments require signed URLs
+- Ask user for the signed URL (right-click image → Copy image address)
+- Download with: `curl -s -L -o image.png "<signed-url>"`
+- Then use Read tool to view the image
+
 ### Version Management
 
 **Version is defined in ONE place:** `RoslynMcpServer.csproj`
