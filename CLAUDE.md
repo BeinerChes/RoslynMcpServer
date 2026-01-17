@@ -733,9 +733,28 @@ private static void RegisterYourTool(McpServer server)
 
 2. Call `RegisterYourTool(server)` in `RegisterAll()`.
 
-## Future Improvements
+## Roadmap
 
-- [ ] `roslyn_get_document_symbols` - Symbols in a specific file
-- [ ] `roslyn_get_call_hierarchy` - Who calls this method
+### High Priority Tools
+- [ ] `roslyn_get_call_hierarchy` - Find callers of a method + what it calls (impact analysis)
+- [ ] `roslyn_extract_method` - Extract code block into new method
+- [ ] `roslyn_change_signature` - Add/remove/reorder parameters with auto-fix callers
+- [ ] `roslyn_get_document_symbols` - All symbols in a specific file
+- [ ] `roslyn_organize_usings` - Sort + remove unused usings
+- [ ] `roslyn_format_document` - Apply .editorconfig formatting
+- [ ] `roslyn_extract_interface` - Extract interface from class
+- [ ] `roslyn_inline` - Replace variable/method usages with actual code
+
+### Medium Priority Tools
+- [ ] `roslyn_move_type_to_file` - Move class to its own .cs file
+- [ ] `roslyn_encapsulate_field` - Convert field to property with backing field
+- [ ] `roslyn_generate_constructor` - Create constructor from fields/properties
+- [ ] `roslyn_generate_equals_hashcode` - Override Equals/GetHashCode
+- [ ] `roslyn_pull_members_up` - Move members to base class
+- [ ] `roslyn_push_members_down` - Move members to derived classes
+- [ ] `roslyn_find_unused_code` - Find dead methods/classes
+- [ ] `roslyn_get_dependency_graph` - Analyze assembly/type dependencies
+
+### Infrastructure
 - [ ] Caching for compilation results
 - [ ] Progress reporting for large solutions

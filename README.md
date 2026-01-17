@@ -371,6 +371,34 @@ The server uses:
 - **Roslyn Formatter** for code formatting
 - **JSON-RPC 2.0** over stdio for MCP communication
 
+## Roadmap
+
+### Planned Tools (High Priority)
+
+| Tool | Description | Use Case |
+|------|-------------|----------|
+| `roslyn_get_call_hierarchy` | Find callers of a method + what it calls | Impact analysis before changes |
+| `roslyn_extract_method` | Extract code block into new method | Refactoring large methods |
+| `roslyn_change_signature` | Add/remove/reorder parameters | API changes with auto-fix callers |
+| `roslyn_get_document_symbols` | All symbols in a specific file | Quick file overview |
+| `roslyn_organize_usings` | Sort + remove unused usings | Code cleanup |
+| `roslyn_format_document` | Apply .editorconfig formatting | Consistent style |
+| `roslyn_extract_interface` | Extract interface from class | Design patterns |
+| `roslyn_inline` | Replace variable/method usages with actual code | Simplify code |
+
+### Planned Tools (Medium Priority)
+
+| Tool | Description |
+|------|-------------|
+| `roslyn_move_type_to_file` | Move class to its own .cs file |
+| `roslyn_encapsulate_field` | Convert field to property with backing field |
+| `roslyn_generate_constructor` | Create constructor from fields/properties |
+| `roslyn_generate_equals_hashcode` | Override Equals/GetHashCode for value equality |
+| `roslyn_pull_members_up` | Move members to base class |
+| `roslyn_push_members_down` | Move members to derived classes |
+| `roslyn_find_unused_code` | Find dead methods/classes |
+| `roslyn_get_dependency_graph` | Analyze assembly/type dependencies |
+
 ## License
 
 MIT
