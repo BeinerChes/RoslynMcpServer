@@ -84,6 +84,36 @@ If you need to reconnect:
 /mcp reconnect roslyn
 ```
 
+### 4. Configure CLAUDE.md (Important!)
+
+Add a `CLAUDE.md` file to your project root to instruct Claude to use Roslyn tools instead of native file operations:
+
+```markdown
+## Tool Preferences for C# Code
+
+When working with C# files in .NET solutions, **PREFER Roslyn MCP tools over native tools**:
+
+| Task | Use This | NOT This |
+|------|----------|----------|
+| Find a type/method | `roslyn_find_symbol` | `Grep` or `Glob` |
+| Understand a class | `roslyn_get_type_members` | `Read` the whole file |
+| Read a method | `roslyn_get_method_body` | `Read` the whole file |
+| Edit a method | `roslyn_update_method` | `Edit` with text patterns |
+| Add a member | `roslyn_add_member` | `Edit` to insert code |
+| Find usages | `roslyn_get_references` | `Grep` for text |
+| Find implementations | `roslyn_get_implementations` | `Grep` for class names |
+| Check for errors | `roslyn_get_diagnostics` | `Bash` dotnet build |
+| Fix one warning | `roslyn_apply_code_fix` | Manual `Edit` |
+| Fix many warnings | `roslyn_batch_apply_code_fixes` | Loop of single fixes |
+
+**Only use native tools for:**
+- Non-C# files (JSON, XML, markdown, .csproj)
+- Creating brand new .cs files
+- When Roslyn MCP server is not connected
+```
+
+Without this, Claude may default to native `Read`/`Edit` tools which are less precise for C# code.
+
 ## Available Tools
 
 | Tool | Description |

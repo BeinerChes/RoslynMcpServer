@@ -13,6 +13,7 @@ When working with C# files in .NET solutions, **PREFER Roslyn MCP tools over nat
 | Task | Use This | NOT This |
 |------|----------|----------|
 | Find a type/method | `roslyn_find_symbol` | `Grep` or `Glob` |
+| Understand a class | `roslyn_get_type_members` | `Read` the whole file |
 | Read a method | `roslyn_get_method_body` | `Read` the whole file |
 | Edit a method | `roslyn_update_method` | `Edit` with text patterns |
 | Add a member | `roslyn_add_member` | `Edit` to insert code |
@@ -21,12 +22,21 @@ When working with C# files in .NET solutions, **PREFER Roslyn MCP tools over nat
 | Check for errors | `roslyn_get_diagnostics` | `Bash` dotnet build |
 | Fix one warning | `roslyn_apply_code_fix` | Manual `Edit` |
 | Fix many warnings | `roslyn_batch_apply_code_fixes` | Loop of single fixes |
+| Write XML docs | `roslyn_get_type_members` + `roslyn_get_method_body` | `Read` file |
 
 **Only use native tools for:**
 - Non-C# files (JSON, XML, markdown, .csproj)
 - Creating brand new .cs files (use `Write`, then `roslyn_add_member` to populate)
 - Very small files (< 100 lines) where `Read`/`Edit` is simpler
 - When Roslyn MCP server is not connected
+
+**Example: Writing XML docs for a class**
+```
+1. roslyn_get_type_members(typeName: "MyClass") → see all members, their signatures, accessibility
+2. roslyn_get_method_body(typeName: "MyClass", methodName: "DoWork") → read implementation
+3. Write meaningful XML doc based on understanding
+4. roslyn_update_method() or Edit to add the docs
+```
 
 ## Code Guidelines
 
