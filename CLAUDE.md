@@ -80,6 +80,7 @@ RoslynMcpServer/
 ├── RoslynMcpServer.slnx          # Solution file
 ├── Program.cs                    # Entry point
 └── src/
+    ├── AnalyzerLoader.cs                         # .NET analyzers loader for CA* rules
     ├── McpServer.cs                              # MCP protocol implementation
     ├── Models.cs                                 # DTOs and result types
     ├── RoslynTools.cs                            # Core tool registration
@@ -145,6 +146,108 @@ The MCP server runs as a background process. To apply code changes:
    - Type `/mcp` to open MCP menu
    - Select the roslyn server and reconnect
    - Or use: `/mcp reconnect roslyn`
+
+## Git Workflow
+
+### Branch Structure
+
+```
+rc/X.X.X          ← Default branch (release candidate), PRs target here
+├── issues/N      ← Feature/fix branches linked to GitHub issues
+└── issues/M
+
+release/X.X.X     ← Stable releases (owner merges RC here when ready)
+master            ← Historical, not used for development
+```
+
+### Development Workflow (for Claude)
+
+**IMPORTANT: Always create a GitHub issue BEFORE making code changes.**
+
+1. **Create GitHub Issue First**
+   ```bash
+   gh issue create --title "Brief description" --body "Detailed description of the bug/improvement"
+   ```
+   Note the issue number (e.g., `#42`)
+
+2. **Create Feature Branch**
+   ```bash
+   git checkout rc/X.X.X
+   git pull
+   git checkout -b issues/42
+   ```
+
+3. **Make Changes and Commit**
+   ```bash
+   git add .
+   git commit -m "Fix: description of change
+
+   Closes #42
+
+   Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
+   ```
+
+4. **Push and Create PR**
+   ```bash
+   git push -u origin issues/42
+   gh pr create --base rc/X.X.X --title "Fix: description" --body "Closes #42"
+   ```
+
+5. **Merge PR** (after review if needed)
+   ```bash
+   gh pr merge --squash --delete-branch
+   ```
+
+6. **Switch Back to RC**
+   ```bash
+   git checkout rc/X.X.X
+   git pull
+   ```
+
+### Version Management
+
+**Version is defined in ONE place:** `RoslynMcpServer.csproj`
+
+```xml
+<Version>1.0.0-rc</Version>
+```
+
+Both `McpServer.cs` and `RoslynTools.cs` read this at runtime via assembly attributes.
+
+**Version Format:**
+- Release Candidate: `X.X.X-rc` (e.g., `1.0.0-rc`)
+- Release: `X.X.X` (e.g., `1.0.0`)
+
+**The version in MCP server responses MUST match the branch:**
+- On `rc/1.0.0` branch → version should be `1.0.0-rc`
+- On `release/1.0.0` branch → version should be `1.0.0`
+
+### Release Process (Owner Only)
+
+1. Review cumulative changes in RC branch
+2. Merge `rc/X.X.X` → `release/X.X.X`
+3. Update version in `.csproj` to remove `-rc` suffix
+4. Tag the release
+5. Bump RC version for next cycle (e.g., `1.0.1-rc`)
+
+### GitHub CLI Commands Reference
+
+```bash
+# Check current default branch
+gh repo view --json defaultBranchRef
+
+# Create issue
+gh issue create --title "Title" --body "Description"
+
+# Create PR
+gh pr create --base rc/X.X.X --title "Title" --body "Closes #N"
+
+# Merge PR
+gh pr merge --squash --delete-branch
+
+# View PR status
+gh pr status
+```
 
 ## Available Tools
 
