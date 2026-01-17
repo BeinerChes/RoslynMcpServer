@@ -4,17 +4,23 @@ A **Model Context Protocol (MCP) server** that provides deep C# code analysis ca
 
 ## Why Use This?
 
-When working with large C# codebases, text-based tools struggle with:
-- Finding the right overload among many
-- Understanding inheritance hierarchies
-- Making targeted edits in 2000+ line files
-- Avoiding pattern ambiguity in Edit operations
+**For C# developers:** This server gives Claude "IDE superpowers" for your .NET code. Instead of treating code as text, Claude can:
 
-Roslyn MCP treats **code as structured data**, enabling:
-- Semantic symbol search (not just text matching)
-- Precise method-level edits (no pattern ambiguity)
-- Type-aware navigation (find implementations, references)
-- Compilation diagnostics (warnings/errors with locations)
+| Without Roslyn MCP | With Roslyn MCP |
+|-------------------|-----------------|
+| `grep "Save"` finds 50 matches | `roslyn_find_symbol` finds the exact `UserService.Save()` method |
+| Reading a 2000-line file to find one method | `roslyn_get_method_body` returns just that method |
+| `Edit` pattern matches wrong code | `roslyn_update_method` targets exactly one method |
+| Manual find/replace breaks code | `roslyn_rename_symbol` updates all references correctly |
+
+**The key insight:** Roslyn (the C# compiler) understands your code semantically. It knows `User` the class is different from `user` the variable. This MCP server exposes that understanding to Claude.
+
+### Real-World Benefits
+
+- **Large codebases** - Navigate 100+ file solutions without reading everything
+- **Safe refactoring** - Rename symbols, find all usages, understand impact
+- **Precise edits** - Modify one method in a 2000-line file without pattern ambiguity
+- **Code health** - Find and auto-fix warnings (CS* and CA* rules) across the solution
 
 ## Prerequisites
 
@@ -92,34 +98,20 @@ If you need to reconnect:
 
 ### 4. Configure CLAUDE.md (Important!)
 
-Add a `CLAUDE.md` file to your project root to instruct Claude to use Roslyn tools instead of native file operations:
+Add a `CLAUDE.md` file to your project root to instruct Claude to use Roslyn tools instead of native file operations.
 
-```markdown
-## Tool Preferences for C# Code
-
-When working with C# files in .NET solutions, **PREFER Roslyn MCP tools over native tools**:
-
-| Task | Use This | NOT This |
-|------|----------|----------|
-| Find a type/method | `roslyn_find_symbol` | `Grep` or `Glob` |
-| Understand a class | `roslyn_get_type_members` | `Read` the whole file |
-| Read a method | `roslyn_get_method_body` | `Read` the whole file |
-| Edit a method | `roslyn_update_method` | `Edit` with text patterns |
-| Add a member | `roslyn_add_member` | `Edit` to insert code |
-| Find usages | `roslyn_get_references` | `Grep` for text |
-| Find implementations | `roslyn_get_implementations` | `Grep` for class names |
-| Check for errors | `roslyn_get_diagnostics` | `Bash` dotnet build |
-| Fix one warning | `roslyn_apply_code_fix` | Manual `Edit` |
-| Fix many warnings | `roslyn_batch_apply_code_fixes` | Loop of single fixes |
-| Rename symbol | `roslyn_rename_symbol` | Manual find/replace |
-
-**Only use native tools for:**
-- Non-C# files (JSON, XML, markdown, .csproj)
-- Creating brand new .cs files
-- When Roslyn MCP server is not connected
+**Quick start:** Copy the template from this repository:
+```bash
+# From your project directory
+curl -o CLAUDE.md https://raw.githubusercontent.com/BeinerChes/RoslynMcpServer/rc/1.0.0/CLAUDE_TEMPLATE.md
 ```
 
-Without this, Claude may default to native `Read`/`Edit` tools which are less precise for C# code.
+Or manually copy `CLAUDE_TEMPLATE.md` from this repository and customize it for your project.
+
+**Why is this important?** Without `CLAUDE.md`, Claude may default to native `Read`/`Edit` tools which:
+- Use text patterns that can match the wrong code
+- Read entire files when you only need one method
+- Miss overloads and type context
 
 ## Available Tools
 
@@ -178,7 +170,7 @@ Claude will use `roslyn_add_member` with proper formatting.
 ### Find Code Health Issues
 
 ```
-What warnings does the Atlas.Controls project have?
+What warnings does the MyApp.Core project have?
 ```
 
 Claude will use `roslyn_get_diagnostics` to compile and summarize issues.
@@ -273,7 +265,7 @@ Default: smart placement based on member type.
 {
   "solutionPath": "C:\\path\\to\\solution.sln",
   "severityFilter": "warning",
-  "projectFilter": "Atlas.Controls"
+  "projectFilter": "MyApp.Core"
 }
 ```
 
@@ -434,6 +426,14 @@ The server uses:
 ## License
 
 MIT
+
+## Files in This Repository
+
+| File | Purpose |
+|------|---------|
+| `CLAUDE.md` | Development guidelines for this repository |
+| `CLAUDE_TEMPLATE.md` | **Copy this to your projects** - Template for using Roslyn MCP |
+| `README.md` | This file |
 
 ## Contributing
 
