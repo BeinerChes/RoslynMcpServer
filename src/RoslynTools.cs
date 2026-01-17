@@ -34,6 +34,8 @@ public static partial class RoslynTools
         RegisterUpdateMethodTool(server);
         RegisterGetDiagnosticsTool(server);
         RegisterAddMemberTool(server);
+        RegisterApplyCodeFixTool(server);
+        RegisterBatchApplyCodeFix(server);
     }
 
     /// <summary>

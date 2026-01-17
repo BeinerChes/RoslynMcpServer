@@ -96,6 +96,8 @@ If you need to reconnect:
 | `roslyn_update_method` | Replace a method's implementation |
 | `roslyn_add_member` | Add a new method/property/field to a type |
 | `roslyn_get_diagnostics` | Compile and get warnings/errors with counts |
+| `roslyn_apply_code_fix` | Apply Roslyn's suggested fix for a single diagnostic |
+| `roslyn_batch_apply_code_fixes` | Batch apply fixes for all diagnostics of a specific type |
 | `roslyn_get_projects_in_build_order` | Get solution structure and dependencies |
 
 ## Usage Examples
@@ -142,6 +144,14 @@ What warnings does the Atlas.Controls project have?
 ```
 
 Claude will use `roslyn_get_diagnostics` to compile and summarize issues.
+
+### Auto-Fix Warnings
+
+```
+Fix the CS0168 warning at line 42 in VectorTileLayer.cs
+```
+
+Claude will use `roslyn_apply_code_fix` to automatically apply Roslyn's suggested fix.
 
 ## Tool Details
 
@@ -211,6 +221,49 @@ Default: smart placement based on member type.
 
 Without `diagnosticId`: returns summary with counts per diagnostic code.
 With `diagnosticId`: returns detailed entries with file/line/method info.
+
+### roslyn_apply_code_fix
+
+```json
+{
+  "solutionPath": "C:\\path\\to\\solution.sln",
+  "filePath": "C:\\path\\to\\MyClass.cs",
+  "line": 42,
+  "column": 13,
+  "diagnosticId": "CS0168",
+  "fixIndex": 0,
+  "preview": false
+}
+```
+
+**Workflow:**
+1. Use `roslyn_get_diagnostics` to find issues
+2. Use `roslyn_apply_code_fix` with `preview: true` to see what would change
+3. Apply the fix with `preview: false`
+
+If multiple fixes are available, the tool returns the list. Specify `fixIndex` to select one.
+
+### roslyn_batch_apply_code_fixes
+
+```json
+{
+  "solutionPath": "C:\\path\\to\\solution.sln",
+  "diagnosticId": "CS0168",
+  "projectFilter": "MyProject",
+  "maxFixes": 100,
+  "preview": false
+}
+```
+
+**Workflow:**
+1. Use `roslyn_get_diagnostics` to find issues (note `fixAvailable: true` in summary)
+2. Use `roslyn_batch_apply_code_fixes` with `preview: true` to see what would change
+3. Apply fixes with `preview: false`
+4. Verify with `roslyn_get_diagnostics` again
+
+**When to use:**
+- **Batch**: Fix all occurrences of a warning type (e.g., all CS0168 unused variables)
+- **Single**: Fix one diagnostic, or choose between multiple fix options
 
 ## Troubleshooting
 

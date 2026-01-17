@@ -27,7 +27,12 @@
       "Bash(del \"\\\\?\\\\C:\\\\Users\\\\beine\\\\source\\\\repos\\\\RoslynMcpServer\\\\nul\")",
       "Bash(cmd //c \"del \\\\?\\\\C:\\\\Users\\\\beine\\\\source\\\\repos\\\\RoslynMcpServer\\\\nul\")",
       "Bash(powershell -Command \"Remove-Item -LiteralPath ''\\\\?\\\\C:\\\\Users\\\\beine\\\\source\\\\repos\\\\RoslynMcpServer\\\\nul'' -Force\")",
-      "Bash(powershell -Command:*)"
+      "Bash(powershell -Command:*)",
+      "Bash(dotnet restore:*)",
+      "mcp__roslyn__roslyn_apply_code_fix",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "mcp__roslyn__roslyn_batch_apply_code_fixes"
     ]
   },
   "enableAllProjectMcpServers": true,

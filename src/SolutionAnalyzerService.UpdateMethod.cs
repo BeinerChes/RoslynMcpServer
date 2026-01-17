@@ -30,11 +30,7 @@ public partial class SolutionAnalyzerService
         }
 
         using var workspace = MSBuildWorkspace.Create();
-
-        workspace.WorkspaceFailed += (sender, args) =>
-        {
-            Console.Error.WriteLine($"Workspace warning: {args.Diagnostic.Message}");
-        };
+        RegisterFailureHandler(workspace);
 
         try
         {
@@ -212,8 +208,8 @@ public partial class SolutionAnalyzerService
 
             var newRootNode = root.ReplaceNode(methodNode, newMethodWithTrivia);
 
-            // Write the updated file
-            var filePath = location.SourceTree.FilePath;
+            // Write the updated file - use syntaxTree.FilePath to avoid null dereference
+            var filePath = syntaxTree.FilePath;
             var newText = newRootNode.ToFullString();
 
             await File.WriteAllTextAsync(filePath, newText);

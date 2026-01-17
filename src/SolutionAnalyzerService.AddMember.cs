@@ -9,9 +9,17 @@ namespace RoslynMcpServer;
 
 public partial class SolutionAnalyzerService
 {
-    /// <summary>
-    /// Adds a new member (method, property, field, etc.) to a type.
-    /// </summary>
+
+
+    private static void RegisterFailureHandler(MSBuildWorkspace workspace)
+    {
+        workspace.RegisterWorkspaceFailedHandler(args =>
+        {
+            Console.Error.WriteLine($"Workspace warning: {args.Diagnostic.Message}");
+        }, null);
+    }     /// <summary>
+          /// Adds a new member (method, property, field, etc.) to a type.
+          /// </summary>
     public async Task<AddMemberResult> AddMemberAsync(
         string solutionPath,
         string typeName,
@@ -30,11 +38,7 @@ public partial class SolutionAnalyzerService
         }
 
         using var workspace = MSBuildWorkspace.Create();
-
-        workspace.WorkspaceFailed += (sender, args) =>
-        {
-            Console.Error.WriteLine($"Workspace warning: {args.Diagnostic.Message}");
-        };
+        RegisterFailureHandler(workspace);
 
         try
         {
@@ -309,5 +313,20 @@ public partial class SolutionAnalyzerService
             ),
             _ => ("unknown", "Member", member.ToString().Split('\n')[0].Trim())
         };
+    }
+
+
+    public static HashSet<string> GetFixableDiagnosticIds()
+    {
+        var providers = GetCodeFixProviders();
+        var fixableIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var provider in providers)
+        {
+            foreach (var id in provider.FixableDiagnosticIds)
+            {
+                fixableIds.Add(id);
+            }
+        }
+        return fixableIds;
     }
 }

@@ -6,6 +6,28 @@ This is a **Model Context Protocol (MCP) server** written in C# (.NET 10.0) that
 
 The server enables AI assistants to analyze .NET solutions with deep semantic understanding - finding symbols, tracking references, understanding build order, and more.
 
+## Tool Preferences for C# Code
+
+When working with C# files in .NET solutions, **PREFER Roslyn MCP tools over native tools**:
+
+| Task | Use This | NOT This |
+|------|----------|----------|
+| Find a type/method | `roslyn_find_symbol` | `Grep` or `Glob` |
+| Read a method | `roslyn_get_method_body` | `Read` the whole file |
+| Edit a method | `roslyn_update_method` | `Edit` with text patterns |
+| Add a member | `roslyn_add_member` | `Edit` to insert code |
+| Find usages | `roslyn_get_references` | `Grep` for text |
+| Find implementations | `roslyn_get_implementations` | `Grep` for class names |
+| Check for errors | `roslyn_get_diagnostics` | `Bash` dotnet build |
+| Fix one warning | `roslyn_apply_code_fix` | Manual `Edit` |
+| Fix many warnings | `roslyn_batch_apply_code_fixes` | Loop of single fixes |
+
+**Only use native tools for:**
+- Non-C# files (JSON, XML, markdown, .csproj)
+- Creating brand new .cs files (use `Write`, then `roslyn_add_member` to populate)
+- Very small files (< 100 lines) where `Read`/`Edit` is simpler
+- When Roslyn MCP server is not connected
+
 ## Code Guidelines
 
 - **YOU MUST keep .cs files under 300 lines.** Before splitting, THINK about proper refactoring:
@@ -58,6 +80,8 @@ RoslynMcpServer/
     ├── RoslynTools.UpdateMethod.cs               # Update method tool
     ├── RoslynTools.Diagnostics.cs                # Diagnostics tool
     ├── RoslynTools.AddMember.cs                  # Add member tool
+    ├── RoslynTools.CodeFix.cs                    # Single code fix tool
+    ├── RoslynTools.BatchCodeFix.cs               # Batch code fix tool
     ├── SolutionAnalyzerService.cs                # Core service + projects
     ├── SolutionAnalyzerService.Symbols.cs        # Symbol search logic
     ├── SolutionAnalyzerService.References.cs     # References logic
@@ -66,7 +90,9 @@ RoslynMcpServer/
     ├── SolutionAnalyzerService.MethodBody.cs     # Get method body logic
     ├── SolutionAnalyzerService.UpdateMethod.cs   # Update method logic
     ├── SolutionAnalyzerService.Diagnostics.cs    # Diagnostics logic
-    └── SolutionAnalyzerService.AddMember.cs      # Add member logic
+    ├── SolutionAnalyzerService.AddMember.cs      # Add member logic
+    ├── SolutionAnalyzerService.CodeFix.cs        # Single code fix logic
+    └── SolutionAnalyzerService.BatchCodeFix.cs   # Batch code fix logic
 ```
 
 ## Build Commands
@@ -122,6 +148,8 @@ The MCP server runs as a background process. To apply code changes:
 | `roslyn_update_method` | Replace a method's implementation with new source code |
 | `roslyn_get_diagnostics` | Compile solution and get warnings/errors with counts and details |
 | `roslyn_add_member` | Add a new method/property/field to a type with auto-formatting |
+| `roslyn_apply_code_fix` | Apply Roslyn's suggested fix for a single diagnostic |
+| `roslyn_batch_apply_code_fixes` | Batch apply fixes for all diagnostics of a specific type |
 
 ### roslyn_find_symbol
 
@@ -479,6 +507,113 @@ Adds a new member (method, property, field, constructor, event) to a type. Uses 
   "signature": "void Dispose()"
 }
 ```
+
+### roslyn_apply_code_fix
+
+Applies a Roslyn code fix for a diagnostic at a specific location. First use `roslyn_get_diagnostics` to find issues, then use this tool to automatically fix them.
+
+**Input:**
+```json
+{
+  "solutionPath": "C:\\path\\to\\solution.sln",
+  "filePath": "C:\\path\\to\\MyClass.cs",
+  "line": 42,
+  "column": 13,
+  "diagnosticId": "CS0168",
+  "fixIndex": 0,
+  "preview": true
+}
+```
+
+**Parameters:**
+- `solutionPath` (required) - Absolute path to .sln file
+- `filePath` (required) - Absolute path to the source file
+- `line` (required) - Line number (1-based)
+- `column` (required) - Column number (1-based)
+- `diagnosticId` - Specific diagnostic ID to fix (e.g., `CS0168`)
+- `fixIndex` - Index of fix to apply when multiple are available
+- `preview` - If true, shows what would change without applying (default: false)
+
+**Output:**
+```json
+{
+  "success": true,
+  "filePath": "C:\\path\\to\\MyClass.cs",
+  "diagnosticId": "CS0168",
+  "diagnosticMessage": "The variable 'ex' is declared but never used",
+  "appliedFixTitle": "Remove unused variable",
+  "availableFixes": [
+    { "index": 0, "title": "Remove unused variable" }
+  ],
+  "filesChanged": 1,
+  "isPreview": false
+}
+```
+
+**Workflow for single fix:**
+1. `roslyn_get_diagnostics` → find CS0168 at line 42
+2. `roslyn_apply_code_fix(preview=true)` → see what would change
+3. `roslyn_apply_code_fix(preview=false)` → apply the fix
+
+### roslyn_batch_apply_code_fixes
+
+Batch applies Roslyn code fixes for all diagnostics of a specific type. Much faster than applying fixes one by one - loads solution once, applies all fixes in memory, then writes changes to disk.
+
+**Input:**
+```json
+{
+  "solutionPath": "C:\\path\\to\\solution.sln",
+  "diagnosticId": "CS0168",
+  "projectFilter": "Atlas.Controls",
+  "fileFilter": "*Service.cs",
+  "maxFixes": 100,
+  "preview": false
+}
+```
+
+**Parameters:**
+- `solutionPath` (required) - Absolute path to .sln file
+- `diagnosticId` (required) - Diagnostic ID to fix (e.g., `CS0168`, `CS8618`)
+- `projectFilter` - Filter by project name (partial match)
+- `fileFilter` - Filter by file name or path (partial match)
+- `maxFixes` - Maximum fixes to apply (default: 100, max: 1000)
+- `preview` - If true, shows what would change without applying (default: false)
+
+**Output:**
+```json
+{
+  "success": true,
+  "solutionPath": "C:\\path\\to\\solution.sln",
+  "diagnosticId": "CS0168",
+  "totalDiagnosticsFound": 30,
+  "diagnosticsWithFixes": 28,
+  "fixesApplied": 28,
+  "fixesFailed": 2,
+  "filesModified": 15,
+  "modifiedFiles": ["File1.cs", "File2.cs", "..."],
+  "details": [
+    {
+      "filePath": "C:\\path\\to\\MyClass.cs",
+      "line": 42,
+      "column": 13,
+      "diagnosticMessage": "The variable 'ex' is declared but never used",
+      "fixTitle": "Remove unused variable",
+      "applied": true
+    }
+  ],
+  "isPreview": false
+}
+```
+
+**Workflow for batch fixes:**
+1. `roslyn_get_diagnostics` → see summary with `fixAvailable: true` flags
+2. `roslyn_batch_apply_code_fixes(preview=true)` → see what would change
+3. `roslyn_batch_apply_code_fixes(preview=false)` → apply all fixes
+4. `roslyn_get_diagnostics` → verify remaining issues
+
+**When to use batch vs single:**
+- **Batch (`roslyn_batch_apply_code_fixes`)**: Fixing all occurrences of a specific warning type (e.g., all CS0168)
+- **Single (`roslyn_apply_code_fix`)**: Fixing one specific diagnostic, or when you need to choose between multiple fix options
 
 ## Key Concepts
 

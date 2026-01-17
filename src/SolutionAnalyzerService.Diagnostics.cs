@@ -30,16 +30,16 @@ public partial class SolutionAnalyzerService
         }
 
         using var workspace = MSBuildWorkspace.Create();
-
-        workspace.WorkspaceFailed += (sender, args) =>
-        {
-            Console.Error.WriteLine($"Workspace warning: {args.Diagnostic.Message}");
-        };
+        RegisterFailureHandler(workspace);
 
         try
         {
             Console.Error.WriteLine($"Loading solution: {solutionPath}");
             var solution = await workspace.OpenSolutionAsync(solutionPath);
+
+            // Get the set of diagnostic IDs that have code fixes available
+            var fixableIds = GetFixableDiagnosticIds();
+            Console.Error.WriteLine($"Loaded {fixableIds.Count} fixable diagnostic IDs");
 
             var allDiagnostics = new List<(Diagnostic diagnostic, string projectName)>();
 
@@ -101,7 +101,8 @@ public partial class SolutionAnalyzerService
                             Title = first.Descriptor.Title.ToString(),
                             Count = g.Count(),
                             ExampleFile = Path.GetFileName(lineSpan.Path),
-                            ExampleLine = lineSpan.StartLinePosition.Line + 1
+                            ExampleLine = lineSpan.StartLinePosition.Line + 1,
+                            FixAvailable = fixableIds.Contains(g.Key)
                         };
                     })
                     .OrderByDescending(s => s.Count)
@@ -127,7 +128,7 @@ public partial class SolutionAnalyzerService
             var entries = matchingDiagnostics
                 .Skip(offset)
                 .Take(maxResults)
-                .Select(d => CreateDiagnosticEntry(d.diagnostic, d.projectName, solution))
+                .Select(d => CreateDiagnosticEntry(d.diagnostic, d.projectName, solution, fixableIds))
                 .ToList();
 
             return new GetDiagnosticsResult
@@ -155,7 +156,8 @@ public partial class SolutionAnalyzerService
     private static DiagnosticEntry CreateDiagnosticEntry(
         Diagnostic diagnostic,
         string projectName,
-        Solution solution)
+        Solution solution,
+        HashSet<string> fixableIds)
     {
         var lineSpan = diagnostic.Location.GetLineSpan();
 
@@ -196,7 +198,8 @@ public partial class SolutionAnalyzerService
             Column = lineSpan.StartLinePosition.Character + 1,
             ProjectName = projectName,
             ContainingType = containingType,
-            ContainingMethod = containingMethod
+            ContainingMethod = containingMethod,
+            FixAvailable = fixableIds.Contains(diagnostic.Id)
         };
     }
 

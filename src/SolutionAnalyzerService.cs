@@ -58,12 +58,7 @@ public partial class SolutionAnalyzerService
         }
 
         using var workspace = MSBuildWorkspace.Create();
-
-        // Log any workspace failures
-        workspace.WorkspaceFailed += (sender, args) =>
-        {
-            Console.Error.WriteLine($"Workspace warning: {args.Diagnostic.Message}");
-        };
+        RegisterFailureHandler(workspace);
 
         try
         {
