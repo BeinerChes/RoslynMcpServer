@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet *)",
+      "Bash(git *)",
+      "Bash(gh *)",
+      "Bash(\"C:\\\\Program Files\\\\GitHub CLI\\\\gh.exe\" *)",
+      "Bash(taskkill *)",
+      "Bash(tasklist *)",
+      "Bash(mkdir *)",
+      "Bash(rm *)",
+      "Bash(del *)",
+      "Bash(dir *)",
+      "mcp__roslyn__*",
+      "Read",
+      "Edit",
+      "Write",
+      "WebSearch",
+      "WebFetch"
+    ]
+  },
+  "enableAllProjectMcpServers": true
+}
