@@ -6,6 +6,20 @@ This is a **Model Context Protocol (MCP) server** written in C# (.NET 10.0) that
 
 The server enables AI assistants to analyze .NET solutions with deep semantic understanding - finding symbols, tracking references, understanding build order, and more.
 
+## IMPORTANT: Maintain CLAUDE_TEMPLATE.md
+
+**When adding new tools or features, YOU MUST update `CLAUDE_TEMPLATE.md`.**
+
+This file is a template for end users to copy to their projects. Keep it:
+- **Current** - Include all available tools in the tool preferences table
+- **Generic** - No references to this repository's internals (git workflow, roadmap, etc.)
+- **Practical** - Focus on how to USE the tools, not how they're implemented
+
+**Checklist when adding a new tool:**
+1. Add to the tool preferences table in CLAUDE_TEMPLATE.md (if user-facing)
+2. Add to "Common Workflows" section if it enables a new workflow
+3. Keep examples generic (not specific to RoslynMcpServer development)
+
 ## Tool Preferences for C# Code
 
 When working with C# files in .NET solutions, **PREFER Roslyn MCP tools over native tools**:
@@ -17,7 +31,8 @@ When working with C# files in .NET solutions, **PREFER Roslyn MCP tools over nat
 | Read a method | `roslyn_get_method_body` | `Read` the whole file |
 | Edit a method | `roslyn_update_method` | `Edit` with text patterns |
 | Add a member | `roslyn_add_member` | `Edit` to insert code |
-| Find usages | `roslyn_get_references` | `Grep` for text |
+| Find all references | `roslyn_get_references` | `Grep` for text |
+| Find callers only | `roslyn_get_callers` | `roslyn_get_references` (includes non-calls) |
 | Find implementations | `roslyn_get_implementations` | `Grep` for class names |
 | Check for errors | `roslyn_get_diagnostics` | `Bash` dotnet build |
 | Fix one warning | `roslyn_apply_code_fix` | Manual `Edit` |
