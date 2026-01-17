@@ -32,6 +32,8 @@ public static partial class RoslynTools
         RegisterGetTypeMembersTool(server);
         RegisterGetMethodBodyTool(server);
         RegisterUpdateMethodTool(server);
+        RegisterGetDiagnosticsTool(server);
+        RegisterAddMemberTool(server);
     }
 
     /// <summary>

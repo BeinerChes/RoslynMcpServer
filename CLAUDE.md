@@ -53,10 +53,20 @@ RoslynMcpServer/
     ├── RoslynTools.FindSymbol.cs                 # Symbol search tool
     ├── RoslynTools.References.cs                 # References tool
     ├── RoslynTools.Implementations.cs            # Implementations tool
+    ├── RoslynTools.TypeMembers.cs                # Type members tool
+    ├── RoslynTools.MethodBody.cs                 # Get method body tool
+    ├── RoslynTools.UpdateMethod.cs               # Update method tool
+    ├── RoslynTools.Diagnostics.cs                # Diagnostics tool
+    ├── RoslynTools.AddMember.cs                  # Add member tool
     ├── SolutionAnalyzerService.cs                # Core service + projects
     ├── SolutionAnalyzerService.Symbols.cs        # Symbol search logic
     ├── SolutionAnalyzerService.References.cs     # References logic
-    └── SolutionAnalyzerService.Implementations.cs # Implementations logic
+    ├── SolutionAnalyzerService.Implementations.cs # Implementations logic
+    ├── SolutionAnalyzerService.TypeMembers.cs    # Type members logic
+    ├── SolutionAnalyzerService.MethodBody.cs     # Get method body logic
+    ├── SolutionAnalyzerService.UpdateMethod.cs   # Update method logic
+    ├── SolutionAnalyzerService.Diagnostics.cs    # Diagnostics logic
+    └── SolutionAnalyzerService.AddMember.cs      # Add member logic
 ```
 
 ## Build Commands
@@ -107,6 +117,11 @@ The MCP server runs as a background process. To apply code changes:
 | `roslyn_find_symbol` | Semantic search for types, methods, properties by name pattern |
 | `roslyn_get_references` | Find all references to a symbol at a given position |
 | `roslyn_get_implementations` | Find all implementations of an interface or derived classes |
+| `roslyn_get_type_members` | Get all members (methods, properties, fields, events) of a type |
+| `roslyn_get_method_body` | Get full source code of a specific method |
+| `roslyn_update_method` | Replace a method's implementation with new source code |
+| `roslyn_get_diagnostics` | Compile solution and get warnings/errors with counts and details |
+| `roslyn_add_member` | Add a new method/property/field to a type with auto-formatting |
 
 ### roslyn_find_symbol
 
@@ -278,6 +293,193 @@ Loads a .NET solution file and returns all projects in topological build order (
 }
 ```
 
+### roslyn_get_type_members
+
+Gets all members of a type including methods, properties, fields, events, and constructors. Essential for understanding the structure of large classes without reading the entire file.
+
+**Input:**
+```json
+{
+  "solutionPath": "C:\\path\\to\\solution.sln",
+  "typeName": "FeatureLayer",
+  "memberKind": "methods",
+  "includeInherited": false,
+  "compact": true
+}
+```
+
+**Parameters:**
+- `solutionPath` (required) - Absolute path to .sln file
+- `typeName` (required) - Name of the type (class, interface, struct)
+- `memberKind` - `all`, `methods`, `properties`, `fields`, `events`, `constructors` (default: `all`)
+- `includeInherited` - Include members from base classes (default: false)
+- `compact` - Return minimal fields only (default: true)
+
+**Output:**
+```json
+{
+  "success": true,
+  "type": { "name": "FeatureLayer", "kind": "Class" },
+  "totalMembers": 45,
+  "members": [
+    { "name": "BuildCachedData", "kind": "Method", "signature": "void BuildCachedData(CancellationToken, bool)" },
+    { "name": "Invalidate", "kind": "Method", "signature": "void Invalidate()" }
+  ]
+}
+```
+
+### roslyn_get_method_body
+
+Gets the full source code of a method including its implementation. Returns the complete method text that can be edited and applied back. Essential for working with large classes without reading the entire file.
+
+**Input:**
+```json
+{
+  "solutionPath": "C:\\path\\to\\solution.sln",
+  "typeName": "FeatureLayer",
+  "methodName": "BuildCachedData",
+  "parameterTypes": "CancellationToken, bool"
+}
+```
+
+**Parameters:**
+- `solutionPath` (required) - Absolute path to .sln file
+- `typeName` (required) - Name of the type containing the method
+- `methodName` (required) - Name of the method (use `.ctor` for constructors)
+- `parameterTypes` - Parameter types to identify overload (e.g., `string, int`)
+
+**Output:**
+```json
+{
+  "success": true,
+  "typeName": "FeatureLayer",
+  "methodName": "BuildCachedData",
+  "filePath": "C:\\path\\to\\FeatureLayer.cs",
+  "startLine": 780,
+  "endLine": 920,
+  "signature": "private void BuildCachedData(CancellationToken cancellation, bool reuseExistingData)",
+  "sourceCode": "private void BuildCachedData(...) { ... }"
+}
+```
+
+### roslyn_update_method
+
+Replaces a method's implementation with new source code. Uses Roslyn to precisely locate and replace the method while preserving surrounding code. Essential for making targeted changes to large classes.
+
+**Input:**
+```json
+{
+  "solutionPath": "C:\\path\\to\\solution.sln",
+  "typeName": "FeatureLayer",
+  "methodName": "BuildCachedData",
+  "parameterTypes": "CancellationToken, bool",
+  "newSourceCode": "private void BuildCachedData(...) { /* new implementation */ }"
+}
+```
+
+**Parameters:**
+- `solutionPath` (required) - Absolute path to .sln file
+- `typeName` (required) - Name of the type containing the method
+- `methodName` (required) - Name of the method to update
+- `newSourceCode` (required) - Complete new method source code
+- `parameterTypes` - Parameter types to identify overload
+
+### roslyn_get_diagnostics
+
+Compiles a .NET solution and returns diagnostics (errors, warnings). Without `diagnosticId`, returns summary (counts by diagnostic code). With `diagnosticId`, returns detailed entries with file/line/method info for targeted fixing.
+
+**Input (summary mode):**
+```json
+{
+  "solutionPath": "C:\\path\\to\\solution.sln",
+  "severityFilter": "warning",
+  "projectFilter": "Atlas.Controls"
+}
+```
+
+**Input (detail mode):**
+```json
+{
+  "solutionPath": "C:\\path\\to\\solution.sln",
+  "diagnosticId": "CS8618",
+  "maxResults": 10,
+  "offset": 0
+}
+```
+
+**Parameters:**
+- `solutionPath` (required) - Absolute path to .sln file
+- `diagnosticId` - Specific diagnostic ID to get details for (e.g., `CA2000`, `CS0618`)
+- `severityFilter` - `error`, `warning`, `info`, or `all` (default: `all`)
+- `projectFilter` - Filter by project name (partial match)
+- `maxResults` - Max entries in detail mode (default: 100)
+- `offset` - Pagination offset (default: 0)
+
+**Output (summary):**
+```json
+{
+  "success": true,
+  "totalErrors": 0,
+  "totalWarnings": 1707,
+  "summary": [
+    { "id": "CS8618", "severity": "Warning", "title": "Non-nullable field...", "count": 601 },
+    { "id": "CS8602", "severity": "Warning", "title": "Dereference of possibly null...", "count": 193 }
+  ]
+}
+```
+
+**Output (detail):**
+```json
+{
+  "success": true,
+  "entries": [
+    {
+      "id": "CS8618",
+      "message": "Non-nullable field '_cts' must contain...",
+      "filePath": "C:\\path\\to\\File.cs",
+      "line": 21,
+      "column": 16,
+      "containingType": "MyClass",
+      "containingMethod": "MyMethod"
+    }
+  ],
+  "totalMatchingEntries": 601
+}
+```
+
+### roslyn_add_member
+
+Adds a new member (method, property, field, constructor, event) to a type. Uses Roslyn Formatter for proper indentation. Smart insertion places members with their peers.
+
+**Input:**
+```json
+{
+  "solutionPath": "C:\\path\\to\\solution.sln",
+  "typeName": "CacheManager",
+  "memberCode": "public void Dispose() { _cache.Clear(); }",
+  "insertionPoint": "end"
+}
+```
+
+**Parameters:**
+- `solutionPath` (required) - Absolute path to .sln file
+- `typeName` (required) - Name of the type to add the member to
+- `memberCode` (required) - Complete source code of the member to add
+- `insertionPoint` - Where to insert: `start`, `end`, `after-fields`, `after-constructors`, `after-properties`, `before-methods`. Default: smart placement based on member type
+
+**Output:**
+```json
+{
+  "success": true,
+  "filePath": "C:\\path\\to\\CacheManager.cs",
+  "typeName": "MyNamespace.CacheManager",
+  "memberName": "Dispose",
+  "memberKind": "Method",
+  "insertedAtLine": 45,
+  "signature": "void Dispose()"
+}
+```
+
 ## Key Concepts
 
 ### MCP Protocol
@@ -341,6 +543,6 @@ private static void RegisterYourTool(McpServer server)
 
 - [ ] `roslyn_get_document_symbols` - Symbols in a specific file
 - [ ] `roslyn_get_call_hierarchy` - Who calls this method
-- [ ] `roslyn_get_type_members` - All members of a type with signatures
+- [ ] `roslyn_rename_symbol` - Rename a symbol across the entire solution
 - [ ] Caching for compilation results
 - [ ] Progress reporting for large solutions

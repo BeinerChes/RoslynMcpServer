@@ -21,7 +21,9 @@
       "mcp__roslyn__roslyn_get_method_body",
       "mcp__roslyn__roslyn_update_method",
       "Bash(git checkout:*)",
-      "Bash(git -C \"C:\\\\Users\\\\beine\\\\source\\\\repos\\\\Atlas3_EDEV\" checkout Atlas.Symbology/FeatureLayer.cs)"
+      "Bash(git -C \"C:\\\\Users\\\\beine\\\\source\\\\repos\\\\Atlas3_EDEV\" checkout Atlas.Symbology/FeatureLayer.cs)",
+      "mcp__roslyn__roslyn_get_diagnostics",
+      "mcp__roslyn__roslyn_add_member"
     ]
   },
   "enableAllProjectMcpServers": true,

@@ -267,3 +267,76 @@ public class UpdateMethodResult
     /// </summary>
     public List<string>? AvailableOverloads { get; init; }
 }
+
+/// <summary>
+/// Result of getting diagnostics from a solution.
+/// </summary>
+public class GetDiagnosticsResult
+{
+    public bool Success { get; init; }
+    public string? Error { get; init; }
+    public string? SolutionPath { get; init; }
+    public int TotalErrors { get; init; }
+    public int TotalWarnings { get; init; }
+    public int TotalInfo { get; init; }
+    /// <summary>
+    /// Summary mode: grouped counts by diagnostic ID.
+    /// </summary>
+    public List<DiagnosticSummary>? Summary { get; init; }
+    /// <summary>
+    /// Detail mode: specific entries for a diagnostic ID.
+    /// </summary>
+    public List<DiagnosticEntry>? Entries { get; init; }
+    public int? ReturnedCount { get; init; }
+    public int? TotalMatchingEntries { get; init; }
+}
+
+/// <summary>
+/// Summary of diagnostics grouped by ID.
+/// </summary>
+public class DiagnosticSummary
+{
+    public required string Id { get; init; }
+    public required string Severity { get; init; }
+    public required string Title { get; init; }
+    public int Count { get; init; }
+    public string? ExampleFile { get; init; }
+    public int? ExampleLine { get; init; }
+}
+
+/// <summary>
+/// A specific diagnostic entry with location info.
+/// </summary>
+public class DiagnosticEntry
+{
+    public required string Id { get; init; }
+    public required string Severity { get; init; }
+    public required string Message { get; init; }
+    public string? FilePath { get; init; }
+    public int? Line { get; init; }
+    public int? Column { get; init; }
+    public string? ProjectName { get; init; }
+    /// <summary>
+    /// The containing type name if the diagnostic is inside a type.
+    /// </summary>
+    public string? ContainingType { get; init; }
+    /// <summary>
+    /// The containing method name if the diagnostic is inside a method.
+    /// </summary>
+    public string? ContainingMethod { get; init; }
+}
+
+/// <summary>
+/// Result of adding a member to a type.
+/// </summary>
+public class AddMemberResult
+{
+    public bool Success { get; init; }
+    public string? Error { get; init; }
+    public string? FilePath { get; init; }
+    public string? TypeName { get; init; }
+    public string? MemberName { get; init; }
+    public string? MemberKind { get; init; }
+    public int? InsertedAtLine { get; init; }
+    public string? Signature { get; init; }
+}
