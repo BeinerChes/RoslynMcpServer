@@ -7,9 +7,13 @@
     <Nullable>enable</Nullable>
     <RootNamespace>RoslynMcpServer</RootNamespace>
     <Version>1.0.0-rc</Version>
-    <!-- Exclude test project from compilation -->
-    <DefaultItemExcludes>$(DefaultItemExcludes);RoslynMcpServer.Tests\**</DefaultItemExcludes>
+    <!-- Exclude sub-projects from compilation -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);RoslynMcpServer.Tests\**;RoslynMcpServer.Graph\**</DefaultItemExcludes>
   </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="RoslynMcpServer.Graph\RoslynMcpServer.Graph.csproj" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Build.Locator" />
