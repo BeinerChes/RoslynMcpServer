@@ -31,6 +31,9 @@ public partial class SolutionAnalyzerService
             };
         }
 
+        // Run design-time builds for WPF projects to generate *.g.cs files
+        RunDesignTimeBuildsForSolution(solutionPath);
+
         using var workspace = CreateWorkspace();
 
         try
@@ -38,7 +41,7 @@ public partial class SolutionAnalyzerService
             Console.Error.WriteLine($"Loading solution: {solutionPath}");
             var solution = await workspace.OpenSolutionAsync(solutionPath);
 
-            // Enhance solution with WPF/XAML generated files to avoid false positives
+            // Enhance solution with WPF/XAML generated files (fallback for any missed files)
             solution = EnhanceSolutionWithGeneratedFiles(solution);
 
             // Get the set of diagnostic IDs that have code fixes available

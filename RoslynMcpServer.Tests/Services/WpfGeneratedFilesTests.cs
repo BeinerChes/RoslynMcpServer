@@ -1,11 +1,93 @@
 namespace RoslynMcpServer.Tests.Services;
 
 /// <summary>
-/// Tests for WPF/XAML generated file inclusion in solution analysis.
+/// Tests for WPF/XAML design-time build and generated file inclusion.
 /// Issue: #11
 /// </summary>
 public class WpfGeneratedFilesTests
 {
+    /// <summary>
+    /// Tests that IsWpfProject correctly identifies SDK-style WPF projects.
+    /// Issue: #11
+    /// </summary>
+    [Fact]
+    public void IsWpfProject_WithUseWpfProperty_ReturnsTrue()
+    {
+        // Arrange - Create temp project file with UseWPF
+        var tempDir = Path.Combine(Path.GetTempPath(), $"WpfTest_{Guid.NewGuid()}");
+        Directory.CreateDirectory(tempDir);
+        var projectPath = Path.Combine(tempDir, "WpfApp.csproj");
+        File.WriteAllText(projectPath, @"<Project Sdk=""Microsoft.NET.Sdk"">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+</Project>");
+
+        try
+        {
+            // Act
+            var result = SolutionAnalyzerService.IsWpfProject(projectPath);
+
+            // Assert
+            Assert.True(result, "Project with UseWPF=true should be identified as WPF project");
+        }
+        finally
+        {
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Tests that IsWpfProject returns false for non-WPF projects.
+    /// Issue: #11
+    /// </summary>
+    [Fact]
+    public void IsWpfProject_WithConsoleApp_ReturnsFalse()
+    {
+        // Arrange - Create temp console project file
+        var tempDir = Path.Combine(Path.GetTempPath(), $"ConsoleTest_{Guid.NewGuid()}");
+        Directory.CreateDirectory(tempDir);
+        var projectPath = Path.Combine(tempDir, "ConsoleApp.csproj");
+        File.WriteAllText(projectPath, @"<Project Sdk=""Microsoft.NET.Sdk"">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+  </PropertyGroup>
+</Project>");
+
+        try
+        {
+            // Act
+            var result = SolutionAnalyzerService.IsWpfProject(projectPath);
+
+            // Assert
+            Assert.False(result, "Console project should not be identified as WPF project");
+        }
+        finally
+        {
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Tests that IsWpfProject returns false for non-existent project.
+    /// Issue: #11
+    /// </summary>
+    [Fact]
+    public void IsWpfProject_WithNonExistentFile_ReturnsFalse()
+    {
+        // Arrange
+        var fakePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString(), "fake.csproj");
+
+        // Act
+        var result = SolutionAnalyzerService.IsWpfProject(fakePath);
+
+        // Assert
+        Assert.False(result);
+    }
+
     /// <summary>
     /// Tests that EnhanceSolutionWithGeneratedFiles doesn't break solutions without WPF projects.
     /// Issue: #11
