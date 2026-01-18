@@ -165,15 +165,23 @@ public static partial class RoslynTools
             };
         }
 
-        var symbol = await db.GetSymbolByQualifiedNameAsync(solution.Id, symbolName);
-        if (symbol == null)
+        // Use FindSymbolAsync for partial name matching (Issue #33)
+        var searchResult = await db.FindSymbolAsync(solution.Id, symbolName);
+        if (searchResult.Symbol == null)
         {
+            var error = searchResult.Error ?? $"Symbol '{symbolName}' not found in graph.";
+            if (searchResult.Candidates != null && searchResult.Candidates.Count > 0)
+            {
+                error += " Did you mean: " + string.Join(", ", searchResult.Candidates.Take(5).Select(c => c.QualifiedName));
+            }
             return new GraphImpactResult
             {
                 Success = false,
-                Error = $"Symbol '{symbolName}' not found in graph. Run roslyn_graph_analyze first."
+                Error = error
             };
         }
+
+        var symbol = searchResult.Symbol;
 
         // Get all transitive callers
         var allCallers = await db.GetRecursiveCallersAsync(symbol.Id, maxDepth);
