@@ -23,6 +23,7 @@ Follow these steps before modifying any C# code:
 - Use `roslyn_get_type_members` to see all members of the class
 - Use `roslyn_get_method_body` to read the specific method
 - Use `roslyn_get_callers` to understand who calls this code
+- For large codebases, use `roslyn_query_graph` for faster recursive caller analysis
 
 ### 3. VERIFY the scope
 - If file > 300 lines, plan to extract helper classes
@@ -49,6 +50,7 @@ Choose the right tool for each task:
 | Add new member | `roslyn_add_member` |
 | Find all usages | `roslyn_get_references` |
 | Find who calls this | `roslyn_get_callers` |
+| Find callers recursively | `roslyn_query_graph` (needs `roslyn_graph_analyze` first) |
 | Find implementations | `roslyn_get_implementations` |
 | Check for errors | `roslyn_get_diagnostics` |
 | Fix a warning | `roslyn_apply_code_fix` |

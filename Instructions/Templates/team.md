@@ -1,36 +1,48 @@
 # CLAUDE.md - C# Development with Roslyn MCP (Team Workflow)
 
-## Issue-First Development
+> **What is this file?** This is a CLAUDE.md file - instructions that Claude reads automatically when you start a conversation. You don't need to run anything here. Claude will follow these instructions when working with your code.
+
+## Instructions for Claude
+
+### Issue-First Development (REQUIRED)
 
 **NEVER write code without a GitHub issue.**
 
-1. Create GitHub issue first describing the feature/bug
-2. Create feature branch: `issues/N`
-3. Reference issue in commits: `Fixes #N`
+1. Create a GitHub issue first describing the feature or bug
+2. Create a feature branch: `issues/N` (where N is the issue number)
+3. Reference the issue in commits: `Fixes #N`
 
-For full git workflow: `roslyn_get_instructions(topic: "git")`
+For the complete git workflow, call `roslyn_get_instructions` with topic "git".
 
-## Test-Driven Development
+### Test-Driven Development (REQUIRED)
 
-**YOU MUST follow TDD for ALL code changes.**
+**You MUST follow TDD for ALL code changes. No exceptions.**
 
-For full TDD workflow: `roslyn_get_instructions(topic: "tdd")`
+1. Write FAILING test(s) first
+2. Run tests - verify they FAIL
+3. Write minimum code to make tests PASS
+4. Refactor if needed (tests must still pass)
 
-## Tool Preferences
+For the complete TDD workflow, call `roslyn_get_instructions` with topic "tdd".
 
-When working with C# files, prefer Roslyn MCP tools:
+### Tool Preferences
 
-| Task | Use This | Not This |
-|------|----------|----------|
-| Find type/method | `roslyn_find_symbol` | Grep |
-| Read a method | `roslyn_get_method_body` | Read entire file |
+When working with C# files, use Roslyn MCP tools instead of native tools:
+
+| Task | Use This Tool | Instead Of |
+|------|---------------|------------|
+| Find a type or method | `roslyn_find_symbol` | Grep |
+| See class structure | `roslyn_get_type_members` | Read entire file |
+| Read a method's code | `roslyn_get_method_body` | Read entire file |
 | Edit a method | `roslyn_update_method` | Edit with text patterns |
-| Check errors | `roslyn_get_diagnostics` | dotnet build |
+| Check for errors | `roslyn_get_diagnostics` | dotnet build |
 
-For full tool preferences: `roslyn_get_instructions(topic: "tools")`
+For the complete tool reference, call `roslyn_get_instructions` with topic "tools".
 
-## Workflows
+### Workflows
 
-- Before modifying C# code: `roslyn_get_instructions(topic: "code")`
-- Before git operations: `roslyn_get_instructions(topic: "git")`
-- Before creating PR: `roslyn_get_instructions(topic: "pre-pr")`
+Before performing these tasks, get the detailed instructions:
+
+- **Modifying C# code**: Call `roslyn_get_instructions` with topic "code"
+- **Git operations**: Call `roslyn_get_instructions` with topic "git"
+- **Creating a PR**: Call `roslyn_get_instructions` with topic "pre-pr"

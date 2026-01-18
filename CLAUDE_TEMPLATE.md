@@ -1,62 +1,42 @@
-# CLAUDE.md Template for C# Projects
+# CLAUDE.md - C# Development with Roslyn MCP
 
-> **Setup Instructions:**
-> 1. Copy this file to your project root as `CLAUDE.md`
-> 2. Customize the "Project Overview" section
-> 3. Choose your workflow template (see below)
-> 4. Delete this intro section
-
----
-
-## Quick Setup (Recommended)
-
-Instead of manually maintaining instructions, use the Roslyn MCP server to get up-to-date guidance:
-
-```bash
-# Get a template suited to your workflow
-roslyn_get_template(template: "standard")   # Basic workflow
-roslyn_get_template(template: "tdd")        # Test-driven development
-roslyn_get_template(template: "team")       # Full team workflow with issues
-roslyn_get_template(template: "minimal")    # Just MCP pointers
-```
-
-Copy the returned content to your CLAUDE.md.
-
----
-
-# CLAUDE.md - Instructions for Claude Code
+> **What is this file?** This is a CLAUDE.md file - instructions that Claude reads automatically when you start a conversation. You don't need to run anything here. Claude will follow these instructions when working with your code.
+>
+> **Setup:** Copy this file to your project root as `CLAUDE.md` and customize the "Project Overview" section below.
 
 ## Project Overview
 
-<!-- Customize: Brief description of what this project does -->
+<!-- Customize this section for your project -->
+This is a C# project using the Roslyn MCP server for enhanced code analysis.
 
-## Tool Preferences
+## Instructions for Claude
 
-When working with C# files in .NET solutions, use Roslyn MCP tools.
+### Tool Preferences
 
-For full tool preferences: `roslyn_get_instructions(topic: "tools")`
+When working with C# files in this project, use Roslyn MCP tools instead of native tools:
 
-## Development Workflows
+| Task | Use This Tool | Instead Of |
+|------|---------------|------------|
+| Find a type or method | `roslyn_find_symbol` | Grep |
+| See class structure | `roslyn_get_type_members` | Read entire file |
+| Read a method's code | `roslyn_get_method_body` | Read entire file |
+| Edit a method | `roslyn_update_method` | Edit with text patterns |
+| Add a new member | `roslyn_add_member` | Edit to insert code |
+| Find all references | `roslyn_get_references` | Grep for text |
+| Find who calls a method | `roslyn_get_callers` | roslyn_get_references |
+| Check for errors | `roslyn_get_diagnostics` | dotnet build |
+| Fix a warning | `roslyn_apply_code_fix` | Manual edit |
+| Rename a symbol | `roslyn_rename_symbol` | Find/replace |
 
-Before modifying C# code:
-```
-roslyn_get_instructions(topic: "code")
-```
+For the complete tool reference, call `roslyn_get_instructions` with topic "tools".
 
-Before git operations (issues, branches, commits, PRs):
-```
-roslyn_get_instructions(topic: "git")
-```
+### Workflows
 
-Before creating a pull request:
-```
-roslyn_get_instructions(topic: "pre-pr")
-```
+Before performing these tasks, get the detailed instructions:
 
-For test-driven development workflow:
-```
-roslyn_get_instructions(topic: "tdd")
-```
+- **Modifying C# code**: Call `roslyn_get_instructions` with topic "code"
+- **Git operations**: Call `roslyn_get_instructions` with topic "git"
+- **Creating a PR**: Call `roslyn_get_instructions` with topic "pre-pr"
 
 ## Project Structure
 
