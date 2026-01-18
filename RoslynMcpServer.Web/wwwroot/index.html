@@ -1,0 +1,1585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roslyn Call Graph - Galaxy View</title>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a1a;
+            color: #eee;
+            overflow: hidden;
+        }
+        #controls {
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            padding: 12px 20px;
+            background: rgba(10, 10, 26, 0.95);
+            border-bottom: 1px solid #333;
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            z-index: 100;
+        }
+        #controls label { font-size: 13px; color: #aaa; }
+        #controls input[type="text"] {
+            flex: 1; max-width: 500px;
+            padding: 8px 12px;
+            border: 1px solid #444;
+            border-radius: 4px;
+            background: #151528;
+            color: #eee;
+            font-size: 13px;
+        }
+        #controls input[type="text"]:focus { outline: none; border-color: #5c6bc0; }
+        #controls button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            background: #5c6bc0;
+            color: white;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        #controls button:hover { background: #7986cb; }
+        #project-filter {
+            padding: 8px 12px;
+            border: 1px solid #444;
+            border-radius: 4px;
+            background: #151528;
+            color: #eee;
+            font-size: 13px;
+            min-width: 200px;
+        }
+        #stats { margin-left: auto; font-size: 12px; color: #888; }
+        #canvas-container {
+            position: absolute;
+            top: 50px; left: 0; right: 0; bottom: 0;
+        }
+        #info-panel {
+            position: absolute;
+            top: 60px; right: 20px;
+            width: 320px;
+            max-height: calc(100vh - 80px);
+            background: rgba(10, 10, 26, 0.95);
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 16px;
+            display: none;
+            overflow-y: auto;
+            z-index: 100;
+        }
+        #info-panel.visible { display: block; }
+        #info-panel h3 { margin-bottom: 12px; color: #7986cb; font-size: 14px; word-break: break-all; }
+        #info-panel .close-btn {
+            position: absolute; top: 8px; right: 8px;
+            background: none; border: none; color: #888;
+            font-size: 18px; cursor: pointer; padding: 4px 8px;
+        }
+        #info-panel .close-btn:hover { color: #eee; }
+        .info-section { margin-bottom: 16px; }
+        .info-section h4 { font-size: 11px; text-transform: uppercase; color: #666; margin-bottom: 8px; }
+        .info-section p { font-size: 13px; color: #ccc; margin-bottom: 4px; }
+        .info-section ul { list-style: none; max-height: 150px; overflow-y: auto; }
+        .info-section li {
+            font-size: 12px; padding: 4px 8px; margin: 2px 0;
+            background: #151528; border-radius: 4px; cursor: pointer; color: #aaa;
+        }
+        .info-section li:hover { background: #252550; color: #eee; }
+        #loading {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center; z-index: 200;
+        }
+        #loading.hidden { display: none; }
+        .spinner {
+            width: 40px; height: 40px;
+            border: 3px solid #333;
+            border-top-color: #5c6bc0;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        #error {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center; max-width: 500px; padding: 24px;
+            background: rgba(10, 10, 26, 0.95);
+            border: 1px solid #c62828;
+            border-radius: 8px; display: none; z-index: 200;
+        }
+        #error.visible { display: block; }
+        #error h3 { color: #ef5350; margin-bottom: 12px; }
+        #error p { color: #ccc; font-size: 14px; }
+        .legend {
+            position: absolute; bottom: 20px; left: 20px;
+            background: rgba(10, 10, 26, 0.95);
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 12px 16px;
+            z-index: 100;
+        }
+        .legend h4 { font-size: 11px; text-transform: uppercase; color: #666; margin-bottom: 8px; }
+        .legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #aaa; margin: 4px 0; }
+        .legend-color { width: 12px; height: 12px; border-radius: 50%; }
+        #tooltip {
+            position: absolute;
+            padding: 8px 12px;
+            background: rgba(10, 10, 26, 0.95);
+            border: 1px solid #5c6bc0;
+            border-radius: 4px;
+            font-size: 12px;
+            pointer-events: none;
+            display: none;
+            z-index: 150;
+            max-width: 400px;
+            word-break: break-all;
+        }
+        #breadcrumb {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(10, 10, 26, 0.95);
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-size: 13px;
+            color: #aaa;
+            z-index: 100;
+        }
+        #breadcrumb span { color: #7986cb; cursor: pointer; }
+        #breadcrumb span:hover { color: #fff; }
+    </style>
+</head>
+<body>
+    <div id="controls">
+        <label>Solution:</label>
+        <input type="text" id="solution-path" placeholder="C:\path\to\solution.sln">
+        <button id="load-btn">Load</button>
+        <label>Project:</label>
+        <select id="project-filter">
+            <option value="">All projects</option>
+        </select>
+        <input type="text" id="search" placeholder="Search symbol...">
+        <div id="stats"></div>
+    </div>
+
+    <div id="canvas-container"></div>
+
+    <div id="loading">
+        <div class="spinner"></div>
+        <p>Loading galaxy...</p>
+    </div>
+
+    <div id="error">
+        <h3>Error</h3>
+        <p id="error-message"></p>
+    </div>
+
+    <div id="info-panel">
+        <button class="close-btn" onclick="window.closeInfoPanel()">&times;</button>
+        <h3 id="node-name"></h3>
+        <div class="info-section">
+            <h4>Details</h4>
+            <p id="node-kind"></p>
+            <p id="node-file"></p>
+        </div>
+        <div class="info-section">
+            <h4>Callers (<span id="callers-count">0</span>)</h4>
+            <ul id="callers-list"></ul>
+        </div>
+        <div class="info-section">
+            <h4>Callees (<span id="callees-count">0</span>)</h4>
+            <ul id="callees-list"></ul>
+        </div>
+    </div>
+
+    <div class="legend">
+        <h4>Galaxy Structure</h4>
+        <div class="legend-item"><span class="legend-color" style="background: #26c6da;"></span> Type/Class (Star ✦)</div>
+        <div class="legend-item"><span class="legend-color" style="background: #ab47bc;"></span> Constructor (inner orbit)</div>
+        <div class="legend-item"><span class="legend-color" style="background: #42a5f5;"></span> Method (mid orbit)</div>
+        <div class="legend-item"><span class="legend-color" style="background: #66bb6a;"></span> Property (outer orbit)</div>
+        <div class="legend-item"><span class="legend-color" style="background: #ffa726;"></span> Field (far orbit)</div>
+        <div class="legend-item"><span class="legend-color" style="background: #ef5350;"></span> Event (red)</div>
+    </div>
+
+    <div id="tooltip"></div>
+    <div id="breadcrumb"></div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+        const kindColors = {
+            namespace: 0xffd700,  // Gold - galaxy cluster
+            type: 0x26c6da,      // Cyan - star
+            method: 0x42a5f5,    // Blue - planet
+            property: 0x66bb6a,  // Green - moon
+            field: 0xffa726,     // Orange - asteroid
+            constructor: 0xab47bc, // Purple
+            event: 0xef5350      // Red
+        };
+
+        const kindSizes = {
+            namespace: 12,
+            type: 8,
+            method: 4,
+            property: 3,
+            field: 2,
+            constructor: 5,
+            event: 3
+        };
+
+        let scene, camera, renderer, controls;
+        let composer, bloomPass; // Post-processing for bloom
+        let starsMesh, planetsMesh, highlightEdges;
+        let starLights = []; // Point lights for stars
+        let graphData = { nodes: [], links: [] };
+        let nodeMap = new Map();
+        let edgeMap = new Map();
+        let raycaster, mouse;
+        let hoveredNode = null;
+        let selectedNode = null;
+        let typeNodes = []; // Types (stars)
+        let memberNodes = []; // Members (planets, moons, asteroids)
+
+        // Hierarchy data
+        let namespaces = new Map(); // namespace -> { types: Map<typeName, { members: [] }> }
+
+        // Animation time for edge glow and orbits
+        let animTime = 0;
+
+        // Star view mode - when a star is selected
+        let starViewMode = false;
+        let selectedStar = null;
+
+
+        function init() {
+            const container = document.getElementById('canvas-container');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x000000); // Pure black space
+
+            // Add some ambient stars (distant background)
+            addStarfield();
+
+            // Ambient light for overall visibility
+            const ambientLight = new THREE.AmbientLight(0x444466, 1.5);
+            scene.add(ambientLight);
+
+            // Add a dim directional light for depth
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.3);
+            dirLight.position.set(1, 1, 1);
+            scene.add(dirLight);
+
+            camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 50000);
+            camera.position.set(0, 500, 1500);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(renderer.domElement);
+
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.rotateSpeed = 0.5;
+            controls.panSpeed = 1.0;
+            controls.enableZoom = false; // We handle zoom ourselves
+            controls.enablePan = true;
+            controls.screenSpacePanning = true;
+            controls.mouseButtons = {
+                LEFT: THREE.MOUSE.PAN,       // Left mouse to pan
+                MIDDLE: THREE.MOUSE.ROTATE,  // Middle mouse to rotate
+                RIGHT: THREE.MOUSE.PAN       // Right also pans
+            };
+
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+
+            document.getElementById('load-btn').addEventListener('click', loadProjects);
+            document.getElementById('solution-path').addEventListener('keypress', e => {
+                if (e.key === 'Enter') loadProjects();
+            });
+            document.getElementById('project-filter').addEventListener('change', loadGraph);
+            document.getElementById('search').addEventListener('input', handleSearch);
+
+            renderer.domElement.addEventListener('mousemove', onMouseMove);
+            renderer.domElement.addEventListener('click', onMouseClick);
+            renderer.domElement.addEventListener('mousedown', onMouseDown);
+            renderer.domElement.addEventListener('wheel', onWheel, { passive: false });
+            window.addEventListener('resize', onWindowResize);
+
+            const params = new URLSearchParams(window.location.search);
+            const solutionPath = params.get('solution');
+            if (solutionPath) {
+                document.getElementById('solution-path').value = solutionPath;
+                loadProjects();
+            }
+
+            animate();
+        }
+
+        function addStarfield() {
+            const starGeometry = new THREE.BufferGeometry();
+            const starCount = 5000;
+            const positions = new Float32Array(starCount * 3);
+
+            for (let i = 0; i < starCount; i++) {
+                positions[i * 3] = (Math.random() - 0.5) * 30000;
+                positions[i * 3 + 1] = (Math.random() - 0.5) * 30000;
+                positions[i * 3 + 2] = (Math.random() - 0.5) * 30000;
+            }
+
+            starGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            const starMaterial = new THREE.PointsMaterial({ color: 0x444466, size: 1 });
+            const stars = new THREE.Points(starGeometry, starMaterial);
+            scene.add(stars);
+        }
+
+        let lastTime = performance.now();
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const now = performance.now();
+            const deltaTime = (now - lastTime) / 1000;
+            lastTime = now;
+            animTime += deltaTime;
+
+            updateFly(deltaTime);
+            updateZoom();
+            updateHighlightAnimation();
+            updateOrbits();
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        function updateHighlightAnimation() {
+            if (!highlightEdges || !selectedNode) return;
+
+            // Pulsing glow effect
+            const pulse = 0.5 + 0.5 * Math.sin(animTime * 3);
+            highlightEdges.material.opacity = 0.4 + 0.5 * pulse;
+
+            // Color shift from cyan to white
+            const r = 0.2 + 0.8 * pulse;
+            const g = 0.8 + 0.2 * pulse;
+            const b = 1.0;
+            highlightEdges.material.color.setRGB(r, g, b);
+        }
+
+        function updateOrbits() {
+            if (!planetsMesh || memberNodes.length === 0) return;
+
+            const dummy = new THREE.Object3D();
+
+            memberNodes.forEach((node, i) => {
+                if (!node.orbit) return;
+
+                // Check if this planet belongs to selected star (line view)
+                const isSelectedStarPlanet = starViewMode && selectedStar &&
+                    node.namespace === selectedStar.namespace &&
+                    node.typeName === selectedStar.typeName;
+
+                let x, y, z;
+
+                if (isSelectedStarPlanet && node.linePosition) {
+                    // Use frozen line position for selected star's planets
+                    x = node.linePosition.x;
+                    y = node.linePosition.y;
+                    z = node.linePosition.z;
+                } else {
+                    // Normal orbital animation
+                    const orbit = node.orbit;
+                    const angle = orbit.initialAngle + animTime * orbit.speed;
+
+                    x = orbit.centerX + orbit.radius * Math.cos(angle);
+                    y = orbit.centerY + orbit.radius * Math.sin(angle) * orbit.inclination;
+                    z = orbit.centerZ + orbit.radius * Math.sin(angle);
+                }
+
+                // Update node position for raycasting
+                node.position = { x, y, z };
+
+                dummy.position.set(x, y, z);
+                const scale = node.planetScale || 3;
+                dummy.scale.set(scale, scale, scale);
+                dummy.updateMatrix();
+                planetsMesh.setMatrixAt(i, dummy.matrix);
+            });
+
+            planetsMesh.instanceMatrix.needsUpdate = true;
+
+            // Update camera to follow selected node
+            updateCameraFollow();
+
+            // Update connection lines for selected node
+            updateSelectedConnections();
+        }
+
+        function updateCameraFollow() {
+            // Follow selected planet (not in star view mode)
+            if (flyTarget || starViewMode || !selectedNode || !selectedNode.position) return;
+            if (selectedNode.kind === 'type') return; // Don't follow stars
+
+            const pos = selectedNode.position;
+            const targetPos = new THREE.Vector3(pos.x, pos.y, pos.z);
+
+            // Smoothly move camera target to follow the orbiting planet
+            controls.target.lerp(targetPos, 0.05);
+        }
+
+        function updateSelectedConnections() {
+            if (!selectedNode || !highlightEdges || !window.currentEdgeMap) return;
+
+            const edges = window.currentEdgeMap.get(selectedNode.id) || [];
+            if (edges.length === 0) return;
+
+            const positions = [];
+
+            edges.forEach(edge => {
+                // Get current position of connected node (it might be moving too)
+                const connectedNode = nodeMap.get(edge.target);
+                if (!connectedNode || !connectedNode.position) return;
+
+                positions.push(
+                    selectedNode.position.x, selectedNode.position.y, selectedNode.position.z,
+                    connectedNode.position.x, connectedNode.position.y, connectedNode.position.z
+                );
+            });
+
+            if (positions.length > 0) {
+                highlightEdges.geometry.dispose();
+                highlightEdges.geometry = new THREE.BufferGeometry();
+                highlightEdges.geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            }
+        }
+
+        function onWindowResize() {
+            const container = document.getElementById('canvas-container');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+        }
+
+        // Smooth zoom - target distance from orbit center
+        let targetDistance = 1000;
+        let currentDistance = 1000;
+
+        // Fly-to animation state
+        let flyTarget = null;
+        let flyStartPos = null;
+        let flyStartTarget = null;
+        let flyProgress = 0;
+        let flyDuration = 2.0; // seconds
+
+        function onWheel(event) {
+            event.preventDefault();
+
+            // Simple zoom: move camera along view direction
+            const zoomSpeed = 0.001;
+            const zoomFactor = Math.exp(event.deltaY * zoomSpeed);
+
+            // Get direction from camera to target
+            const direction = new THREE.Vector3().subVectors(camera.position, controls.target);
+            const currentDist = direction.length();
+            const newDist = Math.max(10, Math.min(50000, currentDist * zoomFactor));
+
+            // Move camera along direction
+            direction.normalize().multiplyScalar(newDist);
+            camera.position.copy(controls.target).add(direction);
+
+            currentDistance = newDist;
+            targetDistance = newDist;
+        }
+
+        function updateZoom() {
+            // Zoom is now handled directly in onWheel for cursor-based zoom
+            // This function kept for compatibility with fly animations
+        }
+
+        function updateFly(deltaTime) {
+            if (!flyTarget) return;
+
+            flyProgress += deltaTime / flyDuration;
+
+            if (flyProgress >= 1) {
+                // Animation complete
+                camera.position.copy(flyTarget.camPos);
+                controls.target.copy(flyTarget.lookAt);
+                targetDistance = flyTarget.camPos.distanceTo(flyTarget.lookAt);
+                currentDistance = targetDistance;
+                flyTarget = null;
+                controls.enabled = true;
+                return;
+            }
+
+            // Smooth easing (ease-in-out cubic)
+            const t = flyProgress;
+            const ease = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+            // Interpolate camera position and target
+            camera.position.lerpVectors(flyStartPos, flyTarget.camPos, ease);
+            controls.target.lerpVectors(flyStartTarget, flyTarget.lookAt, ease);
+        }
+
+        function flyToNode(node) {
+            if (!node.position) return;
+
+            const pos = new THREE.Vector3(node.position.x, node.position.y, node.position.z);
+
+            if (node.kind === 'type') {
+                // STAR SELECTED - special view mode
+                starViewMode = true;
+                selectedStar = node;
+
+                // Arrange planets in a line and get the extent
+                const extent = arrangePlanetsInLine(node);
+
+                // Camera position: top-down view (perpendicular to orbit plane)
+                const viewHeight = Math.max(150, extent * 1.5);
+                const camPos = new THREE.Vector3(pos.x, pos.y + viewHeight, pos.z);
+
+                flyStartPos = camera.position.clone();
+                flyStartTarget = controls.target.clone();
+                flyTarget = {
+                    camPos: camPos,
+                    lookAt: pos
+                };
+                flyProgress = 0;
+                flyDuration = 1.5;
+                controls.enabled = false;
+            } else {
+                // Planet selected - normal fly to
+                starViewMode = false;
+                selectedStar = null;
+
+                const dist = 40;
+                const camOffset = new THREE.Vector3(dist * 0.7, dist * 0.4, dist * 0.7);
+                const camPos = pos.clone().add(camOffset);
+
+                flyStartPos = camera.position.clone();
+                flyStartTarget = controls.target.clone();
+                flyTarget = {
+                    camPos: camPos,
+                    lookAt: pos
+                };
+                flyProgress = 0;
+                flyDuration = 1.5;
+                controls.enabled = false;
+            }
+
+            // Highlight connections and dim others
+            highlightNodeConnections(node);
+            dimOtherObjects(node);
+        }
+
+        function arrangePlanetsInLine(starNode) {
+            // Find all planets belonging to this star
+            const starPlanets = memberNodes.filter(n =>
+                n.namespace === starNode.namespace && n.typeName === starNode.typeName
+            );
+
+            if (starPlanets.length === 0) return 50;
+
+            // Get star position
+            const starPos = starNode.position;
+
+            // Arrange planets in a line extending from the star
+            // Sorted by orbit radius (which is already sorted by callers)
+            starPlanets.sort((a, b) => (a.orbit?.memberIndex || 0) - (b.orbit?.memberIndex || 0));
+
+            const spacing = 15;
+            let maxExtent = 0;
+
+            starPlanets.forEach((planet, i) => {
+                const distance = 30 + i * spacing;
+                maxExtent = Math.max(maxExtent, distance);
+
+                // Position in a line along X axis from star
+                planet.linePosition = {
+                    x: starPos.x + distance,
+                    y: starPos.y,
+                    z: starPos.z
+                };
+            });
+
+            // Update planet mesh positions
+            updatePlanetPositionsForStarView();
+
+            return maxExtent;
+        }
+
+        function updatePlanetPositionsForStarView() {
+            if (!planetsMesh || !starViewMode || !selectedStar) return;
+
+            const dummy = new THREE.Object3D();
+
+            memberNodes.forEach((node, i) => {
+                // Use line position if this planet belongs to selected star
+                const isStarPlanet = node.namespace === selectedStar.namespace &&
+                                     node.typeName === selectedStar.typeName;
+
+                let pos;
+                if (isStarPlanet && node.linePosition) {
+                    pos = node.linePosition;
+                } else {
+                    pos = node.position;
+                }
+
+                dummy.position.set(pos.x, pos.y, pos.z);
+                const scale = node.planetScale || 3;
+                dummy.scale.set(scale, scale, scale);
+                dummy.updateMatrix();
+                planetsMesh.setMatrixAt(i, dummy.matrix);
+            });
+
+            planetsMesh.instanceMatrix.needsUpdate = true;
+        }
+
+        function highlightNodeConnections(node) {
+            selectedNode = node;
+
+            if (!highlightEdges || !window.currentEdgeMap) return;
+
+            const edges = window.currentEdgeMap.get(node.id) || [];
+            const positions = [];
+
+            edges.forEach(edge => {
+                // Line from selected node to connected node
+                positions.push(
+                    node.position.x, node.position.y, node.position.z,
+                    edge.pos.x, edge.pos.y, edge.pos.z
+                );
+            });
+
+            if (positions.length > 0) {
+                highlightEdges.geometry.dispose();
+                highlightEdges.geometry = new THREE.BufferGeometry();
+                highlightEdges.geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            } else {
+                highlightEdges.geometry.dispose();
+                highlightEdges.geometry = new THREE.BufferGeometry();
+            }
+        }
+
+        function clearHighlights() {
+            selectedNode = null;
+            starViewMode = false;
+            selectedStar = null;
+            if (highlightEdges) {
+                highlightEdges.geometry.dispose();
+                highlightEdges.geometry = new THREE.BufferGeometry();
+            }
+            // Restore all objects to full brightness
+            restoreAllBrightness();
+        }
+
+        function dimOtherObjects(selectedNode) {
+            const dimFactor = 0.05; // How dim unselected objects become (very dark)
+
+            // Dim stars
+            if (starsMesh && starsMesh.instanceColor) {
+                typeNodes.forEach((node, i) => {
+                    const isSelected = node === selectedNode ||
+                        (selectedNode && node.namespace === selectedNode.namespace && node.typeName === selectedNode.typeName);
+                    // Selected stays white, others very dim
+                    const color = isSelected ? new THREE.Color(0xffffff) : new THREE.Color(0x0a0a0a);
+                    starsMesh.setColorAt(i, color);
+                });
+                starsMesh.instanceColor.needsUpdate = true;
+            }
+
+            // Dim planets
+            if (planetsMesh && planetsMesh.instanceColor) {
+                memberNodes.forEach((node, i) => {
+                    const isSelected = node === selectedNode ||
+                        (selectedNode && node.namespace === selectedNode.namespace && node.typeName === selectedNode.typeName);
+                    const baseColor = new THREE.Color(kindColors[node.kind] || 0x888888);
+                    if (!isSelected) {
+                        baseColor.multiplyScalar(dimFactor);
+                    }
+                    planetsMesh.setColorAt(i, baseColor);
+                });
+                planetsMesh.instanceColor.needsUpdate = true;
+            }
+
+            // Dim star lights
+            starLights.forEach((light, i) => {
+                const node = typeNodes[i];
+                const isSelected = node && (node === selectedNode ||
+                    (selectedNode && node.namespace === selectedNode.namespace && node.typeName === selectedNode.typeName));
+                const scale = node ? (5 + Math.min(30, Math.sqrt(node.totalCallers || 0) * 2)) : 10;
+                light.intensity = isSelected ? (25 + scale * 2.5) : 0.2; // Bright when selected, nearly off otherwise
+            });
+        }
+
+        function restoreAllBrightness() {
+            // Restore star brightness (HDR white for bloom)
+            if (starsMesh && starsMesh.instanceColor) {
+                typeNodes.forEach((node, i) => {
+                    starsMesh.setColorAt(i, new THREE.Color(0xffffff)); // White
+                });
+                starsMesh.instanceColor.needsUpdate = true;
+            }
+
+            // Restore planet colors
+            if (planetsMesh && planetsMesh.instanceColor) {
+                memberNodes.forEach((node, i) => {
+                    planetsMesh.setColorAt(i, new THREE.Color(kindColors[node.kind] || 0x888888));
+                });
+                planetsMesh.instanceColor.needsUpdate = true;
+            }
+
+            // Restore star lights to full brightness
+            starLights.forEach((light, i) => {
+                const node = typeNodes[i];
+                const scale = node ? (5 + Math.min(30, Math.sqrt(node.totalCallers || 0) * 2)) : 10;
+                light.intensity = 25 + scale * 2.5; // Bright like a star!
+            });
+        }
+
+        function onMouseMove(event) {
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+
+            const tooltip = document.getElementById('tooltip');
+            let found = false;
+
+            // Check stars first (types)
+            if (starsMesh && !found) {
+                const intersects = raycaster.intersectObject(starsMesh);
+                if (intersects.length > 0) {
+                    const instanceId = intersects[0].instanceId;
+                    const node = typeNodes[instanceId];
+                    if (node) {
+                        hoveredNode = node;
+                        const memberInfo = node.childCount ? `${node.childCount} members` : '';
+                        const callerInfo = node.totalCallers ? `${node.totalCallers} callers` : '';
+                        const info = [memberInfo, callerInfo].filter(x => x).join(', ');
+                        tooltip.innerHTML = `<strong>✦ ${node.name}</strong>${info ? ` (${info})` : ''}<br><small>${node.qualifiedName}</small>`;
+                        tooltip.style.display = 'block';
+                        tooltip.style.left = (event.clientX + 15) + 'px';
+                        tooltip.style.top = (event.clientY + 15) + 'px';
+                        renderer.domElement.style.cursor = 'pointer';
+                        found = true;
+                    }
+                }
+            }
+
+            // Check planets (members)
+            if (planetsMesh && !found) {
+                const intersects = raycaster.intersectObject(planetsMesh);
+                if (intersects.length > 0) {
+                    const instanceId = intersects[0].instanceId;
+                    const node = memberNodes[instanceId];
+                    if (node) {
+                        hoveredNode = node;
+                        const callerInfo = node.callers ? ` (${node.callers} callers)` : '';
+                        tooltip.innerHTML = `<strong>${node.name}${callerInfo}</strong><br><small>${node.qualifiedName}</small>`;
+                        tooltip.style.display = 'block';
+                        tooltip.style.left = (event.clientX + 15) + 'px';
+                        tooltip.style.top = (event.clientY + 15) + 'px';
+                        renderer.domElement.style.cursor = 'pointer';
+                        found = true;
+                    }
+                }
+            }
+
+            if (!found) {
+                hoveredNode = null;
+                tooltip.style.display = 'none';
+                renderer.domElement.style.cursor = 'grab';
+            }
+        }
+
+        function onMouseDown(event) {
+            // Middle mouse button - clear selection for free navigation
+            if (event.button === 1) {
+                clearHighlights();
+                document.getElementById('info-panel').classList.remove('visible');
+            }
+        }
+
+        function onMouseClick() {
+            if (hoveredNode) {
+                showNodeInfo(hoveredNode);
+            }
+        }
+
+        async function loadProjects() {
+            const solutionPath = document.getElementById('solution-path').value.trim();
+            if (!solutionPath) {
+                showError('Please enter a solution path');
+                return;
+            }
+
+            showLoading(true);
+            hideError();
+
+            try {
+                const response = await fetch(`/api/projects?solutionPath=${encodeURIComponent(solutionPath)}`);
+                const data = await response.json();
+
+                if (!response.ok) throw new Error(data.error || 'Failed to load projects');
+
+                const select = document.getElementById('project-filter');
+                select.innerHTML = '<option value="">All projects</option>';
+
+                data.projects.forEach(project => {
+                    const option = document.createElement('option');
+                    option.value = project;
+                    option.textContent = project;
+                    select.appendChild(option);
+                });
+
+                // Default to all projects (works well now)
+                select.value = '';
+
+                await loadGraph();
+            } catch (error) {
+                showError(error.message);
+                showLoading(false);
+            }
+        }
+
+        async function loadGraph() {
+            const solutionPath = document.getElementById('solution-path').value.trim();
+            const projectFilter = document.getElementById('project-filter').value;
+
+            if (!solutionPath) {
+                showError('Please enter a solution path');
+                return;
+            }
+
+            showLoading(true);
+            hideError();
+
+            try {
+                let url = `/api/graph?solutionPath=${encodeURIComponent(solutionPath)}`;
+                if (projectFilter) {
+                    url += `&project=${encodeURIComponent(projectFilter)}`;
+                }
+
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (!response.ok) throw new Error(data.error || 'Failed to load graph');
+
+                graphData = data;
+                nodeMap.clear();
+                data.nodes.forEach((node, index) => {
+                    node.index = index;
+                    nodeMap.set(node.id, node);
+                });
+
+                buildHierarchy();
+                buildGalaxy();
+
+                document.getElementById('stats').textContent =
+                    `${data.nodes.length} symbols, ${data.links.length} edges, ${namespaces.size} namespaces`;
+
+                const browserUrl = new URL(window.location);
+                browserUrl.searchParams.set('solution', solutionPath);
+                window.history.replaceState({}, '', browserUrl);
+
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function buildHierarchy() {
+            namespaces.clear();
+
+            graphData.nodes.forEach(node => {
+                const qn = node.qualifiedName || node.name;
+                const parts = qn.split('.');
+
+                let ns, typeName;
+
+                if (node.kind === 'type') {
+                    // Type node: qualified name IS the type
+                    typeName = parts[parts.length - 1];
+                    ns = parts.slice(0, -1).join('.') || '(global)';
+                } else {
+                    // Member: parent type is second-to-last
+                    if (parts.length >= 2) {
+                        typeName = parts[parts.length - 2];
+                        ns = parts.slice(0, -2).join('.') || '(global)';
+                    } else {
+                        ns = '(global)';
+                        typeName = '(unknown)';
+                    }
+                }
+
+                if (!namespaces.has(ns)) {
+                    namespaces.set(ns, { types: new Map() });
+                }
+
+                const nsData = namespaces.get(ns);
+                if (!nsData.types.has(typeName)) {
+                    nsData.types.set(typeName, { members: [], typeNode: null });
+                }
+
+                const typeData = nsData.types.get(typeName);
+                if (node.kind === 'type') {
+                    typeData.typeNode = node;
+                } else {
+                    typeData.members.push(node);
+                }
+
+                node.namespace = ns;
+                node.typeName = typeName;
+            });
+        }
+
+        function buildGalaxy() {
+            if (starsMesh) scene.remove(starsMesh);
+            if (planetsMesh) scene.remove(planetsMesh);
+            if (highlightEdges) scene.remove(highlightEdges);
+            // Remove old star lights
+            starLights.forEach(light => scene.remove(light));
+            starLights = [];
+
+            const nodeCount = graphData.nodes.length;
+            if (nodeCount === 0) return;
+
+            // Separate types (stars) from members (planets)
+            typeNodes = graphData.nodes.filter(n => n.kind === 'type');
+            memberNodes = graphData.nodes.filter(n => n.kind !== 'type');
+            console.log('Types (stars):', typeNodes.length, 'Members (planets):', memberNodes.length);
+
+            // Calculate callers for each member FIRST (needed for everything else)
+            const memberCallers = new Map();
+            graphData.links.forEach(link => {
+                const count = memberCallers.get(link.target) || 0;
+                memberCallers.set(link.target, count + 1);
+            });
+
+            // Calculate total callers for each TYPE (for star sizing and spiral order)
+            const typeCallerTotals = new Map();
+            namespaces.forEach((nsData, ns) => {
+                nsData.types.forEach((typeData, typeName) => {
+                    let totalCallers = 0;
+                    typeData.members.forEach(member => {
+                        totalCallers += memberCallers.get(member.id) || 0;
+                    });
+                    typeCallerTotals.set(`${ns}.${typeName}`, totalCallers);
+                });
+            });
+
+            // Calculate namespace positions (galaxy clusters) based on total callers
+            const nsArray = Array.from(namespaces.keys());
+            const nsPositions = new Map();
+
+            // Calculate total callers and size for each namespace
+            const nsStats = new Map();
+            nsArray.forEach(ns => {
+                const nsData = namespaces.get(ns);
+                const typeCount = nsData.types.size;
+                let totalCallers = 0;
+                let memberCount = 0;
+
+                nsData.types.forEach(typeData => {
+                    typeData.members.forEach(member => {
+                        totalCallers += memberCallers.get(member.id) || 0;
+                        memberCount++;
+                    });
+                });
+
+                // Size is based on type count
+                const size = Math.sqrt(typeCount) * 150 + 50;
+                nsStats.set(ns, { size, totalCallers, typeCount, memberCount });
+            });
+
+            // Sort namespaces by total callers (most massive first)
+            const sortedNs = [...nsArray].sort((a, b) =>
+                nsStats.get(b).totalCallers - nsStats.get(a).totalCallers
+            );
+
+            // Place galaxies: most massive in center, others in shells around it
+            let cumulativeRadius = 0;
+
+            sortedNs.forEach((ns, i) => {
+                const stats = nsStats.get(ns);
+                const size = stats.size;
+
+                if (i === 0) {
+                    // Most massive galaxy goes in center
+                    nsPositions.set(ns, { x: 0, y: 0, z: 0, size, totalCallers: stats.totalCallers });
+                    cumulativeRadius = size + 200; // Gap after center galaxy
+                } else {
+                    // Distribute others in expanding shells
+                    // Golden angle for even distribution
+                    const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+                    const angle = i * goldenAngle;
+
+                    // Height variation based on index
+                    const heightAngle = (i * 0.5) % (Math.PI * 2);
+                    const heightFactor = Math.sin(heightAngle) * 0.3;
+
+                    // Place at cumulative radius
+                    const r = cumulativeRadius + size;
+                    const x = r * Math.cos(angle);
+                    const z = r * Math.sin(angle);
+                    const y = r * heightFactor;
+
+                    nsPositions.set(ns, { x, y, z, size, totalCallers: stats.totalCallers });
+
+                    // Update cumulative radius with gap
+                    cumulativeRadius += size * 0.3 + 100;
+                }
+            });
+
+            console.log('Namespace distribution:', sortedNs.map(ns => ({
+                ns: ns.split('.').pop(),
+                callers: nsStats.get(ns).totalCallers,
+                size: nsStats.get(ns).size
+            })));
+
+            // Sort members within each type by callers (fewer callers = closer orbit)
+            namespaces.forEach(nsData => {
+                nsData.types.forEach(typeData => {
+                    typeData.members.sort((a, b) => {
+                        const callersA = memberCallers.get(a.id) || 0;
+                        const callersB = memberCallers.get(b.id) || 0;
+                        return callersA - callersB;
+                    });
+                });
+            });
+
+            // Position nodes
+            const positions = new Float32Array(nodeCount * 3);
+            const colors = new Float32Array(nodeCount * 3);
+            const sizes = new Float32Array(nodeCount);
+
+            graphData.nodes.forEach((node, i) => {
+                const nsPos = nsPositions.get(node.namespace) || { x: 0, y: 0, z: 0 };
+                const nsData = namespaces.get(node.namespace);
+                const typeData = nsData?.types.get(node.typeName);
+
+                let x, y, z;
+
+                if (node.kind === 'type') {
+                    // Sort types by callers (most massive first) for spiral layout
+                    const typeArray = Array.from(nsData.types.keys());
+                    const sortedTypes = [...typeArray].sort((a, b) => {
+                        const callersA = typeCallerTotals.get(`${node.namespace}.${a}`) || 0;
+                        const callersB = typeCallerTotals.get(`${node.namespace}.${b}`) || 0;
+                        return callersB - callersA; // Descending: most callers first (center)
+                    });
+
+                    const typeIndex = sortedTypes.indexOf(node.typeName);
+                    const typeCount = sortedTypes.length;
+
+                    // Calculate star size for this type (same formula as later)
+                    const myCallers = typeCallerTotals.get(`${node.namespace}.${node.typeName}`) || 0;
+                    const starSize = 5 + Math.min(30, Math.sqrt(myCallers) * 2);
+
+                    if (typeIndex === 0) {
+                        // Most massive star in center of galaxy
+                        x = nsPos.x;
+                        y = nsPos.y;
+                        z = nsPos.z;
+                    } else {
+                        // Calculate cumulative radius based on sizes of inner stars
+                        let cumulativeRadius = 0;
+                        for (let j = 0; j < typeIndex; j++) {
+                            const innerTypeName = sortedTypes[j];
+                            const innerCallers = typeCallerTotals.get(`${node.namespace}.${innerTypeName}`) || 0;
+                            const innerSize = 5 + Math.min(30, Math.sqrt(innerCallers) * 2);
+                            cumulativeRadius += innerSize * 0.8; // Spacing factor
+                        }
+                        // Add own radius plus gap
+                        const r = cumulativeRadius + starSize + 20;
+
+                        // Spiral angle
+                        const spiralAngle = typeIndex * 2.4; // Golden angle
+
+                        // Add some height variation for 3D effect
+                        const heightVar = Math.sin(typeIndex * 0.3) * 30;
+
+                        x = nsPos.x + r * Math.cos(spiralAngle);
+                        y = nsPos.y + heightVar;
+                        z = nsPos.z + r * Math.sin(spiralAngle);
+                    }
+                } else {
+                    // Members orbit their type (planets around star)
+                    const members = typeData?.members || [];
+                    const memberIndex = members.indexOf(node);
+                    const memberCount = members.length;
+
+                    // Find type position
+                    const typeNode = typeData?.typeNode;
+                    let typePos;
+
+                    if (typeNode && typeNode.position) {
+                        typePos = typeNode.position;
+                    } else {
+                        // Calculate type position using same spiral logic
+                        const typeArray = Array.from(nsData.types.keys());
+                        const sortedTypes = [...typeArray].sort((a, b) => {
+                            const callersA = typeCallerTotals.get(`${node.namespace}.${a}`) || 0;
+                            const callersB = typeCallerTotals.get(`${node.namespace}.${b}`) || 0;
+                            return callersB - callersA;
+                        });
+                        const typeIndex = sortedTypes.indexOf(node.typeName);
+
+                        if (typeIndex === 0) {
+                            typePos = { x: nsPos.x, y: nsPos.y, z: nsPos.z };
+                        } else {
+                            // Same cumulative radius calculation
+                            let cumulativeRadius = 0;
+                            for (let j = 0; j < typeIndex; j++) {
+                                const innerTypeName = sortedTypes[j];
+                                const innerCallers = typeCallerTotals.get(`${node.namespace}.${innerTypeName}`) || 0;
+                                const innerSize = 5 + Math.min(30, Math.sqrt(innerCallers) * 2);
+                                cumulativeRadius += innerSize * 0.8;
+                            }
+                            const myCallers = typeCallerTotals.get(`${node.namespace}.${node.typeName}`) || 0;
+                            const starSize = 5 + Math.min(30, Math.sqrt(myCallers) * 2);
+                            const r = cumulativeRadius + starSize + 20;
+                            const spiralAngle = typeIndex * 2.4;
+                            const heightVar = Math.sin(typeIndex * 0.3) * 30;
+                            typePos = {
+                                x: nsPos.x + r * Math.cos(spiralAngle),
+                                y: nsPos.y + heightVar,
+                                z: nsPos.z + r * Math.sin(spiralAngle)
+                            };
+                        }
+                    }
+
+                    // Get caller count for this member
+                    const callers = memberCallers.get(node.id) || 0;
+                    node.callers = callers;
+
+                    // Each planet on unique orbit - ordered by callers (fewer = closer)
+                    const baseRadius = 25;
+                    const radiusStep = 8;
+                    const orbitRadius = baseRadius + memberIndex * radiusStep;
+
+                    // Initial angle - spread evenly
+                    const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+                    const initialAngle = memberIndex * goldenAngle;
+
+                    // Orbital inclination plane
+                    let inclination = 0.2;
+
+                    // Store orbit data for animation
+                    node.orbit = {
+                        centerX: typePos.x,
+                        centerY: typePos.y,
+                        centerZ: typePos.z,
+                        radius: orbitRadius,
+                        initialAngle: initialAngle,
+                        inclination: inclination,
+                        speed: 0.015 + Math.random() * 0.01, // Slow, peaceful orbits
+                        memberIndex: memberIndex // For line layout
+                    };
+                    node.parentTypeName = node.typeName;
+
+                    // Initial position
+                    x = typePos.x + orbitRadius * Math.cos(initialAngle);
+                    y = typePos.y + orbitRadius * Math.sin(initialAngle) * inclination;
+                    z = typePos.z + orbitRadius * Math.sin(initialAngle);
+                }
+
+                node.position = { x, y, z };
+                positions[i * 3] = x;
+                positions[i * 3 + 1] = y;
+                positions[i * 3 + 2] = z;
+
+                const color = new THREE.Color(kindColors[node.kind] || 0x888888);
+                colors[i * 3] = color.r;
+                colors[i * 3 + 1] = color.g;
+                colors[i * 3 + 2] = color.b;
+
+                sizes[i] = kindSizes[node.kind] || 4;
+            });
+
+            // Calculate total callers for each type (sum of all member callers)
+            const typeCallers = new Map(); // typeName -> total callers
+            memberNodes.forEach(node => {
+                const key = `${node.namespace}.${node.typeName}`;
+                const callers = node.callers || 0;
+                const current = typeCallers.get(key) || 0;
+                typeCallers.set(key, current + callers);
+            });
+
+            // Create stars (types) as glowing spheres
+            if (typeNodes.length > 0) {
+                console.log('Creating', typeNodes.length, 'stars');
+                const starGeometry = new THREE.SphereGeometry(1, 24, 16);
+                // Clean white stars
+                const starMaterial = new THREE.MeshBasicMaterial({
+                    color: 0xffffff
+                });
+
+                starsMesh = new THREE.InstancedMesh(starGeometry, starMaterial, typeNodes.length);
+                starsMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+                starsMesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(typeNodes.length * 3), 3);
+
+                const dummy = new THREE.Object3D();
+
+                typeNodes.forEach((node, i) => {
+                    const idx = node.index;
+                    const x = positions[idx * 3];
+                    const y = positions[idx * 3 + 1];
+                    const z = positions[idx * 3 + 2];
+                    dummy.position.set(x, y, z);
+
+                    // Star size based on total callers to all children
+                    const key = `${node.namespace}.${node.typeName}`;
+                    const totalCallers = typeCallers.get(key) || 0;
+                    const nsData = namespaces.get(node.namespace);
+                    const typeData = nsData?.types.get(node.typeName);
+                    const childCount = typeData?.members?.length || 0;
+
+                    // Scale: min 5, grows with callers (important types are bigger)
+                    // sqrt for diminishing returns on very popular types
+                    const scale = 5 + Math.min(30, Math.sqrt(totalCallers) * 2);
+                    dummy.scale.set(scale, scale, scale);
+                    dummy.updateMatrix();
+                    starsMesh.setMatrixAt(i, dummy.matrix);
+                    starsMesh.setColorAt(i, new THREE.Color(0xffffff)); // White
+                    node.starIndex = i;
+                    node.childCount = childCount;
+                    node.totalCallers = totalCallers; // Store for tooltip
+
+                    // Add point light for each star - BRIGHT like a real star!
+                    const lightIntensity = 25 + scale * 2.5;
+                    const lightDistance = 600 + scale * 50;
+                    const light = new THREE.PointLight(0xffffff, lightIntensity, lightDistance, 0.2);
+                    light.position.set(x, y, z);
+                    scene.add(light);
+                    starLights.push(light);
+                });
+
+                starsMesh.instanceMatrix.needsUpdate = true;
+                starsMesh.instanceColor.needsUpdate = true;
+                scene.add(starsMesh);
+            }
+
+            // Create planets (members) with sphere geometry - use BasicMaterial so they glow
+            if (memberNodes.length > 0) {
+                const sphereGeometry = new THREE.SphereGeometry(1, 10, 8);
+                // MeshBasicMaterial - planets glow on their own, no light needed
+                const sphereMaterial = new THREE.MeshBasicMaterial({
+                    color: 0xffffff,
+                    transparent: true,
+                    opacity: 0.9
+                });
+
+                planetsMesh = new THREE.InstancedMesh(sphereGeometry, sphereMaterial, memberNodes.length);
+                planetsMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+                planetsMesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(memberNodes.length * 3), 3);
+
+                const dummy = new THREE.Object3D();
+
+                memberNodes.forEach((node, i) => {
+                    const idx = node.index;
+                    dummy.position.set(positions[idx * 3], positions[idx * 3 + 1], positions[idx * 3 + 2]);
+                    // Planet size based on callers: min 2, max 10
+                    const callers = node.callers || 0;
+                    const scale = 2 + Math.min(8, Math.sqrt(callers) * 1.5);
+                    dummy.scale.set(scale, scale, scale);
+                    dummy.updateMatrix();
+                    planetsMesh.setMatrixAt(i, dummy.matrix);
+                    planetsMesh.setColorAt(i, new THREE.Color(kindColors[node.kind] || 0x888888));
+                    node.planetIndex = i; // Store for raycasting
+                    node.planetScale = scale; // Store for later use
+                });
+
+                planetsMesh.instanceMatrix.needsUpdate = true;
+                planetsMesh.instanceColor.needsUpdate = true;
+                scene.add(planetsMesh);
+            }
+
+            // Create edges and build edge map for highlighting
+            const edgePositions = [];
+            const edgeMap = new Map(); // nodeId -> array of edge indices
+
+            graphData.links.forEach((link, idx) => {
+                const sourceNode = nodeMap.get(link.source);
+                const targetNode = nodeMap.get(link.target);
+
+                if (sourceNode?.position && targetNode?.position) {
+                    const edgeIdx = edgePositions.length / 6;
+
+                    edgePositions.push(
+                        sourceNode.position.x, sourceNode.position.y, sourceNode.position.z,
+                        targetNode.position.x, targetNode.position.y, targetNode.position.z
+                    );
+
+                    // Map both source and target to this edge
+                    if (!edgeMap.has(link.source)) edgeMap.set(link.source, []);
+                    if (!edgeMap.has(link.target)) edgeMap.set(link.target, []);
+                    edgeMap.get(link.source).push({ idx: edgeIdx, target: link.target, pos: targetNode.position });
+                    edgeMap.get(link.target).push({ idx: edgeIdx, target: link.source, pos: sourceNode.position });
+                }
+            });
+
+            // Store edge map globally for highlighting
+            window.currentEdgeMap = edgeMap;
+
+            // No default edges shown - only highlighted edges for selected node
+            const highlightGeometry = new THREE.BufferGeometry();
+            const highlightMaterial = new THREE.LineBasicMaterial({
+                color: 0x00ffff,
+                transparent: true,
+                opacity: 0.8
+            });
+            highlightEdges = new THREE.LineSegments(highlightGeometry, highlightMaterial);
+            scene.add(highlightEdges);
+
+            // Position camera to see the whole universe
+            // Calculate bounding box of all nodes for proper framing
+            let minX = Infinity, maxX = -Infinity;
+            let minY = Infinity, maxY = -Infinity;
+            let minZ = Infinity, maxZ = -Infinity;
+
+            graphData.nodes.forEach(node => {
+                if (node.position) {
+                    minX = Math.min(minX, node.position.x);
+                    maxX = Math.max(maxX, node.position.x);
+                    minY = Math.min(minY, node.position.y);
+                    maxY = Math.max(maxY, node.position.y);
+                    minZ = Math.min(minZ, node.position.z);
+                    maxZ = Math.max(maxZ, node.position.z);
+                }
+            });
+
+            // Calculate center and extent
+            const centerX = (minX + maxX) / 2;
+            const centerY = (minY + maxY) / 2;
+            const centerZ = (minZ + maxZ) / 2;
+            const extentX = maxX - minX;
+            const extentY = maxY - minY;
+            const extentZ = maxZ - minZ;
+            const maxExtent = Math.max(extentX, extentY, extentZ, 500);
+
+            universeExtent = maxExtent;
+            universeCenter = { x: centerX, y: centerY, z: centerZ };
+
+            // Start camera far out
+            const fov = camera.fov * (Math.PI / 180);
+            const farDist = (maxExtent / 2) / Math.tan(fov / 2) * 2;
+            camera.position.set(farDist, farDist * 0.5, farDist);
+            controls.target.set(centerX, centerY, centerZ);
+            currentDistance = farDist;
+            targetDistance = farDist;
+            controls.update();
+
+            // Find the biggest galaxy (first in sortedNs) and fly to it
+            if (sortedNs.length > 0) {
+                const biggestNs = sortedNs[0];
+                const biggestPos = nsPositions.get(biggestNs);
+                const biggestStats = nsStats.get(biggestNs);
+
+                if (biggestPos) {
+                    // Calculate view distance based on galaxy size
+                    const galaxyViewDist = (biggestPos.size || 500) * 3;
+
+                    // Fly to biggest galaxy
+                    setTimeout(() => {
+                        flyStartPos = camera.position.clone();
+                        flyStartTarget = controls.target.clone();
+                        flyTarget = {
+                            camPos: new THREE.Vector3(
+                                biggestPos.x + galaxyViewDist * 0.6,
+                                biggestPos.y + galaxyViewDist * 0.5,
+                                biggestPos.z + galaxyViewDist * 0.6
+                            ),
+                            lookAt: new THREE.Vector3(biggestPos.x, biggestPos.y, biggestPos.z)
+                        };
+                        flyProgress = 0;
+                        flyDuration = 3.0; // Longer intro flight
+                        controls.enabled = false;
+
+                        updateBreadcrumb(biggestNs.split('.').pop() || biggestNs);
+                    }, 500); // Small delay for dramatic effect
+                }
+            }
+
+            console.log('Universe extent:', maxExtent);
+            console.log('Biggest galaxy:', sortedNs[0]);
+        }
+
+        function updateBreadcrumb(location) {
+            document.getElementById('breadcrumb').innerHTML = `📍 <span onclick="window.resetView()">${location}</span>`;
+        }
+
+        // Store universe info for resetView
+        let universeExtent = 5000;
+        let universeCenter = { x: 0, y: 0, z: 0 };
+
+        function resetView() {
+            // Clear any highlights
+            clearHighlights();
+            document.getElementById('info-panel').classList.remove('visible');
+
+            // Calculate camera distance
+            const fov = camera.fov * (Math.PI / 180);
+            const camDist = (universeExtent / 2) / Math.tan(fov / 2) * 1.5;
+
+            // Fly back to universe view
+            flyStartPos = camera.position.clone();
+            flyStartTarget = controls.target.clone();
+            flyTarget = {
+                camPos: new THREE.Vector3(
+                    universeCenter.x + camDist * 0.6,
+                    universeCenter.y + camDist * 0.5,
+                    universeCenter.z + camDist * 0.6
+                ),
+                lookAt: new THREE.Vector3(universeCenter.x, universeCenter.y, universeCenter.z)
+            };
+            flyProgress = 0;
+            flyDuration = 2.5;
+            controls.enabled = false;
+
+            updateBreadcrumb('Universe');
+        }
+        window.resetView = resetView;
+
+        async function showNodeInfo(node) {
+            const solutionPath = document.getElementById('solution-path').value.trim();
+
+            document.getElementById('node-name').textContent = node.qualifiedName;
+            document.getElementById('node-kind').textContent = `Kind: ${node.kind}`;
+            document.getElementById('node-file').textContent = `File: ${node.file}:${node.line}`;
+
+            // Fly to node
+            if (node.position) {
+                flyToNode(node);
+                updateBreadcrumb(`${node.namespace} > ${node.typeName}${node.kind !== 'type' ? ' > ' + node.name : ''}`);
+            }
+
+            try {
+                const response = await fetch(`/api/graph/node/${node.id}?solutionPath=${encodeURIComponent(solutionPath)}`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    document.getElementById('callers-count').textContent = data.callers.length;
+                    document.getElementById('callees-count').textContent = data.callees.length;
+
+                    document.getElementById('callers-list').innerHTML = data.callers.map(c =>
+                        `<li onclick="window.focusNode(${c.id})">${c.name}</li>`
+                    ).join('');
+
+                    document.getElementById('callees-list').innerHTML = data.callees.map(c =>
+                        `<li onclick="window.focusNode(${c.id})">${c.name}</li>`
+                    ).join('');
+                }
+            } catch (error) {
+                console.error('Failed to load node details:', error);
+            }
+
+            document.getElementById('info-panel').classList.add('visible');
+        }
+
+        function closeInfoPanel() {
+            document.getElementById('info-panel').classList.remove('visible');
+            clearHighlights();
+        }
+        window.closeInfoPanel = closeInfoPanel;
+
+        function focusNode(nodeId) {
+            const node = nodeMap.get(nodeId);
+            if (node) {
+                flyToNode(node);
+                showNodeInfo(node);
+            }
+        }
+        window.focusNode = focusNode;
+
+        function handleSearch(e) {
+            const query = e.target.value.toLowerCase().trim();
+            let firstMatch = null;
+
+            // Update star colors
+            if (starsMesh) {
+                typeNodes.forEach((node, i) => {
+                    const matches = !query ||
+                        node.name?.toLowerCase().includes(query) ||
+                        node.qualifiedName?.toLowerCase().includes(query);
+
+                    const baseColor = new THREE.Color(kindColors[node.kind] || 0x888888);
+                    const color = matches && query ? new THREE.Color(0xffffff) : baseColor;
+
+                    starsMesh.setColorAt(i, color);
+
+                    if (matches && query && !firstMatch) {
+                        firstMatch = node;
+                    }
+                });
+                starsMesh.instanceColor.needsUpdate = true;
+            }
+
+            // Update planet colors
+            if (planetsMesh) {
+                memberNodes.forEach((node, i) => {
+                    const matches = !query ||
+                        node.name?.toLowerCase().includes(query) ||
+                        node.qualifiedName?.toLowerCase().includes(query);
+
+                    const baseColor = new THREE.Color(kindColors[node.kind] || 0x888888);
+                    const color = matches && query ? new THREE.Color(0xffffff) : baseColor;
+
+                    planetsMesh.setColorAt(i, color);
+
+                    if (matches && query && !firstMatch) {
+                        firstMatch = node;
+                    }
+                });
+                planetsMesh.instanceColor.needsUpdate = true;
+            }
+
+            if (firstMatch?.position) {
+                controls.target.set(firstMatch.position.x, firstMatch.position.y, firstMatch.position.z);
+                controls.update();
+            }
+        }
+
+        function showLoading(show) {
+            document.getElementById('loading').classList.toggle('hidden', !show);
+        }
+
+        function showError(message) {
+            document.getElementById('error-message').textContent = message;
+            document.getElementById('error').classList.add('visible');
+        }
+
+        function hideError() {
+            document.getElementById('error').classList.remove('visible');
+        }
+
+        init();
+    </script>
+</body>
+</html>
