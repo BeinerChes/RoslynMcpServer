@@ -167,6 +167,20 @@ public static partial class RoslynTools
 
         // Use FindSymbolAsync for partial name matching (Issue #33)
         var searchResult = await db.FindSymbolAsync(solution.Id, symbolName);
+
+        // Issue #35: If not found, try Roslyn search and analyze stale files
+        if (searchResult.Symbol == null && _analyzerService != null)
+        {
+            var refreshedFiles = await TryRefreshFilesForSymbolAsync(
+                db, solution.Id, solutionPath, symbolName);
+
+            if (refreshedFiles.Count > 0)
+            {
+                // Retry graph search after refresh
+                searchResult = await db.FindSymbolAsync(solution.Id, symbolName);
+            }
+        }
+
         if (searchResult.Symbol == null)
         {
             var error = searchResult.Error ?? $"Symbol '{symbolName}' not found in graph.";
