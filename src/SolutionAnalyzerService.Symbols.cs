@@ -9,7 +9,7 @@ public partial class SolutionAnalyzerService
     /// <summary>
     /// Finds symbols in a solution by name pattern.
     /// </summary>
-    public async Task<FindSymbolResult> FindSymbolsAsync(
+    public async Task<FindSymbolResult> SearchSymbolsAsync(
         string solutionPath,
         string pattern,
         SymbolKindFilter kindFilter = SymbolKindFilter.All,
