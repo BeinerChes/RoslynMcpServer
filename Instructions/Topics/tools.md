@@ -40,6 +40,8 @@ You have access to Roslyn MCP tools for C# code analysis. These tools provide se
 | `roslyn_graph_status` | Check if call graph exists for solution |
 | `roslyn_graph_analyze` | Build/update call graph database |
 | `roslyn_query_graph` | Query callers/callees with recursive depth |
+| `roslyn_graph_impact` | Analyze blast radius if a symbol changes |
+| `roslyn_find_dead_code` | Find methods/properties with no callers |
 
 ### Solution & Project
 
@@ -68,6 +70,8 @@ You have access to Roslyn MCP tools for C# code analysis. These tools provide se
 | Find usages | `roslyn_get_references` | Grep finds text matches, not usages |
 | Find callers | `roslyn_get_callers` | References includes non-calls |
 | Find callers (large codebase) | `roslyn_query_graph` | Faster with cached graph |
+| Impact analysis | `roslyn_graph_impact` | Shows transitive callers grouped by file |
+| Find dead code | `roslyn_find_dead_code` | Automated detection of unused methods |
 | Find implementations | `roslyn_get_implementations` | Grep can't follow inheritance |
 | Check errors | `roslyn_get_diagnostics` | dotnet build output is harder to parse |
 | Fix warning | `roslyn_apply_code_fix` | Manual edit may introduce errors |
@@ -98,6 +102,16 @@ Use native tools (Read, Edit, Grep, Glob) only for:
 1. `roslyn_graph_analyze(solutionPath)` → build/update call graph (first time)
 2. `roslyn_query_graph(symbolName, direction: "callers", maxDepth: 3)` → find all callers recursively
 3. Much faster than `roslyn_get_callers` for repeated queries
+
+### Impact analysis before refactoring (blast radius)
+1. `roslyn_graph_analyze(solutionPath)` → build call graph if needed
+2. `roslyn_graph_impact(symbolName)` → see all affected files and methods
+3. Results grouped by file for easy review
+
+### Finding dead code
+1. `roslyn_graph_analyze(solutionPath)` → build call graph
+2. `roslyn_find_dead_code(solutionPath)` → find unused methods/properties
+3. Review results - excludes entry points like Main, event handlers, interface implementations
 
 ### Fixing compiler warnings
 1. `roslyn_get_diagnostics(severityFilter: "warning")` → see all warnings

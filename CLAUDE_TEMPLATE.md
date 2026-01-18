@@ -44,6 +44,9 @@ Use Roslyn MCP tools for C# files:
 | Add new member | `roslyn_add_member` |
 | Find references | `roslyn_get_references` |
 | Find callers | `roslyn_get_callers` |
+| Find callers (cached) | `roslyn_query_graph` |
+| Impact analysis | `roslyn_graph_impact` |
+| Find dead code | `roslyn_find_dead_code` |
 | Check errors | `roslyn_get_diagnostics` |
 | Fix warnings | `roslyn_apply_code_fix` |
 | Rename symbol | `roslyn_rename_symbol` |
