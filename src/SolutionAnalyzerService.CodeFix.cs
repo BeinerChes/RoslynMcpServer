@@ -53,6 +53,9 @@ public partial class SolutionAnalyzerService
             Console.Error.WriteLine($"Loading solution: {solutionPath}");
             var solution = await workspace.OpenSolutionAsync(solutionPath);
 
+            // Enhance solution with WPF/XAML generated files to avoid false positives
+            solution = EnhanceSolutionWithGeneratedFiles(solution);
+
             // Find the document
             var documentId = solution.GetDocumentIdsWithFilePath(filePath).FirstOrDefault();
             if (documentId == null)

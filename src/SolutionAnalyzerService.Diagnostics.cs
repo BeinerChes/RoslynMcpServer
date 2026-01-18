@@ -38,6 +38,9 @@ public partial class SolutionAnalyzerService
             Console.Error.WriteLine($"Loading solution: {solutionPath}");
             var solution = await workspace.OpenSolutionAsync(solutionPath);
 
+            // Enhance solution with WPF/XAML generated files to avoid false positives
+            solution = EnhanceSolutionWithGeneratedFiles(solution);
+
             // Get the set of diagnostic IDs that have code fixes available
             var fixableIds = GetFixableDiagnosticIds();
             Console.Error.WriteLine($"Loaded {fixableIds.Count} fixable diagnostic IDs");

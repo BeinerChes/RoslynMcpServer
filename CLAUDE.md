@@ -203,7 +203,8 @@ RoslynMcpServer/
 │   ├── SolutionAnalyzerService.AddMember.cs      # Add member logic
 │   ├── SolutionAnalyzerService.CodeFix.cs        # Single code fix logic
 │   ├── SolutionAnalyzerService.BatchCodeFix.cs   # Batch code fix logic
-│   └── SolutionAnalyzerService.Rename.cs         # Rename symbol logic
+│   ├── SolutionAnalyzerService.Rename.cs         # Rename symbol logic
+│   └── SolutionAnalyzerService.WpfSupport.cs     # WPF/XAML generated file inclusion
 └── RoslynMcpServer.Tests/                        # xUnit test project
     ├── RoslynMcpServer.Tests.csproj
     ├── Services/                                 # Service tests

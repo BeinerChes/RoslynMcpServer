@@ -335,6 +335,20 @@ If multiple fixes are available, the tool returns the list. Specify `fixIndex` t
 
 The tool updates all references across the entire solution automatically.
 
+## Known Limitations
+
+### WPF/XAML Projects
+
+**Note:** As of version 1.0.0, WPF/XAML support has been improved.
+
+The server automatically scans for generated `*.g.cs` files in each project's `obj/` folder and includes them in the compilation. This prevents false positive errors like:
+- `CS0103: The name 'InitializeComponent' does not exist in the current context`
+- `CS0103: The name 'uxMap' does not exist in the current context`
+
+**Requirement:** The WPF project must have been built at least once (via `dotnet build` or Visual Studio) so the generated files exist in the `obj/` folder.
+
+See [GitHub issue #11](https://github.com/BeinerChes/RoslynMcpServer/issues/11) for details
+
 ## Troubleshooting
 
 ### "Solution file not found"

@@ -48,6 +48,9 @@ public partial class SolutionAnalyzerService
             Console.Error.WriteLine($"Loading solution: {solutionPath}");
             var solution = await workspace.OpenSolutionAsync(solutionPath);
 
+            // Enhance solution with WPF/XAML generated files to avoid false positives
+            solution = EnhanceSolutionWithGeneratedFiles(solution);
+
             // Get code fix providers that can fix this diagnostic
             var providers = GetCodeFixProviders();
             var relevantProviders = providers
