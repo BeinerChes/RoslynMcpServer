@@ -23,6 +23,7 @@ You have access to Roslyn MCP tools for C# code analysis. These tools provide se
 |------|---------|
 | `roslyn_update_method` | Replace a method's implementation |
 | `roslyn_add_member` | Add new method/property/field to a type |
+| `roslyn_delete_member` | Delete a method/property/field from a type |
 | `roslyn_rename_symbol` | Rename across entire solution |
 
 ### Diagnostics & Fixes
@@ -69,6 +70,7 @@ You have access to Roslyn MCP tools for C# code analysis. These tools provide se
 | Read a method | `roslyn_get_method_body` | Read requires knowing line numbers |
 | Edit a method | `roslyn_update_method` | Edit can break code with text patterns |
 | Add new member | `roslyn_add_member` | Edit doesn't format or place correctly |
+| Delete member | `roslyn_delete_member` | Edit may miss attributes, XML docs, trivia |
 | Find usages | `roslyn_get_references` | Grep finds text matches, not usages |
 | Find callers | `roslyn_get_callers` | References includes non-calls |
 | Find callers (large codebase) | `roslyn_query_graph` | Faster with cached graph |
@@ -118,6 +120,12 @@ Use native tools (Read, Edit, Grep, Glob) only for:
    - Properties with attributes (likely serialization)
    - External/BCL symbols
 4. **Note**: May produce false positives for DTO properties used via JSON serialization (reflection-based access not tracked)
+
+### Cleaning up dead code
+1. `roslyn_find_dead_code(solutionPath)` → identify unused members
+2. Review each result to confirm it's truly dead (not reflection-based)
+3. `roslyn_delete_member(typeName, memberName)` → remove confirmed dead code
+4. Includes attributes and XML docs in deletion
 
 ### Fixing compiler warnings
 1. `roslyn_get_diagnostics(severityFilter: "warning")` → see all warnings

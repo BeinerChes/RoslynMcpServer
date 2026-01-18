@@ -36,6 +36,17 @@ Use this path for all `roslyn_*` tool calls.
 
 **Check before PR:** Are all relevant docs updated?
 
+## MANDATORY: Real-World Testing for Tools
+
+**When adding NEW tools or MODIFYING existing tools:**
+
+1. Unit tests passing is NOT sufficient
+2. **DO NOT push/merge** until real-world testing is complete
+3. Work with code owner to test on actual solutions
+4. Only after code owner confirms it works → push, PR, merge
+
+This ensures tools work correctly in production scenarios, not just unit test mocks.
+
 ## Tool Preferences
 
 Use Roslyn MCP tools for C# files:
@@ -47,6 +58,7 @@ Use Roslyn MCP tools for C# files:
 | Read a method | `roslyn_get_method_body` |
 | Edit a method | `roslyn_update_method` |
 | Add new member | `roslyn_add_member` |
+| Delete member | `roslyn_delete_member` |
 | Find references | `roslyn_get_references` |
 | Find callers | `roslyn_get_callers` |
 | Find callers (cached) | `roslyn_query_graph` (auto-refreshes stale files) |
