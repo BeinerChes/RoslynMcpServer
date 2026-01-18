@@ -278,9 +278,6 @@
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x000000); // Pure black space
 
-            // Add some ambient stars (distant background)
-            addStarfield();
-
             // Ambient light for overall visibility
             const ambientLight = new THREE.AmbientLight(0x444466, 1.5);
             scene.add(ambientLight);
@@ -336,23 +333,6 @@
             }
 
             animate();
-        }
-
-        function addStarfield() {
-            const starGeometry = new THREE.BufferGeometry();
-            const starCount = 5000;
-            const positions = new Float32Array(starCount * 3);
-
-            for (let i = 0; i < starCount; i++) {
-                positions[i * 3] = (Math.random() - 0.5) * 30000;
-                positions[i * 3 + 1] = (Math.random() - 0.5) * 30000;
-                positions[i * 3 + 2] = (Math.random() - 0.5) * 30000;
-            }
-
-            starGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-            const starMaterial = new THREE.PointsMaterial({ color: 0x444466, size: 1 });
-            const stars = new THREE.Points(starGeometry, starMaterial);
-            scene.add(stars);
         }
 
         let lastTime = performance.now();
