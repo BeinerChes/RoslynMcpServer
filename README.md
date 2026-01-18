@@ -74,7 +74,7 @@ Claude will fetch the template and you can save it as CLAUDE.md.
 
 **Option B: Download directly**
 ```bash
-curl -o CLAUDE.md https://raw.githubusercontent.com/BeinerChes/RoslynMcpServer/rc/1.0.0/CLAUDE_TEMPLATE.md
+curl -o CLAUDE.md https://raw.githubusercontent.com/BeinerChes/RoslynMcpServer/rc/1.0.2/CLAUDE_TEMPLATE.md
 ```
 
 **What is CLAUDE.md?** It's a file that Claude reads to understand your project's conventions. With Roslyn MCP, it tells Claude to use Roslyn tools instead of basic text search/replace. You don't execute anything in this file - Claude reads it automatically.
@@ -210,6 +210,34 @@ What warnings does the MyApp.Core project have?
 
 Claude will use `roslyn_get_diagnostics` to compile and summarize issues.
 
+## 3D Call Graph Visualization
+
+The server includes a web-based 3D visualization of your codebase's call graph:
+
+![3D Visualization](docs/visualization-preview.png)
+
+### Features
+- **Galaxies** = Namespaces (sphere clusters, most connected in center)
+- **Stars** = Types (white, sized by total callers)
+- **Planets** = Methods/Properties (orbiting stars, sized by callers)
+- Click to select and focus, dimming other objects
+- Controls: Left mouse = pan, Middle mouse = rotate, Scroll = zoom
+
+### Running the Visualization
+
+1. First, build the call graph:
+   ```
+   Ask Claude: "Analyze the call graph for this solution"
+   ```
+   Claude will use `roslyn_graph_analyze` to build the database.
+
+2. Start the web server:
+   ```bash
+   dotnet run --project RoslynMcpServer.Web
+   ```
+
+3. Open http://localhost:5000 and enter your solution path.
+
 ### Find .NET Analyzer Warnings (CA* rules)
 
 ```
@@ -271,25 +299,19 @@ The first operation loads the entire solution into memory. Subsequent operations
 
 ```
 RoslynMcpServer/
-├── Program.cs                    # Entry point
-├── src/
+├── RoslynMcpServer/              # Main MCP server
+│   ├── Program.cs                # Entry point
 │   ├── McpServer.cs              # MCP protocol (JSON-RPC over stdio)
-│   ├── Models.cs                 # DTOs
-│   ├── AnalyzerLoader.cs         # Loads bundled .NET analyzers
 │   ├── RoslynTools.*.cs          # Tool registrations (partial class)
 │   └── SolutionAnalyzerService.*.cs  # Roslyn logic (partial class)
-```
-
-After build:
-```
-bin/Debug/net10.0/
-├── RoslynMcpServer.exe
-├── analyzers/                    # Bundled .NET analyzers (copied on build)
-│   ├── cs/
-│   │   ├── Microsoft.CodeAnalysis.CSharp.NetAnalyzers.dll
-│   │   └── Microsoft.CodeAnalysis.NetAnalyzers.dll
-│   └── vb/
-│       └── ...
+├── RoslynMcpServer.Graph/        # Call graph database
+│   ├── GraphDatabase.cs          # SQLite-based call graph storage
+│   └── GraphAnalyzer.cs          # Builds call graph from Roslyn
+├── RoslynMcpServer.Web/          # 3D visualization web app
+│   ├── Program.cs                # ASP.NET minimal API
+│   ├── GraphApi.cs               # REST endpoints for visualization
+│   └── wwwroot/index.html        # Three.js 3D visualization
+└── RoslynMcpServer.Tests/        # Unit tests
 ```
 
 The server uses:
@@ -297,6 +319,8 @@ The server uses:
 - **Roslyn Compiler APIs** for semantic analysis
 - **Roslyn Formatter** for code formatting
 - **Bundled .NET Analyzers** for CA* diagnostic rules
+- **SQLite** for call graph persistence
+- **Three.js** for 3D visualization
 - **JSON-RPC 2.0** over stdio for MCP communication
 
 ## Roadmap
@@ -305,27 +329,22 @@ The server uses:
 
 | Tool | Description | Use Case |
 |------|-------------|----------|
-| ~~`roslyn_get_callers`~~ | ~~Find callers of a method~~ | ✓ Implemented |
 | `roslyn_extract_method` | Extract code block into new method | Refactoring large methods |
 | `roslyn_change_signature` | Add/remove/reorder parameters | API changes with auto-fix callers |
 | `roslyn_get_document_symbols` | All symbols in a specific file | Quick file overview |
 | `roslyn_organize_usings` | Sort + remove unused usings | Code cleanup |
 | `roslyn_format_document` | Apply .editorconfig formatting | Consistent style |
-| `roslyn_extract_interface` | Extract interface from class | Design patterns |
-| `roslyn_inline` | Replace variable/method usages with actual code | Simplify code |
 
 ### Planned Tools (Medium Priority)
 
 | Tool | Description |
 |------|-------------|
+| `roslyn_extract_interface` | Extract interface from class |
 | `roslyn_move_type_to_file` | Move class to its own .cs file |
 | `roslyn_encapsulate_field` | Convert field to property with backing field |
 | `roslyn_generate_constructor` | Create constructor from fields/properties |
-| `roslyn_generate_equals_hashcode` | Override Equals/GetHashCode for value equality |
 | `roslyn_pull_members_up` | Move members to base class |
 | `roslyn_push_members_down` | Move members to derived classes |
-| ~~`roslyn_find_unused_code`~~ | ~~Find dead methods/classes~~ | ✓ Implemented as `roslyn_find_dead_code` |
-| `roslyn_get_dependency_graph` | Analyze assembly/type dependencies |
 
 ## License
 
