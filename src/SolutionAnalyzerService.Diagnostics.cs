@@ -31,18 +31,12 @@ public partial class SolutionAnalyzerService
             };
         }
 
-        // Run design-time builds for WPF projects to generate *.g.cs files
-        RunDesignTimeBuildsForSolution(solutionPath);
-
         using var workspace = CreateWorkspace();
 
         try
         {
             Console.Error.WriteLine($"Loading solution: {solutionPath}");
             var solution = await workspace.OpenSolutionAsync(solutionPath);
-
-            // Enhance solution with WPF/XAML generated files (fallback for any missed files)
-            solution = EnhanceSolutionWithGeneratedFiles(solution);
 
             // Get the set of diagnostic IDs that have code fixes available
             var fixableIds = GetFixableDiagnosticIds();
@@ -72,9 +66,9 @@ public partial class SolutionAnalyzerService
                 // Get project's original diagnostic options (before we override)
                 var projectDiagnosticOptions = compilation.Options.SpecificDiagnosticOptions;
 
-                // Get compiler diagnostics
+                // Get compiler diagnostics (excluding generated .g.cs files)
                 var compilerDiagnostics = compilation.GetDiagnostics()
-                    .Where(d => d.Location.IsInSource);
+                    .Where(d => d.Location.IsInSource && !IsGeneratedFile(d));
 
                 foreach (var diag in FilterBySeverity(compilerDiagnostics, severityFilter))
                 {
@@ -261,6 +255,22 @@ public partial class SolutionAnalyzerService
         };
     }
 
+    /// <summary>
+    /// Checks if a diagnostic is from a generated file (.g.cs, .g.i.cs, .designer.cs).
+    /// These files are auto-generated and users cannot fix issues in them directly.
+    /// </summary>
+    private static bool IsGeneratedFile(Diagnostic diagnostic)
+    {
+        var filePath = diagnostic.Location.SourceTree?.FilePath;
+        if (string.IsNullOrEmpty(filePath))
+            return false;
+
+        var fileName = Path.GetFileName(filePath);
+        return fileName.EndsWith(".g.cs", StringComparison.OrdinalIgnoreCase) ||
+               fileName.EndsWith(".g.i.cs", StringComparison.OrdinalIgnoreCase) ||
+               fileName.EndsWith(".designer.cs", StringComparison.OrdinalIgnoreCase);
+    }
+
     private static async Task<IEnumerable<Diagnostic>> RunAnalyzersAsync(
         Compilation compilation,
         ImmutableArray<DiagnosticAnalyzer> analyzers,
@@ -302,8 +312,8 @@ public partial class SolutionAnalyzerService
             // Get analyzer diagnostics (excludes compiler diagnostics)
             var diagnostics = await compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync();
 
-            // Only return diagnostics that are in source files
-            return diagnostics.Where(d => d.Location.IsInSource);
+            // Only return diagnostics in source files (excluding generated .g.cs files)
+            return diagnostics.Where(d => d.Location.IsInSource && !IsGeneratedFile(d));
         }
         catch (Exception ex)
         {
