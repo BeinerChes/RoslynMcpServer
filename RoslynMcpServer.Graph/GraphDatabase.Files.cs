@@ -145,6 +145,86 @@ public sealed partial class GraphDatabase
     }
 
     /// <summary>
+    /// Checks if a file has any symbols in the graph.
+    /// Issue: #35
+    /// </summary>
+    public async Task<bool> IsFileInGraphAsync(long solutionId, string filePath)
+    {
+        if (_connection == null) throw new InvalidOperationException("Database not open");
+
+        var count = await _connection.ExecuteScalarAsync<int>(
+            "SELECT COUNT(*) FROM Symbols WHERE SolutionId = @SolutionId AND FilePath = @FilePath",
+            new { SolutionId = solutionId, FilePath = filePath });
+
+        return count > 0;
+    }
+
+    /// <summary>
+    /// Updates the content hash for a file. Used for testing.
+    /// Issue: #35
+    /// </summary>
+    public async Task UpdateFileHashAsync(long solutionId, string filePath, string contentHash)
+    {
+        if (_connection == null) throw new InvalidOperationException("Database not open");
+
+        var existing = await GetFileAsync(solutionId, filePath);
+        if (existing == null)
+        {
+            await _connection.ExecuteAsync(
+                """
+                INSERT INTO Files (SolutionId, FilePath, LastModified, ContentHash, LastAnalyzed)
+                VALUES (@SolutionId, @FilePath, @LastModified, @ContentHash, @LastAnalyzed)
+                """,
+                new
+                {
+                    SolutionId = solutionId,
+                    FilePath = filePath,
+                    LastModified = DateTime.UtcNow.ToString("o"),
+                    ContentHash = contentHash,
+                    LastAnalyzed = DateTime.UtcNow.ToString("o")
+                });
+        }
+        else
+        {
+            await _connection.ExecuteAsync(
+                "UPDATE Files SET ContentHash = @ContentHash WHERE SolutionId = @SolutionId AND FilePath = @FilePath",
+                new { SolutionId = solutionId, FilePath = filePath, ContentHash = contentHash });
+        }
+    }
+
+    /// <summary>
+    /// Gets files that need analysis: either not in graph or stale (hash mismatch).
+    /// Issue: #35
+    /// </summary>
+    public async Task<IReadOnlyList<string>> GetFilesNeedingAnalysisAsync(
+        long solutionId, IDictionary<string, string> currentFileHashes)
+    {
+        if (_connection == null) throw new InvalidOperationException("Database not open");
+
+        var needsAnalysis = new List<string>();
+
+        foreach (var (filePath, currentHash) in currentFileHashes)
+        {
+            // Check if file is tracked
+            var tracked = await GetFileAsync(solutionId, filePath);
+            if (tracked == null)
+            {
+                // File not in graph - needs analysis
+                needsAnalysis.Add(filePath);
+                continue;
+            }
+
+            // Check if hash changed (stale)
+            if (tracked.ContentHash != currentHash)
+            {
+                needsAnalysis.Add(filePath);
+            }
+        }
+
+        return needsAnalysis;
+    }
+
+    /// <summary>
     /// Computes SHA256 hash of file content (first 16 hex chars).
     /// </summary>
     public static string ComputeFileHash(string filePath)

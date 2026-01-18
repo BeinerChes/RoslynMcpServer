@@ -315,6 +315,20 @@ public static partial class RoslynTools
 
         // Use FindSymbolAsync for partial name matching (Issue #33)
         var searchResult = await db.FindSymbolAsync(solution.Id, symbolName);
+
+        // Issue #35: If not found, try Roslyn search and analyze stale files
+        if (searchResult.Symbol == null && _analyzerService != null)
+        {
+            var autoRefreshedFiles = await TryRefreshFilesForSymbolAsync(
+                db, solution.Id, solutionPath, symbolName);
+
+            if (autoRefreshedFiles.Count > 0)
+            {
+                // Retry graph search after refresh
+                searchResult = await db.FindSymbolAsync(solution.Id, symbolName);
+            }
+        }
+
         if (searchResult.Symbol == null)
         {
             var error = searchResult.Error ?? $"Symbol '{symbolName}' not found in graph.";
@@ -455,6 +469,83 @@ public static partial class RoslynTools
             content = new[] { new { type = "text", text = message } },
             isError = true
         };
+    }
+
+    /// <summary>
+    /// Tries to find a symbol via Roslyn and refresh stale files containing it.
+    /// Issue: #35
+    /// </summary>
+    private static async Task<List<string>> TryRefreshFilesForSymbolAsync(
+        GraphDatabase db, long solutionId, string solutionPath, string symbolName)
+    {
+        var refreshedFiles = new List<string>();
+
+        if (_analyzerService == null) return refreshedFiles;
+
+        try
+        {
+            // Search for symbol using Roslyn
+            var roslynResult = await _analyzerService.SearchSymbolsAsync(
+                solutionPath,
+                symbolName,
+                SymbolKindFilter.TypeAndMember,
+                MatchType.Contains,
+                maxResults: 10,
+                compact: true);
+
+            if (!roslynResult.Success || roslynResult.Symbols == null || roslynResult.Symbols.Count == 0)
+            {
+                return refreshedFiles;
+            }
+
+            // Get unique file paths from Roslyn results
+            var filePaths = roslynResult.Symbols
+                .Where(s => !string.IsNullOrEmpty(s.FilePath))
+                .Select(s => s.FilePath!)
+                .Distinct()
+                .ToList();
+
+            if (filePaths.Count == 0) return refreshedFiles;
+
+            // Compute current hashes for found files
+            var currentHashes = new Dictionary<string, string>();
+            foreach (var filePath in filePaths)
+            {
+                if (File.Exists(filePath))
+                {
+                    currentHashes[filePath] = GraphDatabase.ComputeFileHash(filePath);
+                }
+            }
+
+            // Check which files need analysis
+            var needsAnalysis = await db.GetFilesNeedingAnalysisAsync(solutionId, currentHashes);
+
+            if (needsAnalysis.Count == 0) return refreshedFiles;
+
+            // Load solution and analyze needed files
+            var roslynSolution = await _analyzerService.LoadSolutionAsync(solutionPath);
+            if (roslynSolution == null) return refreshedFiles;
+
+            var analyzer = new GraphAnalyzer(db);
+            foreach (var filePath in needsAnalysis)
+            {
+                var document = roslynSolution.Projects
+                    .SelectMany(p => p.Documents)
+                    .FirstOrDefault(d => d.FilePath == filePath);
+
+                if (document != null)
+                {
+                    await analyzer.AnalyzeDocumentAsync(document, solutionId);
+                    refreshedFiles.Add(Path.GetFileName(filePath));
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Error refreshing files for symbol '{symbolName}': {ex.Message}");
+        }
+
+        return refreshedFiles;
     }
 }
 
