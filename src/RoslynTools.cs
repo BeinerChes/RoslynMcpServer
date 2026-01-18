@@ -41,6 +41,8 @@ public static partial class RoslynTools
         RegisterGraphStatusTool(server);
         RegisterGraphAnalyzeTool(server);
         RegisterQueryGraphTool(server);
+        RegisterGetTemplateTool(server);
+        RegisterGetInstructionsTool(server);
     }
 
     /// <summary>
