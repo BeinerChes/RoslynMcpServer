@@ -395,6 +395,8 @@ gh pr status
 | `roslyn_apply_code_fix` | Apply Roslyn's suggested fix for a single diagnostic |
 | `roslyn_batch_apply_code_fixes` | Batch apply fixes for all diagnostics of a specific type |
 | `roslyn_rename_symbol` | Rename a symbol across the entire solution with all references |
+| `roslyn_get_template` | Get a CLAUDE.md template for C# projects |
+| `roslyn_get_instructions` | Get development instructions for a specific topic |
 
 ### roslyn_find_symbol
 
@@ -950,6 +952,65 @@ Renames a symbol (type, method, property, field, parameter, variable) at a speci
 1. Use `roslyn_find_symbol` to locate the symbol you want to rename
 2. Call `roslyn_rename_symbol` with the file path, line, column, and new name
 3. The tool applies the rename immediately and returns affected files
+
+### roslyn_get_template
+
+Returns a CLAUDE.md template for C# projects. Users can copy this to their project root.
+
+**Input:**
+```json
+{
+  "template": "standard"
+}
+```
+
+**Parameters:**
+- `template` (required) - Template type:
+  - `minimal` - Basic MCP pointers only
+  - `standard` - Code + git workflow instructions
+  - `tdd` - Test-driven development workflow
+  - `team` - Full team workflow with issue-first development
+
+**Output:**
+```json
+{
+  "template": "standard",
+  "availableTemplates": ["minimal", "standard", "tdd", "team"],
+  "content": "# CLAUDE.md - C# Development...",
+  "usage": "Copy the content above to a CLAUDE.md file in your project root."
+}
+```
+
+### roslyn_get_instructions
+
+Returns specific development instructions on-demand. Called when a project's CLAUDE.md directs to get instructions for a topic.
+
+**Input:**
+```json
+{
+  "topic": "code"
+}
+```
+
+**Parameters:**
+- `topic` (required) - Topic to get instructions for:
+  - `code` - C# best practices, tool preferences
+  - `git` - Issue-first workflow, branch naming, commit format
+  - `tdd` - Test-driven development workflow
+  - `pre-pr` - Checklist before creating a pull request
+  - `tools` - Full Roslyn MCP tool preferences table
+
+**Output:**
+Returns the instructions as markdown text, ready to follow.
+
+**Usage:**
+Project CLAUDE.md files can be minimal - just pointing to these instructions:
+```markdown
+Before modifying C# code: roslyn_get_instructions(topic: "code")
+Before git operations: roslyn_get_instructions(topic: "git")
+```
+
+This keeps instructions up-to-date with the MCP server version.
 
 ## Key Concepts
 
