@@ -1,42 +1,37 @@
 # Roslyn MCP Server
 
-A **Model Context Protocol (MCP) server** that provides deep C# code analysis capabilities using Microsoft's Roslyn compiler platform. Enables AI assistants like Claude to understand, navigate, and modify .NET codebases with semantic precision.
+A server that gives Claude deep understanding of your C# code using Microsoft's Roslyn compiler.
 
-## Why Use This?
+## What Is This?
 
-**For C# developers:** This server gives Claude "IDE superpowers" for your .NET code. Instead of treating code as text, Claude can:
+When you use **Claude Code** (Anthropic's AI coding assistant for the terminal), it normally treats your code as text. This works, but it can:
+- Find the wrong `Save` method when you search for "Save"
+- Read entire 2000-line files just to see one method
+- Break code when doing find/replace refactoring
 
-| Without Roslyn MCP | With Roslyn MCP |
-|-------------------|-----------------|
-| `grep "Save"` finds 50 matches | `roslyn_find_symbol` finds the exact `UserService.Save()` method |
-| Reading a 2000-line file to find one method | `roslyn_get_method_body` returns just that method |
-| `Edit` pattern matches wrong code | `roslyn_update_method` targets exactly one method |
-| Manual find/replace breaks code | `roslyn_rename_symbol` updates all references correctly |
+**Roslyn MCP Server** gives Claude the same understanding of C# that your IDE has. It knows `User` the class is different from `user` the variable.
 
-**The key insight:** Roslyn (the C# compiler) understands your code semantically. It knows `User` the class is different from `user` the variable. This MCP server exposes that understanding to Claude.
-
-### Real-World Benefits
-
-- **Large codebases** - Navigate 100+ file solutions without reading everything
-- **Safe refactoring** - Rename symbols, find all usages, understand impact
-- **Precise edits** - Modify one method in a 2000-line file without pattern ambiguity
-- **Code health** - Find and auto-fix warnings (CS* and CA* rules) across the solution
+| Without This Server | With This Server |
+|---------------------|------------------|
+| `grep "Save"` finds 50 text matches | Finds the exact `UserService.Save()` method |
+| Reads whole file to find one method | Returns just that method |
+| Find/replace can match wrong code | Targets exactly the right symbol |
 
 ## Prerequisites
 
-- **.NET 10.0 SDK** or later
-- **Visual Studio 2022** or **Build Tools** (for MSBuild)
-- **Claude Code** CLI
+Before you start, you need:
 
-## Features
+1. **.NET 10.0 SDK** - [Download from Microsoft](https://dotnet.microsoft.com/download)
+2. **Visual Studio 2022** (any edition) or **Build Tools for Visual Studio** - needed for MSBuild
+3. **Claude Code CLI** - Anthropic's terminal-based AI assistant. Install with:
+   ```bash
+   npm install -g @anthropic-ai/claude-code
+   ```
+   Then authenticate: `claude` and follow the prompts.
 
-- **Semantic Code Analysis** - Uses Roslyn compiler for accurate symbol resolution
-- **Built-in .NET Analyzers** - Includes Microsoft.CodeAnalysis.NetAnalyzers for CA* rules (CA1806, CA2000, etc.)
-- **Self-contained** - All analyzer DLLs are bundled with the server on build
+## Quick Start (5 Steps)
 
-## Quick Start
-
-### 1. Clone and Build
+### Step 1: Download and Build the Server
 
 ```bash
 git clone https://github.com/BeinerChes/RoslynMcpServer.git
@@ -44,13 +39,11 @@ cd RoslynMcpServer
 dotnet build
 ```
 
-### 2. Configure Claude Code
+Note the full path to the RoslynMcpServer folder (e.g., `C:\Dev\RoslynMcpServer`). You'll need it in Step 2.
 
-Add the server to your Claude Code MCP configuration. You have two options:
+### Step 2: Tell Claude Code About the Server
 
-#### Option A: Project-level config (recommended)
-
-Create `.mcp.json` in your project root:
+Create a file called `.mcp.json` in your C# project's root folder (where your `.sln` file is):
 
 ```json
 {
@@ -58,60 +51,81 @@ Create `.mcp.json` in your project root:
     "roslyn": {
       "type": "stdio",
       "command": "dotnet",
-      "args": ["run", "--project", "C:\\path\\to\\RoslynMcpServer"]
+      "args": ["run", "--project", "C:\\Dev\\RoslynMcpServer"]
     }
   }
 }
 ```
 
-#### Option B: Global config
+**Important:** Replace `C:\\Dev\\RoslynMcpServer` with the actual path from Step 1. Use double backslashes on Windows.
 
-Add to your global Claude Code settings (`~/.claude/settings.json`):
+### Step 3: Add Instructions for Claude
 
-```json
-{
-  "mcpServers": {
-    "roslyn": {
-      "type": "stdio",
-      "command": "dotnet",
-      "args": ["run", "--project", "C:\\path\\to\\RoslynMcpServer"]
-    }
-  }
-}
+Create a file called `CLAUDE.md` in your project root. This file tells Claude HOW to work with your code.
+
+**Option A: Get a template from the server** (recommended)
+
+Start Claude Code in your project folder, then ask:
+```
+Get the standard template using roslyn_get_template
 ```
 
-### 3. Connect in Claude Code
+Claude will fetch the template and you can save it as CLAUDE.md.
 
+**Option B: Download directly**
 ```bash
-# Start Claude Code in your .NET project directory
-claude
-
-# The roslyn server should connect automatically
-# Verify with:
-/mcp
-```
-
-If you need to reconnect:
-```
-/mcp reconnect roslyn
-```
-
-### 4. Configure CLAUDE.md (Important!)
-
-Add a `CLAUDE.md` file to your project root to instruct Claude to use Roslyn tools instead of native file operations.
-
-**Quick start:** Copy the template from this repository:
-```bash
-# From your project directory
 curl -o CLAUDE.md https://raw.githubusercontent.com/BeinerChes/RoslynMcpServer/rc/1.0.0/CLAUDE_TEMPLATE.md
 ```
 
-Or manually copy `CLAUDE_TEMPLATE.md` from this repository and customize it for your project.
+**What is CLAUDE.md?** It's a file that Claude reads to understand your project's conventions. With Roslyn MCP, it tells Claude to use Roslyn tools instead of basic text search/replace. You don't execute anything in this file - Claude reads it automatically.
 
-**Why is this important?** Without `CLAUDE.md`, Claude may default to native `Read`/`Edit` tools which:
-- Use text patterns that can match the wrong code
-- Read entire files when you only need one method
-- Miss overloads and type context
+### Step 4: Start Claude Code
+
+Open a terminal in your project folder and run:
+```bash
+claude
+```
+
+The Roslyn server should connect automatically. You'll see it listed when you type `/mcp`.
+
+### Step 5: Verify It's Working
+
+Ask Claude:
+```
+Find all types containing "Controller" in this solution
+```
+
+If it uses `roslyn_find_symbol`, everything is working. If it uses `grep`, check that:
+- The `.mcp.json` file is in your project root
+- The path to RoslynMcpServer is correct
+- The `CLAUDE.md` file exists
+
+## Available Templates
+
+The server provides different CLAUDE.md templates for different workflows:
+
+| Template | Best For | Get It |
+|----------|----------|--------|
+| `minimal` | Quick setup, basic Roslyn tools | `roslyn_get_template(template: "minimal")` |
+| `standard` | Most projects - tools + git workflow | `roslyn_get_template(template: "standard")` |
+| `tdd` | Test-driven development teams | `roslyn_get_template(template: "tdd")` |
+| `team` | Full workflow with issues + TDD | `roslyn_get_template(template: "team")` |
+
+Ask Claude to fetch any template: "Get the tdd template using roslyn_get_template"
+
+## Why CLAUDE.md Matters
+
+Without `CLAUDE.md`, Claude uses basic file operations:
+- Reads entire files with `cat` or `Read`
+- Searches with `grep` (finds text, not symbols)
+- Edits with pattern matching (can match wrong code)
+
+With `CLAUDE.md` pointing to Roslyn tools:
+- Reads just the method you need
+- Searches semantically (finds the right `Save()` method)
+- Edits precisely (modifies exactly one method)
+
+The CLAUDE.md file is instructions **for Claude to read**, not commands for you to run. You create it once and Claude follows it automatically.
 
 ## Available Tools
 
@@ -203,157 +217,6 @@ Rename the GetData method in DataService to FetchDataAsync
 ```
 
 Claude will use `roslyn_rename_symbol` to safely rename the method and update all references across the solution.
-
-## Tool Details
-
-### roslyn_find_symbol
-
-```json
-{
-  "solutionPath": "C:\\path\\to\\solution.sln",
-  "pattern": "FeatureLayer",
-  "symbolKind": "type",
-  "matchType": "contains",
-  "maxResults": 50
-}
-```
-
-**symbolKind**: `all`, `type`, `member`, `namespace`, `typeAndMember`
-**matchType**: `exact`, `exactIgnoreCase`, `contains`, `prefix`, `suffix`
-
-### roslyn_get_method_body
-
-```json
-{
-  "solutionPath": "C:\\path\\to\\solution.sln",
-  "typeName": "FeatureLayer",
-  "methodName": "BuildCachedData",
-  "parameterTypes": "CancellationToken, bool"
-}
-```
-
-Use `parameterTypes` to select specific overloads.
-
-### roslyn_update_method
-
-```json
-{
-  "solutionPath": "C:\\path\\to\\solution.sln",
-  "typeName": "FeatureLayer",
-  "methodName": "BuildCachedData",
-  "parameterTypes": "CancellationToken, bool",
-  "newSourceCode": "private void BuildCachedData(...) { /* new impl */ }"
-}
-```
-
-### roslyn_add_member
-
-```json
-{
-  "solutionPath": "C:\\path\\to\\solution.sln",
-  "typeName": "CacheManager",
-  "memberCode": "public void Dispose() { _cache.Clear(); }",
-  "insertionPoint": "end"
-}
-```
-
-**insertionPoint**: `start`, `end`, `after-fields`, `after-constructors`, `after-properties`, `before-methods`
-Default: smart placement based on member type.
-
-### roslyn_get_diagnostics
-
-```json
-{
-  "solutionPath": "C:\\path\\to\\solution.sln",
-  "severityFilter": "warning",
-  "projectFilter": "MyApp.Core"
-}
-```
-
-Without `diagnosticId`: returns summary with counts per diagnostic code.
-With `diagnosticId`: returns detailed entries with file/line/method info.
-
-### roslyn_apply_code_fix
-
-```json
-{
-  "solutionPath": "C:\\path\\to\\solution.sln",
-  "filePath": "C:\\path\\to\\MyClass.cs",
-  "line": 42,
-  "column": 13,
-  "diagnosticId": "CS0168",
-  "fixIndex": 0,
-  "preview": false
-}
-```
-
-**Workflow:**
-1. Use `roslyn_get_diagnostics` to find issues
-2. Use `roslyn_apply_code_fix` with `preview: true` to see what would change
-3. Apply the fix with `preview: false`
-
-If multiple fixes are available, the tool returns the list. Specify `fixIndex` to select one.
-
-### roslyn_batch_apply_code_fixes
-
-```json
-{
-  "solutionPath": "C:\\path\\to\\solution.sln",
-  "diagnosticId": "CS0168",
-  "projectFilter": "MyProject",
-  "maxFixes": 100,
-  "preview": false
-}
-```
-
-**Workflow:**
-1. Use `roslyn_get_diagnostics` to find issues (note `fixAvailable: true` in summary)
-2. Use `roslyn_batch_apply_code_fixes` with `preview: true` to see what would change
-3. Apply fixes with `preview: false`
-4. Verify with `roslyn_get_diagnostics` again
-
-**When to use:**
-- **Batch**: Fix all occurrences of a warning type (e.g., all CS0168 unused variables)
-- **Single**: Fix one diagnostic, or choose between multiple fix options
-
-### roslyn_rename_symbol
-
-```json
-{
-  "solutionPath": "C:\\path\\to\\solution.sln",
-  "filePath": "C:\\path\\to\\DataService.cs",
-  "line": 15,
-  "column": 22,
-  "newName": "FetchDataAsync"
-}
-```
-
-**Workflow:**
-1. Use `roslyn_find_symbol` to locate the symbol you want to rename
-2. Call `roslyn_rename_symbol` with the file path, line, column, and new name
-3. The tool applies the rename immediately and returns a list of affected files
-
-The tool updates all references across the entire solution automatically.
-
-## WPF/XAML Support
-
-As of version 1.0.0, the server fully supports WPF/XAML projects.
-
-**How it works:**
-
-1. Before loading a solution, the server detects WPF projects (by checking for `UseWPF=true` or WPF references)
-2. For each WPF project, it runs a **design-time build** to generate `*.g.cs` files
-3. This uses MSBuild's `MarkupCompilePass1` and `MarkupCompilePass2` targets - the same mechanism Visual Studio uses
-4. Generated files are then included in the Roslyn compilation
-
-**Benefits:**
-- Works even if the project has never been built before
-- No false positive errors for `InitializeComponent` or `x:Name` elements
-- Same behavior as Visual Studio's IntelliSense
-
-**Note:** The first analysis of a WPF project may take a few extra seconds while the design-time build runs.
-
-See [GitHub issue #11](https://github.com/BeinerChes/RoslynMcpServer/issues/11) for details
 
 ## Troubleshooting
 
@@ -452,10 +315,11 @@ MIT
 
 | File | Purpose |
 |------|---------|
-| `CLAUDE.md` | Development guidelines for this repository |
-| `CLAUDE_TEMPLATE.md` | **Copy this to your projects** - Template for using Roslyn MCP |
-| `README.md` | This file |
+| `README.md` | This file - how to install and use the server |
+| `CLAUDE_TEMPLATE.md` | **Copy this to your projects** as `CLAUDE.md` - tells Claude to use Roslyn tools |
+| `CLAUDE.md` | Instructions for developing this repository itself (not for end users) |
+| `.mcp.json` | Example MCP configuration for Claude Code |
 
 ## Contributing
 
-Issues and PRs welcome! See `CLAUDE.md` for development guidelines.
+Issues and PRs welcome. See `CLAUDE.md` for development guidelines for this repository.
