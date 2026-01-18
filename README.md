@@ -139,6 +139,7 @@ The CLAUDE.md file is instructions **for Claude to read**, not commands for you 
 | `roslyn_get_method_body` | Get the full source code of a specific method |
 | `roslyn_update_method` | Replace a method's implementation |
 | `roslyn_add_member` | Add a new method/property/field to a type |
+| `roslyn_delete_member` | Delete a method/property/field from a type (includes attributes, XML docs) |
 | `roslyn_get_diagnostics` | Compile and get warnings/errors (CS* and CA* rules) |
 | `roslyn_apply_code_fix` | Apply Roslyn's suggested fix for a single diagnostic |
 | `roslyn_batch_apply_code_fixes` | Batch apply fixes for all diagnostics of a specific type |
