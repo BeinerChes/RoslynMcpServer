@@ -313,15 +313,23 @@ public static partial class RoslynTools
             };
         }
 
-        var symbol = await db.GetSymbolByQualifiedNameAsync(solution.Id, symbolName);
-        if (symbol == null)
+        // Use FindSymbolAsync for partial name matching (Issue #33)
+        var searchResult = await db.FindSymbolAsync(solution.Id, symbolName);
+        if (searchResult.Symbol == null)
         {
+            var error = searchResult.Error ?? $"Symbol '{symbolName}' not found in graph.";
+            if (searchResult.Candidates != null && searchResult.Candidates.Count > 0)
+            {
+                error += " Did you mean: " + string.Join(", ", searchResult.Candidates.Take(5).Select(c => c.QualifiedName));
+            }
             return new GraphQueryResult
             {
                 Success = false,
-                Error = $"Symbol '{symbolName}' not found in graph."
+                Error = error
             };
         }
+
+        var symbol = searchResult.Symbol;
 
         // Collect all file paths to check for staleness
         var filesToCheck = new HashSet<string> { symbol.FilePath };
@@ -368,8 +376,8 @@ public static partial class RoslynTools
         // Re-query to get fresh results if any files were refreshed
         if (refreshedFiles.Count > 0)
         {
-            symbol = await db.GetSymbolByQualifiedNameAsync(solution.Id, symbolName);
-            if (symbol == null)
+            var refreshResult = await db.FindSymbolAsync(solution.Id, symbolName);
+            if (refreshResult.Symbol == null)
             {
                 return new GraphQueryResult
                 {
@@ -377,6 +385,7 @@ public static partial class RoslynTools
                     Error = $"Symbol '{symbolName}' not found after refresh."
                 };
             }
+            symbol = refreshResult.Symbol;
         }
 
         var result = new GraphQueryResult
