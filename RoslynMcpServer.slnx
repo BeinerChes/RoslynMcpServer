@@ -2,4 +2,5 @@
   <Project Path="RoslynMcpServer.csproj" />
   <Project Path="RoslynMcpServer.Graph\RoslynMcpServer.Graph.csproj" />
   <Project Path="RoslynMcpServer.Tests\RoslynMcpServer.Tests.csproj" />
+  <Project Path="RoslynMcpServer.Web\RoslynMcpServer.Web.csproj" />
 </Solution>
