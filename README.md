@@ -144,6 +144,11 @@ The CLAUDE.md file is instructions **for Claude to read**, not commands for you 
 | `roslyn_batch_apply_code_fixes` | Batch apply fixes for all diagnostics of a specific type |
 | `roslyn_rename_symbol` | Rename a symbol across the entire solution with all references |
 | `roslyn_get_projects_in_build_order` | Get solution structure and dependencies |
+| `roslyn_graph_status` | Check if a call graph database exists for a solution |
+| `roslyn_graph_analyze` | Build or update the call graph database |
+| `roslyn_query_graph` | Query callers/callees with recursive depth from the graph |
+| `roslyn_graph_impact` | Analyze blast radius - what breaks if you change a symbol |
+| `roslyn_find_dead_code` | Find methods and properties with no callers |
 
 ## Usage Examples
 
@@ -304,7 +309,7 @@ The server uses:
 | `roslyn_generate_equals_hashcode` | Override Equals/GetHashCode for value equality |
 | `roslyn_pull_members_up` | Move members to base class |
 | `roslyn_push_members_down` | Move members to derived classes |
-| `roslyn_find_unused_code` | Find dead methods/classes |
+| ~~`roslyn_find_unused_code`~~ | ~~Find dead methods/classes~~ | ✓ Implemented as `roslyn_find_dead_code` |
 | `roslyn_get_dependency_graph` | Analyze assembly/type dependencies |
 
 ## License
