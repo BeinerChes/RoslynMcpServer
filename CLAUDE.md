@@ -1,122 +1,93 @@
 # CLAUDE.md - Instructions for Claude Code
 
+## Solution Path
+
+**Solution file:** `C:\Users\beine\source\repos\RoslynMcpServer\RoslynMcpServer.slnx`
+
+Use this path for all `roslyn_*` tool calls.
+
+## MANDATORY: Git Workflow for ALL Code Changes
+
+**You MUST follow this workflow for ANY code change. No exceptions.**
+
+### Before writing ANY code:
+1. **Create GitHub issue:** `gh issue create --title "Type: description" --label "bug|enhancement|documentation"`
+2. **Create branch:** `git checkout -b issues/N` (where N is issue number)
+
+### After making changes:
+3. **Check for errors:** `roslyn_get_diagnostics(solutionPath, severityFilter: "error")`
+4. **Run tests:** `dotnet test` - all must pass
+5. **Commit:** `git add -A && git commit -m "Type: description\n\nFixes #N\n\nCo-Authored-By: Claude <noreply@anthropic.com>"`
+6. **Push and create PR:** `git push -u origin issues/N && gh pr create --base rc/1.0.1 --title "Type: description" --body "Fixes #N"`
+7. **Merge and cleanup:** `gh pr merge --squash --delete-branch && git checkout rc/1.0.1 && git pull`
+
+**For detailed instructions:** Call `roslyn_get_instructions` with topic "git"
+
+## Tool Preferences
+
+Use Roslyn MCP tools for C# files:
+
+| Task | Use This |
+|------|----------|
+| Find type/method | `roslyn_find_symbol` |
+| See class structure | `roslyn_get_type_members` |
+| Read a method | `roslyn_get_method_body` |
+| Edit a method | `roslyn_update_method` |
+| Add new member | `roslyn_add_member` |
+| Find references | `roslyn_get_references` |
+| Find callers | `roslyn_get_callers` |
+| Check errors | `roslyn_get_diagnostics` |
+| Fix warnings | `roslyn_apply_code_fix` or `roslyn_batch_apply_code_fixes` |
+| Rename symbol | `roslyn_rename_symbol` |
+
+**For full tool reference:** Call `roslyn_get_instructions` with topic "tools"
+
 ## Project Overview
 
 This is a **Model Context Protocol (MCP) server** written in C# (.NET 10.0) that provides C# solution analysis capabilities using Microsoft's Roslyn compiler platform.
 
-The server enables AI assistants to analyze .NET solutions with deep semantic understanding - finding symbols, tracking references, understanding call graphs, and more.
-
-## Development Guidelines
-
-For C# code modifications: `roslyn_get_instructions(topic: "code")`
-For git workflow: `roslyn_get_instructions(topic: "git")`
-For TDD workflow: `roslyn_get_instructions(topic: "tdd")`
-Before creating PR: `roslyn_get_instructions(topic: "pre-pr")`
-For all available tools: `roslyn_get_instructions(topic: "tools")`
-
 ## Project-Specific Rules
 
-### IMPORTANT: Maintain Instruction Files
+### Maintain Instruction Files
 
-When adding new tools, **YOU MUST update `Instructions/Topics/tools.md`**.
-
-Also update `CLAUDE_TEMPLATE.md` if the tool is user-facing.
+When adding new tools, **YOU MUST update `Instructions/Topics/tools.md`** and `CLAUDE_TEMPLATE.md`.
 
 ### Code Guidelines
 
-- Keep .cs files under 300 lines (extract helper classes if needed)
+- Keep .cs files under 300 lines
 - Use C# 12 features (primary constructors, collection expressions)
 - Use `async/await` for all I/O operations
 - All logging goes to stderr (`Console.Error.WriteLine`)
 
 ### Test Requirements
 
-- Every code change MUST have an associated GitHub issue
-- Every feature/fix MUST have unit tests with issue reference comment
+- Every code change MUST have unit tests
 - Follow TDD: write failing tests BEFORE implementation
-
-## Tech Stack
-
-- **.NET 10.0** - Target framework
-- **Microsoft.CodeAnalysis** - Roslyn code analysis
-- **Microsoft.Build.Locator** - MSBuild discovery
-- **xUnit** - Unit testing
-- **SQLite** (via RoslynMcpServer.Graph) - Call graph caching
-
-## Project Structure
-
-```
-RoslynMcpServer/
-├── CLAUDE.md                 # This file
-├── Instructions/             # External instruction files (copied to output)
-│   ├── Templates/            # CLAUDE.md templates for users
-│   └── Topics/               # Topic-specific instructions
-├── src/
-│   ├── McpServer.cs          # MCP protocol implementation
-│   ├── RoslynTools*.cs       # Tool registrations (partial classes)
-│   ├── SolutionAnalyzerService*.cs  # Roslyn analysis (partial classes)
-│   ├── Instructions.cs       # Reads instruction files
-│   └── Models*.cs            # DTOs
-├── RoslynMcpServer.Graph/    # Call graph database project
-└── RoslynMcpServer.Tests/    # xUnit tests
-```
 
 ## Build & Test
 
 ```bash
 dotnet build           # Build
 dotnet test            # Run tests
-dotnet run             # Run MCP server
 ```
 
 ### Rebuilding After Code Changes
 
-The MCP server runs as a background process:
-
+The MCP server runs as a background process. To rebuild:
 1. Kill running process: `taskkill //F //PID <pid>`
 2. Rebuild: `dotnet build`
-3. Reconnect in Claude Code: `/mcp` → reconnect roslyn
+3. Reconnect: `/mcp` → reconnect roslyn
 
-## Git Workflow
+## Project Structure
 
-**Default branch:** `rc/1.0.1` (all PRs target here)
-
-For full workflow details: `roslyn_get_instructions(topic: "git")`
-
-Quick reference:
-1. Create issue: `gh issue create --title "..." --label "enhancement"`
-2. Create branch: `git checkout -b issues/N`
-3. Make changes with TDD
-4. Verify: `roslyn_get_diagnostics(severityFilter: "error")`
-5. Commit, push, create PR
-
-## Architecture Notes
-
-### MCP Protocol
-- Uses stdio transport (stdin/stdout)
-- JSON-RPC 2.0 format
-- All tools prefixed with `roslyn_`
-
-### Adding a New Tool
-
-1. Create `RoslynTools.YourTool.cs` with `RegisterYourToolTool(McpServer server)`
-2. Call it from `RegisterAll()` in `RoslynTools.cs`
-3. Add service method to `SolutionAnalyzerService.YourTool.cs` if needed
-4. Update `Instructions/Topics/tools.md`
-5. Add tests in `RoslynMcpServer.Tests/`
-
-## Roadmap
-
-### Implemented
-- Symbol search, references, callers, implementations
-- Type members, method body read/update
-- Diagnostics with code fixes (single and batch)
-- Rename symbol
-- Call graph database with file change detection
-- Instruction templates and dynamic instructions
-
-### Planned
-- `roslyn_extract_method` - Extract code block into new method
-- `roslyn_change_signature` - Add/remove/reorder parameters
-- `roslyn_organize_usings` - Sort + remove unused
-- `roslyn_format_document` - Apply .editorconfig formatting
+```
+RoslynMcpServer/
+├── RoslynMcpServer.slnx      # Solution file (use this path!)
+├── CLAUDE.md                 # This file
+├── Instructions/             # Instruction files (copied to output)
+│   ├── Templates/            # CLAUDE.md templates for users
+│   └── Topics/               # Topic-specific instructions
+├── src/                      # Source code
+├── RoslynMcpServer.Graph/    # Call graph database project
+└── RoslynMcpServer.Tests/    # xUnit tests
+```
