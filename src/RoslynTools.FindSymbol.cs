@@ -116,7 +116,7 @@ public static partial class RoslynTools
                     _ => MatchType.Contains
                 };
 
-                var result = await _analyzerService!.FindSymbolsAsync(
+                var result = await _analyzerService!.SearchSymbolsAsync(
                     solutionPath,
                     pattern,
                     symbolKind,
