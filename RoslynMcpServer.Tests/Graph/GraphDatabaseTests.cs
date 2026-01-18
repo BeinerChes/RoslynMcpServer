@@ -523,3 +523,261 @@ public class GraphDatabaseEdgeTests : IAsyncLifetime
         Assert.Equal(1, stats.Reads);
     }
 }
+
+/// <summary>
+/// Tests for GraphDatabase file tracking operations.
+/// Issue: #13
+/// </summary>
+public class GraphDatabaseFileTests : IAsyncLifetime, IDisposable
+{
+    private GraphDatabase _db = null!;
+    private SolutionRecord _solution = null!;
+    private readonly string _tempDir;
+
+    public GraphDatabaseFileTests()
+    {
+        _tempDir = Path.Combine(Path.GetTempPath(), $"GraphDbTests_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(_tempDir);
+    }
+
+    public async Task InitializeAsync()
+    {
+        _db = GraphDatabase.CreateInMemory();
+        await _db.OpenAsync();
+        _solution = await _db.GetOrCreateSolutionAsync(@"C:\test\MySolution.sln");
+    }
+
+    public Task DisposeAsync()
+    {
+        _db.Dispose();
+        return Task.CompletedTask;
+    }
+
+    public void Dispose()
+    {
+        try { Directory.Delete(_tempDir, recursive: true); }
+        catch { /* ignore cleanup errors */ }
+    }
+
+    private string CreateTestFile(string content, string fileName = "test.cs")
+    {
+        var path = Path.Combine(_tempDir, fileName);
+        File.WriteAllText(path, content);
+        return path;
+    }
+
+    /// <summary>
+    /// Tests that UpsertFileAsync creates a new file record.
+    /// Issue: #13
+    /// </summary>
+    [Fact]
+    public async Task UpsertFileAsync_NewFile_CreatesRecord()
+    {
+        // Arrange
+        var testFile = CreateTestFile("class Test {}");
+        var fileRecord = GraphDatabase.CreateFileRecord(_solution.Id, testFile);
+
+        // Act
+        await _db.UpsertFileAsync(fileRecord);
+        var retrieved = await _db.GetFileAsync(_solution.Id, testFile);
+
+        // Assert
+        Assert.NotNull(retrieved);
+        Assert.Equal(testFile, retrieved.FilePath);
+        Assert.NotEmpty(retrieved.ContentHash);
+    }
+
+    /// <summary>
+    /// Tests that UpsertFileAsync updates an existing file record.
+    /// Issue: #13
+    /// </summary>
+    [Fact]
+    public async Task UpsertFileAsync_ExistingFile_UpdatesRecord()
+    {
+        // Arrange
+        var testFile = CreateTestFile("class Test {}");
+        var fileRecord1 = GraphDatabase.CreateFileRecord(_solution.Id, testFile);
+        await _db.UpsertFileAsync(fileRecord1);
+
+        // Modify file
+        File.WriteAllText(testFile, "class Test { void Method() {} }");
+        var fileRecord2 = GraphDatabase.CreateFileRecord(_solution.Id, testFile);
+
+        // Act
+        await _db.UpsertFileAsync(fileRecord2);
+        var retrieved = await _db.GetFileAsync(_solution.Id, testFile);
+
+        // Assert
+        Assert.NotNull(retrieved);
+        Assert.Equal(fileRecord2.ContentHash, retrieved.ContentHash);
+    }
+
+    /// <summary>
+    /// Tests that IsFileStaleAsync returns true for untracked file.
+    /// Issue: #13
+    /// </summary>
+    [Fact]
+    public async Task IsFileStaleAsync_UntrackedFile_ReturnsTrue()
+    {
+        // Arrange
+        var testFile = CreateTestFile("class Test {}");
+
+        // Act
+        var isStale = await _db.IsFileStaleAsync(_solution.Id, testFile);
+
+        // Assert
+        Assert.True(isStale);
+    }
+
+    /// <summary>
+    /// Tests that IsFileStaleAsync returns false for unchanged file.
+    /// Issue: #13
+    /// </summary>
+    [Fact]
+    public async Task IsFileStaleAsync_UnchangedFile_ReturnsFalse()
+    {
+        // Arrange
+        var testFile = CreateTestFile("class Test {}");
+        var fileRecord = GraphDatabase.CreateFileRecord(_solution.Id, testFile);
+        await _db.UpsertFileAsync(fileRecord);
+
+        // Act
+        var isStale = await _db.IsFileStaleAsync(_solution.Id, testFile);
+
+        // Assert
+        Assert.False(isStale);
+    }
+
+    /// <summary>
+    /// Tests that IsFileStaleAsync returns true for modified file.
+    /// Issue: #13
+    /// </summary>
+    [Fact]
+    public async Task IsFileStaleAsync_ModifiedFile_ReturnsTrue()
+    {
+        // Arrange
+        var testFile = CreateTestFile("class Test {}");
+        var fileRecord = GraphDatabase.CreateFileRecord(_solution.Id, testFile);
+        await _db.UpsertFileAsync(fileRecord);
+
+        // Modify file
+        await Task.Delay(50); // Ensure timestamp changes
+        File.WriteAllText(testFile, "class Test { void Method() {} }");
+
+        // Act
+        var isStale = await _db.IsFileStaleAsync(_solution.Id, testFile);
+
+        // Assert
+        Assert.True(isStale);
+    }
+
+    /// <summary>
+    /// Tests that GetStaleFilesAsync returns only stale files.
+    /// Issue: #13
+    /// </summary>
+    [Fact]
+    public async Task GetStaleFilesAsync_MixedFiles_ReturnsOnlyStale()
+    {
+        // Arrange
+        var freshFile = CreateTestFile("class Fresh {}", "fresh.cs");
+        var staleFile = CreateTestFile("class Stale {}", "stale.cs");
+        var newFile = CreateTestFile("class New {}", "new.cs");
+
+        await _db.UpsertFileAsync(GraphDatabase.CreateFileRecord(_solution.Id, freshFile));
+        await _db.UpsertFileAsync(GraphDatabase.CreateFileRecord(_solution.Id, staleFile));
+
+        // Modify stale file
+        await Task.Delay(50);
+        File.WriteAllText(staleFile, "class Stale { void Method() {} }");
+
+        // Act
+        var staleFiles = await _db.GetStaleFilesAsync(_solution.Id, [freshFile, staleFile, newFile]);
+
+        // Assert
+        Assert.Equal(2, staleFiles.Count); // stale + new
+        Assert.Contains(staleFile, staleFiles);
+        Assert.Contains(newFile, staleFiles);
+        Assert.DoesNotContain(freshFile, staleFiles);
+    }
+
+    /// <summary>
+    /// Tests that ComputeFileHash returns consistent hash for same content.
+    /// Issue: #13
+    /// </summary>
+    [Fact]
+    public void ComputeFileHash_SameContent_ReturnsSameHash()
+    {
+        // Arrange
+        var file1 = CreateTestFile("class Test {}", "file1.cs");
+        var file2 = CreateTestFile("class Test {}", "file2.cs");
+
+        // Act
+        var hash1 = GraphDatabase.ComputeFileHash(file1);
+        var hash2 = GraphDatabase.ComputeFileHash(file2);
+
+        // Assert
+        Assert.Equal(hash1, hash2);
+    }
+
+    /// <summary>
+    /// Tests that ComputeFileHash returns different hash for different content.
+    /// Issue: #13
+    /// </summary>
+    [Fact]
+    public void ComputeFileHash_DifferentContent_ReturnsDifferentHash()
+    {
+        // Arrange
+        var file1 = CreateTestFile("class Test1 {}", "file1.cs");
+        var file2 = CreateTestFile("class Test2 {}", "file2.cs");
+
+        // Act
+        var hash1 = GraphDatabase.ComputeFileHash(file1);
+        var hash2 = GraphDatabase.ComputeFileHash(file2);
+
+        // Assert
+        Assert.NotEqual(hash1, hash2);
+    }
+
+    /// <summary>
+    /// Tests that GetAllFilesAsync returns all tracked files.
+    /// Issue: #13
+    /// </summary>
+    [Fact]
+    public async Task GetAllFilesAsync_MultipleFiles_ReturnsAll()
+    {
+        // Arrange
+        var file1 = CreateTestFile("class A {}", "a.cs");
+        var file2 = CreateTestFile("class B {}", "b.cs");
+        var file3 = CreateTestFile("class C {}", "c.cs");
+
+        await _db.UpsertFileAsync(GraphDatabase.CreateFileRecord(_solution.Id, file1));
+        await _db.UpsertFileAsync(GraphDatabase.CreateFileRecord(_solution.Id, file2));
+        await _db.UpsertFileAsync(GraphDatabase.CreateFileRecord(_solution.Id, file3));
+
+        // Act
+        var files = await _db.GetAllFilesAsync(_solution.Id);
+
+        // Assert
+        Assert.Equal(3, files.Count);
+    }
+
+    /// <summary>
+    /// Tests that CreateFileRecord creates correct record.
+    /// Issue: #13
+    /// </summary>
+    [Fact]
+    public void CreateFileRecord_ValidFile_CreatesRecord()
+    {
+        // Arrange
+        var testFile = CreateTestFile("class Test {}");
+
+        // Act
+        var record = GraphDatabase.CreateFileRecord(_solution.Id, testFile);
+
+        // Assert
+        Assert.Equal(_solution.Id, record.SolutionId);
+        Assert.Equal(testFile, record.FilePath);
+        Assert.NotEmpty(record.ContentHash);
+        Assert.True(record.LastModified > DateTime.MinValue);
+    }
+}

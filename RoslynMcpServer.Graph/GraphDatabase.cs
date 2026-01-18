@@ -112,12 +112,25 @@ public sealed partial class GraphDatabase : IDisposable
                 FOREIGN KEY (ToSymbolId) REFERENCES Symbols(Id) ON DELETE CASCADE
             );
 
+            CREATE TABLE IF NOT EXISTS Files (
+                Id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                SolutionId      INTEGER NOT NULL,
+                FilePath        TEXT NOT NULL,
+                LastModified    TEXT NOT NULL,
+                ContentHash     TEXT NOT NULL,
+                LastAnalyzed    TEXT NOT NULL,
+                FOREIGN KEY (SolutionId) REFERENCES Solutions(Id) ON DELETE CASCADE,
+                UNIQUE (SolutionId, FilePath)
+            );
+
             CREATE INDEX IF NOT EXISTS idx_symbols_solution ON Symbols(SolutionId);
             CREATE INDEX IF NOT EXISTS idx_symbols_qualified ON Symbols(QualifiedName);
             CREATE INDEX IF NOT EXISTS idx_symbols_file ON Symbols(FilePath);
             CREATE INDEX IF NOT EXISTS idx_symbols_status ON Symbols(Status);
             CREATE INDEX IF NOT EXISTS idx_edges_from ON Edges(FromSymbolId);
             CREATE INDEX IF NOT EXISTS idx_edges_to ON Edges(ToSymbolId);
+            CREATE INDEX IF NOT EXISTS idx_files_solution ON Files(SolutionId);
+            CREATE INDEX IF NOT EXISTS idx_files_path ON Files(FilePath);
             """;
 
         await _connection.ExecuteAsync(schema);

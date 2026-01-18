@@ -184,6 +184,18 @@ public class GetCallersResult
     /// </summary>
     public int ReturnedCount { get; init; }
 
+    /// <summary>
+    /// Data source: "graph" (cached), "live" (real-time analysis), or "graph+refresh" (cached with stale files refreshed).
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Source { get; init; }
+
+    /// <summary>
+    /// Number of stale files that were refreshed (only when Source is "graph+refresh").
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public int StaleFilesRefreshed { get; init; }
+
     public List<CallerInfo> Callers { get; init; } = [];
 }
 

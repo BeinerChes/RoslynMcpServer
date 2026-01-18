@@ -323,6 +323,62 @@ public static partial class RoslynTools
             };
         }
 
+        // Collect all file paths to check for staleness
+        var filesToCheck = new HashSet<string> { symbol.FilePath };
+
+        // Get preliminary results to find all related files
+        var preliminaryCallers = direction is "callers" or "both"
+            ? await db.GetRecursiveCallersAsync(symbol.Id, maxDepth)
+            : new List<SymbolRecord>();
+        var preliminaryCallees = direction is "callees" or "both"
+            ? await db.GetRecursiveCalleesAsync(symbol.Id, maxDepth)
+            : new List<SymbolRecord>();
+
+        foreach (var c in preliminaryCallers.Concat(preliminaryCallees))
+        {
+            if (!string.IsNullOrEmpty(c.FilePath) && c.FilePath != "external")
+                filesToCheck.Add(c.FilePath);
+        }
+
+        // Check for stale files and refresh if needed
+        var staleFiles = await db.GetStaleFilesAsync(solution.Id, filesToCheck);
+        var refreshedFiles = new List<string>();
+
+        if (staleFiles.Count > 0 && _analyzerService != null)
+        {
+            var roslynSolution = await _analyzerService.LoadSolutionAsync(solutionPath);
+            if (roslynSolution != null)
+            {
+                var analyzer = new GraphAnalyzer(db);
+                foreach (var staleFilePath in staleFiles)
+                {
+                    var document = roslynSolution.Projects
+                        .SelectMany(p => p.Documents)
+                        .FirstOrDefault(d => d.FilePath == staleFilePath);
+
+                    if (document != null)
+                    {
+                        await analyzer.AnalyzeDocumentAsync(document, solution.Id);
+                        refreshedFiles.Add(Path.GetFileName(staleFilePath));
+                    }
+                }
+            }
+        }
+
+        // Re-query to get fresh results if any files were refreshed
+        if (refreshedFiles.Count > 0)
+        {
+            symbol = await db.GetSymbolByQualifiedNameAsync(solution.Id, symbolName);
+            if (symbol == null)
+            {
+                return new GraphQueryResult
+                {
+                    Success = false,
+                    Error = $"Symbol '{symbolName}' not found after refresh."
+                };
+            }
+        }
+
         var result = new GraphQueryResult
         {
             Success = true,
@@ -333,12 +389,16 @@ public static partial class RoslynTools
                 Kind = symbol.Kind.ToString(),
                 FilePath = symbol.FilePath,
                 Line = symbol.Line
-            }
+            },
+            StaleFilesRefreshed = refreshedFiles.Count,
+            RefreshedFiles = refreshedFiles.Count > 0 ? refreshedFiles : null
         };
 
         if (direction is "callers" or "both")
         {
-            var callers = await db.GetRecursiveCallersAsync(symbol.Id, maxDepth);
+            var callers = refreshedFiles.Count > 0
+                ? await db.GetRecursiveCallersAsync(symbol.Id, maxDepth)
+                : preliminaryCallers;
             result.Callers = callers.Select(c => new GraphSymbolEntry
             {
                 Name = c.Name,
@@ -351,7 +411,9 @@ public static partial class RoslynTools
 
         if (direction is "callees" or "both")
         {
-            var callees = await db.GetRecursiveCalleesAsync(symbol.Id, maxDepth);
+            var callees = refreshedFiles.Count > 0
+                ? await db.GetRecursiveCalleesAsync(symbol.Id, maxDepth)
+                : preliminaryCallees;
             result.Callees = callees.Select(c => new GraphSymbolEntry
             {
                 Name = c.Name,
@@ -418,6 +480,8 @@ public class GraphQueryResult
     public GraphSymbolEntry? Symbol { get; set; }
     public List<GraphSymbolEntry>? Callers { get; set; }
     public List<GraphSymbolEntry>? Callees { get; set; }
+    public int StaleFilesRefreshed { get; set; }
+    public List<string>? RefreshedFiles { get; set; }
 }
 
 public class GraphSymbolEntry

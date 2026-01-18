@@ -21,6 +21,7 @@ public sealed class GraphAnalyzer
 
     /// <summary>
     /// Analyzes a single document and extracts symbols and edges.
+    /// Also records file metadata for change detection.
     /// </summary>
     public async Task AnalyzeDocumentAsync(Document document, long solutionId)
     {
@@ -30,6 +31,13 @@ public sealed class GraphAnalyzer
 
         var root = await syntaxTree.GetRootAsync();
         var filePath = document.FilePath ?? document.Name;
+
+        // Record file metadata for change detection
+        if (!string.IsNullOrEmpty(document.FilePath) && File.Exists(document.FilePath))
+        {
+            var fileRecord = GraphDatabase.CreateFileRecord(solutionId, document.FilePath);
+            await _db.UpsertFileAsync(fileRecord);
+        }
 
         // Find all type declarations
         var types = root.DescendantNodes().OfType<TypeDeclarationSyntax>();

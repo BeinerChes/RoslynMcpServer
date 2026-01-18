@@ -42,6 +42,19 @@ public sealed class EdgeRecord
 }
 
 /// <summary>
+/// Represents a tracked source file for change detection.
+/// </summary>
+public sealed class FileRecord
+{
+    public long Id { get; set; }
+    public long SolutionId { get; set; }
+    public required string FilePath { get; set; }
+    public required DateTime LastModified { get; set; }
+    public required string ContentHash { get; set; }
+    public DateTime LastAnalyzed { get; set; }
+}
+
+/// <summary>
 /// Types of symbols tracked in the graph.
 /// </summary>
 public enum SymbolKind
