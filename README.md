@@ -218,10 +218,19 @@ The server includes a web-based 3D visualization of your codebase's call graph:
 
 ### Features
 - **Galaxies** = Namespaces (sphere clusters, most connected in center)
-- **Stars** = Types (white, sized by total callers)
+- **Stars** = Types (white glowing points with bloom effect)
 - **Planets** = Methods/Properties (orbiting stars, sized by callers)
+- **Meditation Mode** = Auto-follows Claude's activity (enabled by default)
 - Click to select and focus, dimming other objects
 - Controls: Left mouse = pan, Middle mouse = rotate, Scroll = zoom
+
+### Meditation Mode
+
+When Claude Code uses MCP tools like `roslyn_get_type_members` or `roslyn_get_method_body`, the visualization automatically flies to the symbol being analyzed. This creates a relaxing "meditation" experience where you can watch Claude explore your codebase in 3D.
+
+- Enabled by default when the visualization loads
+- Polls every 10 seconds for new symbol activity
+- Toggle with the "Meditation" checkbox in the UI
 
 ### Running the Visualization
 

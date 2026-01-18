@@ -60,6 +60,10 @@ public static class GraphApi
         return false;
     }
 
+    private static readonly string LastSymbolFilePath = Path.Combine(
+        Path.GetTempPath(),
+        "roslyn-mcp-last-symbol.json");
+
     public static void MapGraphApi(this WebApplication app)
     {
         var api = app.MapGroup("/api");
@@ -68,6 +72,54 @@ public static class GraphApi
         api.MapGet("/projects", (Delegate)GetProjects);
         api.MapGet("/graph", (Delegate)GetGraph);
         api.MapGet("/graph/node/{id:long}", GetNode);
+        api.MapGet("/last-symbol", GetLastSymbol);
+    }
+
+    /// <summary>
+    /// Gets the last symbol processed by the MCP server (for meditation mode).
+    /// </summary>
+    private static IResult GetLastSymbol()
+    {
+        try
+        {
+            if (!File.Exists(LastSymbolFilePath))
+            {
+                return Results.Ok(new { exists = false });
+            }
+
+            var json = File.ReadAllText(LastSymbolFilePath);
+            var options = new System.Text.Json.JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            };
+            var state = System.Text.Json.JsonSerializer.Deserialize<LastSymbolState>(json, options);
+
+            if (state == null)
+            {
+                return Results.Ok(new { exists = false });
+            }
+
+            return Results.Ok(new
+            {
+                exists = true,
+                solutionPath = state.SolutionPath,
+                qualifiedName = state.QualifiedName,
+                kind = state.Kind,
+                timestamp = state.Timestamp
+            });
+        }
+        catch
+        {
+            return Results.Ok(new { exists = false });
+        }
+    }
+
+    private class LastSymbolState
+    {
+        public string SolutionPath { get; set; } = "";
+        public string QualifiedName { get; set; } = "";
+        public string? Kind { get; set; }
+        public DateTime Timestamp { get; set; }
     }
 
     /// <summary>
