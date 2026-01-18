@@ -3,7 +3,8 @@
     "allow": [
       "Bash",
       "mcp__roslyn__*",
-      "WebSearch"
+      "WebSearch",
+      "WebFetch(domain:www.donmccurdy.com)"
     ]
   },
   "enableAllProjectMcpServers": true,
