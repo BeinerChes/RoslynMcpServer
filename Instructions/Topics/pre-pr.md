@@ -2,33 +2,31 @@
 
 ## Context
 
-You are about to create a pull request. Complete this checklist to ensure code quality.
+You are about to create a pull request. **You MUST complete this checklist before creating a PR.**
 
 ## Checklist
 
-Complete these steps before creating a PR:
-
 ### 1. CHECK FOR ERRORS
 ```
-roslyn_get_diagnostics(severityFilter: "error")
+roslyn_get_diagnostics(solutionPath, severityFilter: "error")
 ```
 Result must show: `totalErrors: 0`
 
-If errors exist, fix them before proceeding.
+**If errors exist, fix them before proceeding.**
 
 ### 2. CHECK FOR WARNINGS
 ```
-roslyn_get_diagnostics(severityFilter: "warning")
+roslyn_get_diagnostics(solutionPath, severityFilter: "warning")
 ```
 Review warnings. Fix any that are reasonable.
 
-Use `roslyn_batch_apply_code_fixes` for bulk fixes.
+Use `roslyn_batch_apply_code_fixes` for bulk fixes when available.
 
 ### 3. RUN TESTS
 ```bash
 dotnet test
 ```
-All tests must pass.
+**All tests must pass.** Do not create a PR with failing tests.
 
 ### 4. VERIFY CHANGES
 ```bash
@@ -36,19 +34,28 @@ git status
 git diff HEAD
 ```
 - Ensure all intended changes are staged
-- Ensure no unintended files are included
+- Ensure no unintended files are included (secrets, build artifacts, etc.)
 
-### 5. CREATE PR
+### 5. GET DEFAULT BRANCH
 ```bash
-gh pr create --base rc/X.X.X --title "Type: description" --body "$(cat <<'EOF'
+gh repo view --json defaultBranchRef -q .defaultBranchRef.name
+```
+Use this as the `--base` for the PR.
+
+### 6. CREATE PR
+```bash
+gh pr create --base <default-branch> --title "Type: description" --body "$(cat <<'EOF'
 ## Summary
 - Brief description of changes
 
-## Test Plan
-- [ ] Unit tests pass
-- [ ] Manual testing done (if applicable)
+## Test plan
+- [ ] All tests pass (`dotnet test`)
+- [ ] No compilation errors (`roslyn_get_diagnostics`)
+- [ ] Warnings reviewed
 
 Fixes #N
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
 EOF
 )"
 ```
@@ -57,9 +64,14 @@ EOF
 
 Use: `Type: brief description`
 
-Types: Fix, Feature, Refactor, Docs, Test
+**Types:**
+- `Fix` - Bug fix
+- `Feature` - New functionality
+- `Refactor` - Code restructuring
+- `Docs` - Documentation only
+- `Test` - Adding or updating tests
 
-Examples:
+**Examples:**
 - `Fix: Null reference in UserService.Save`
 - `Feature: Add retry logic to API client`
-- `Refactor: Extract validation to separate class`
+- `Docs: Improve README for new users`
