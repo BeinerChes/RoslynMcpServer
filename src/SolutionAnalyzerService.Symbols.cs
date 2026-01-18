@@ -143,4 +143,51 @@ public partial class SolutionAnalyzerService
             _ => symbol.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)
         };
     }
+
+    /// <summary>
+    /// Gets the qualified name of a symbol at the given file position.
+    /// Returns null if no symbol found.
+    /// </summary>
+    public async Task<string?> GetSymbolQualifiedNameAsync(
+        string solutionPath,
+        string filePath,
+        int line,
+        int column)
+    {
+        EnsureMSBuildRegistered();
+
+        if (!File.Exists(solutionPath) || !File.Exists(filePath))
+            return null;
+
+        using var workspace = CreateWorkspace();
+
+        try
+        {
+            var solution = await workspace.OpenSolutionAsync(solutionPath);
+
+            // Find the document
+            var normalizedPath = Path.GetFullPath(filePath);
+            var document = solution.Projects
+                .SelectMany(p => p.Documents)
+                .FirstOrDefault(d => string.Equals(
+                    Path.GetFullPath(d.FilePath ?? ""),
+                    normalizedPath,
+                    StringComparison.OrdinalIgnoreCase));
+
+            if (document == null) return null;
+
+            var semanticModel = await document.GetSemanticModelAsync();
+            if (semanticModel == null) return null;
+
+            var text = await document.GetTextAsync();
+            var position = text.Lines[line - 1].Start + (column - 1);
+
+            var symbol = await SymbolFinder.FindSymbolAtPositionAsync(semanticModel, position, workspace);
+            return symbol?.ToDisplayString();
+        }
+        catch
+        {
+            return null;
+        }
+    }
 }

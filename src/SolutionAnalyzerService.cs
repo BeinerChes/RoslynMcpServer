@@ -63,6 +63,30 @@ public partial class SolutionAnalyzerService
     }
 
     /// <summary>
+    /// Loads a solution and returns the Roslyn Solution object.
+    /// Caller is responsible for disposing the workspace.
+    /// </summary>
+    public async Task<Microsoft.CodeAnalysis.Solution?> LoadSolutionAsync(string solutionPath)
+    {
+        EnsureMSBuildRegistered();
+
+        if (!File.Exists(solutionPath)) return null;
+
+        var workspace = CreateWorkspace();
+        try
+        {
+            Console.Error.WriteLine($"Loading solution for graph analysis: {solutionPath}");
+            return await workspace.OpenSolutionAsync(solutionPath);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Failed to load solution: {ex.Message}");
+            workspace.Dispose();
+            return null;
+        }
+    }
+
+    /// <summary>
     /// Loads a solution and returns projects in build order (dependencies first).
     /// </summary>
     public async Task<ProjectBuildOrderResult> GetProjectsInBuildOrderAsync(string solutionPath)

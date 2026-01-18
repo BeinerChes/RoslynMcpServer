@@ -1,4 +1,5 @@
 using System.Text.Json;
+using RoslynMcpServer.Graph;
 
 namespace RoslynMcpServer;
 
@@ -6,6 +7,7 @@ public static partial class RoslynTools
 {
     /// <summary>
     /// Finds all callers of a method at a given position.
+    /// Uses graph cache when available, with automatic staleness detection and refresh.
     /// </summary>
     private static void RegisterGetCallersTool(McpServer server)
     {
@@ -134,6 +136,23 @@ public static partial class RoslynTools
                 var projectFilter = args?["projectFilter"]?.GetValue<string>();
                 var fileFilter = args?["fileFilter"]?.GetValue<string>();
 
+                // Try graph cache first
+                var graphResult = await TryGetCallersFromGraphAsync(
+                    solutionPath, filePath, line, column, maxResults, offset, projectFilter, fileFilter);
+
+                if (graphResult != null)
+                {
+                    return new
+                    {
+                        content = new[]
+                        {
+                            new { type = "text", text = JsonSerializer.Serialize(graphResult, JsonOptions) }
+                        },
+                        isError = !graphResult.Success
+                    };
+                }
+
+                // Fall back to live analysis
                 var result = await _analyzerService!.GetCallersAsync(
                     solutionPath,
                     filePath,
@@ -144,14 +163,163 @@ public static partial class RoslynTools
                     projectFilter,
                     fileFilter);
 
+                // Add source indicator for live analysis
+                var liveResult = new GetCallersResult
+                {
+                    Success = result.Success,
+                    Error = result.Error,
+                    Symbol = result.Symbol,
+                    TotalCallers = result.TotalCallers,
+                    ReturnedCount = result.ReturnedCount,
+                    Source = "live",
+                    Callers = result.Callers
+                };
+
                 return new
                 {
                     content = new[]
                     {
-                        new { type = "text", text = JsonSerializer.Serialize(result, JsonOptions) }
+                        new { type = "text", text = JsonSerializer.Serialize(liveResult, JsonOptions) }
                     },
-                    isError = !result.Success
+                    isError = !liveResult.Success
                 };
             });
+    }
+
+    /// <summary>
+    /// Tries to get callers from the graph cache.
+    /// Returns null if graph doesn't exist or symbol not found.
+    /// </summary>
+    private static async Task<GetCallersResult?> TryGetCallersFromGraphAsync(
+        string solutionPath,
+        string filePath,
+        int line,
+        int column,
+        int maxResults,
+        int offset,
+        string? projectFilter,
+        string? fileFilter)
+    {
+        using var db = new GraphDatabase(solutionPath);
+        if (!db.Exists()) return null;
+
+        await db.OpenAsync();
+        var solution = await db.GetSolutionAsync(solutionPath);
+        if (solution == null) return null;
+
+        // Get the symbol's qualified name from Roslyn
+        var roslynSolution = await _analyzerService!.LoadSolutionAsync(solutionPath);
+        if (roslynSolution == null) return null;
+
+        var qualifiedName = await _analyzerService.GetSymbolQualifiedNameAsync(solutionPath, filePath, line, column);
+        if (string.IsNullOrEmpty(qualifiedName)) return null;
+
+        // Look up symbol in graph
+        var symbol = await db.GetSymbolByQualifiedNameAsync(solution.Id, qualifiedName);
+        if (symbol == null) return null;
+
+        // Check for stale files and refresh
+        var callers = await db.GetCallersAsync(symbol.Id);
+        var filesToCheck = new HashSet<string> { symbol.FilePath };
+        foreach (var caller in callers)
+        {
+            if (!string.IsNullOrEmpty(caller.FilePath) && caller.FilePath != "external")
+                filesToCheck.Add(caller.FilePath);
+        }
+
+        var staleFiles = await db.GetStaleFilesAsync(solution.Id, filesToCheck);
+        var refreshedCount = 0;
+
+        if (staleFiles.Count > 0)
+        {
+            var analyzer = new GraphAnalyzer(db);
+            foreach (var staleFilePath in staleFiles)
+            {
+                var document = roslynSolution.Projects
+                    .SelectMany(p => p.Documents)
+                    .FirstOrDefault(d => d.FilePath == staleFilePath);
+
+                if (document != null)
+                {
+                    await analyzer.AnalyzeDocumentAsync(document, solution.Id);
+                    refreshedCount++;
+                }
+            }
+
+            // Re-query callers after refresh
+            callers = await db.GetCallersAsync(symbol.Id);
+        }
+
+        // Apply filters
+        var filteredCallers = callers.AsEnumerable();
+
+        if (!string.IsNullOrEmpty(projectFilter))
+        {
+            var pattern = projectFilter.Replace("*", "");
+            filteredCallers = filteredCallers.Where(c =>
+                c.FilePath.Contains(pattern, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (!string.IsNullOrEmpty(fileFilter))
+        {
+            var pattern = fileFilter.Replace("*", "");
+            filteredCallers = filteredCallers.Where(c =>
+                Path.GetFileName(c.FilePath).Contains(pattern, StringComparison.OrdinalIgnoreCase));
+        }
+
+        var callerList = filteredCallers.ToList();
+        var totalCallers = callerList.Count;
+
+        // Apply pagination
+        var paginatedCallers = callerList
+            .Skip(offset)
+            .Take(maxResults)
+            .Select(c => new CallerInfo
+            {
+                File = GetRelativePath(c.FilePath, solutionPath),
+                Line = c.Line,
+                Method = c.Name,
+                Type = ExtractTypeName(c.QualifiedName)
+            })
+            .ToList();
+
+        return new GetCallersResult
+        {
+            Success = true,
+            Symbol = qualifiedName,
+            TotalCallers = totalCallers,
+            ReturnedCount = paginatedCallers.Count,
+            Source = refreshedCount > 0 ? "graph+refresh" : "graph",
+            StaleFilesRefreshed = refreshedCount,
+            Callers = paginatedCallers
+        };
+    }
+
+    private static string GetRelativePath(string filePath, string solutionPath)
+    {
+        var solutionDir = Path.GetDirectoryName(solutionPath);
+        if (string.IsNullOrEmpty(solutionDir)) return filePath;
+
+        if (filePath.StartsWith(solutionDir, StringComparison.OrdinalIgnoreCase))
+        {
+            return filePath.Substring(solutionDir.Length).TrimStart(Path.DirectorySeparatorChar);
+        }
+        return filePath;
+    }
+
+    private static string? ExtractTypeName(string qualifiedName)
+    {
+        // Extract type name from qualified name like "Namespace.Type.Method(params)"
+        var parenIndex = qualifiedName.IndexOf('(');
+        var nameWithoutParams = parenIndex >= 0 ? qualifiedName.Substring(0, parenIndex) : qualifiedName;
+
+        var lastDot = nameWithoutParams.LastIndexOf('.');
+        if (lastDot <= 0) return null;
+
+        var beforeLastDot = nameWithoutParams.Substring(0, lastDot);
+        var secondLastDot = beforeLastDot.LastIndexOf('.');
+        if (secondLastDot < 0) return beforeLastDot;
+
+        return beforeLastDot.Substring(secondLastDot + 1);
     }
 }
