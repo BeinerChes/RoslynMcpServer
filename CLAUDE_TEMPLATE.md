@@ -2,41 +2,53 @@
 
 > **What is this file?** This is a CLAUDE.md file - instructions that Claude reads automatically when you start a conversation. You don't need to run anything here. Claude will follow these instructions when working with your code.
 >
-> **Setup:** Copy this file to your project root as `CLAUDE.md` and customize the "Project Overview" section below.
+> **Setup:** Copy this file to your project root as `CLAUDE.md` and update the solution path below.
 
-## Project Overview
+## Solution Path
 
-<!-- Customize this section for your project -->
-This is a C# project using the Roslyn MCP server for enhanced code analysis.
+<!-- UPDATE THIS to your solution file path -->
+**Solution file:** `C:\path\to\YourProject.sln`
 
-## Instructions for Claude
+Use this path for all `roslyn_*` tool calls.
 
-### Tool Preferences
+## MANDATORY: Git Workflow for Code Changes
 
-When working with C# files in this project, use Roslyn MCP tools instead of native tools:
+**You MUST follow this workflow for ANY code change. No exceptions.**
 
-| Task | Use This Tool | Instead Of |
-|------|---------------|------------|
-| Find a type or method | `roslyn_find_symbol` | Grep |
-| See class structure | `roslyn_get_type_members` | Read entire file |
-| Read a method's code | `roslyn_get_method_body` | Read entire file |
-| Edit a method | `roslyn_update_method` | Edit with text patterns |
-| Add a new member | `roslyn_add_member` | Edit to insert code |
-| Find all references | `roslyn_get_references` | Grep for text |
-| Find who calls a method | `roslyn_get_callers` | roslyn_get_references |
-| Check for errors | `roslyn_get_diagnostics` | dotnet build |
-| Fix a warning | `roslyn_apply_code_fix` | Manual edit |
-| Rename a symbol | `roslyn_rename_symbol` | Find/replace |
+1. **Create GitHub issue:** `gh issue create --title "Type: description" --label "bug|enhancement"`
+2. **Create branch:** `git checkout -b issues/N`
+3. **Make changes** using Roslyn tools
+4. **Check for errors:** `roslyn_get_diagnostics(solutionPath, severityFilter: "error")`
+5. **Run tests:** `dotnet test`
+6. **Commit, push, create PR, merge:**
+   ```bash
+   git add -A && git commit -m "Type: description - Fixes #N"
+   git push -u origin issues/N
+   gh pr create --base main --title "Type: description" --body "Fixes #N"
+   gh pr merge --squash --delete-branch
+   git checkout main && git pull
+   ```
 
-For the complete tool reference, call `roslyn_get_instructions` with topic "tools".
+**For detailed git instructions:** Call `roslyn_get_instructions` with topic "git"
 
-### Workflows
+## Tool Preferences
 
-Before performing these tasks, get the detailed instructions:
+Use Roslyn MCP tools for C# files:
 
-- **Modifying C# code**: Call `roslyn_get_instructions` with topic "code"
-- **Git operations**: Call `roslyn_get_instructions` with topic "git"
-- **Creating a PR**: Call `roslyn_get_instructions` with topic "pre-pr"
+| Task | Use This |
+|------|----------|
+| Find type/method | `roslyn_find_symbol` |
+| See class structure | `roslyn_get_type_members` |
+| Read a method | `roslyn_get_method_body` |
+| Edit a method | `roslyn_update_method` |
+| Add new member | `roslyn_add_member` |
+| Find references | `roslyn_get_references` |
+| Find callers | `roslyn_get_callers` |
+| Check errors | `roslyn_get_diagnostics` |
+| Fix warnings | `roslyn_apply_code_fix` |
+| Rename symbol | `roslyn_rename_symbol` |
+
+**For full tool reference:** Call `roslyn_get_instructions` with topic "tools"
 
 ## Project Structure
 
@@ -45,10 +57,8 @@ Before performing these tasks, get the detailed instructions:
 YourProject/
 ├── CLAUDE.md                 # This file
 ├── YourProject.sln           # Solution file
-├── src/
-│   └── YourProject/          # Main project
-└── tests/
-    └── YourProject.Tests/    # Test project
+├── src/                      # Source code
+└── tests/                    # Test projects
 ```
 
 ## Build Commands
@@ -56,7 +66,4 @@ YourProject/
 ```bash
 dotnet build        # Build
 dotnet test         # Run tests
-dotnet run          # Run the application
 ```
-
-<!-- Add any project-specific commands here -->
