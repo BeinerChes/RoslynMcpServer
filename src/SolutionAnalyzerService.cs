@@ -42,6 +42,27 @@ public partial class SolutionAnalyzerService
     }
 
     /// <summary>
+    /// Creates an MSBuildWorkspace configured for WPF/XAML projects.
+    /// This ensures XAML-generated code (InitializeComponent, x:Name fields) is included in compilation.
+    /// </summary>
+    public static MSBuildWorkspace CreateWorkspace()
+    {
+        // Configure workspace with design-time build properties
+        // This tells MSBuild to evaluate projects as Visual Studio would,
+        // including XAML compilation which generates *.g.cs files
+        var properties = new Dictionary<string, string>
+        {
+            { "DesignTimeBuild", "true" },
+            { "BuildingInsideVisualStudio", "true" },
+            { "ProvideCommandLineArgs", "true" }
+        };
+
+        var workspace = MSBuildWorkspace.Create(properties);
+        RegisterFailureHandler(workspace);
+        return workspace;
+    }
+
+    /// <summary>
     /// Loads a solution and returns projects in build order (dependencies first).
     /// </summary>
     public async Task<ProjectBuildOrderResult> GetProjectsInBuildOrderAsync(string solutionPath)
@@ -57,8 +78,7 @@ public partial class SolutionAnalyzerService
             };
         }
 
-        using var workspace = MSBuildWorkspace.Create();
-        RegisterFailureHandler(workspace);
+        using var workspace = CreateWorkspace();
 
         try
         {
