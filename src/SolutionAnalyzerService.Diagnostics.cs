@@ -31,8 +31,7 @@ public partial class SolutionAnalyzerService
             };
         }
 
-        using var workspace = MSBuildWorkspace.Create();
-        RegisterFailureHandler(workspace);
+        using var workspace = CreateWorkspace();
 
         try
         {
