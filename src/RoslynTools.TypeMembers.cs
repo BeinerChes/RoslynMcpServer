@@ -105,6 +105,10 @@ public static partial class RoslynTools
                     includeInherited,
                     compact);
 
+                // Track for visualization sync
+                if (result.Success)
+                    LastSymbolTracker.Track(solutionPath, typeName, "type");
+
                 return new
                 {
                     content = new[]

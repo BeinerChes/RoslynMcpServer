@@ -283,6 +283,9 @@ public static partial class RoslynTools
             })
             .ToList();
 
+        // Track for visualization sync
+        LastSymbolTracker.Track(solutionPath, qualifiedName, "member");
+
         return new GetCallersResult
         {
             Success = true,
