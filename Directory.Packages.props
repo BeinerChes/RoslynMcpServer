@@ -9,6 +9,9 @@
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="5.0.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Features" Version="5.0.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.0.0" />
+    <!-- Graph database packages -->
+    <PackageVersion Include="Microsoft.Data.Sqlite" Version="9.0.5" />
+    <PackageVersion Include="Dapper" Version="2.1.66" />
     <!-- MSBuild packages - excluded from runtime, loaded by MSBuildLocator -->
     <PackageVersion Include="Microsoft.Build" Version="18.0.2" />
     <PackageVersion Include="Microsoft.Build.Framework" Version="18.0.2" />
