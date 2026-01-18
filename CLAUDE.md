@@ -1,27 +1,16 @@
 # CLAUDE.md - Instructions for Claude Code
 
-## Solution Path
+## MANDATORY: Get Instructions Before Operations
 
-**Solution file:** `C:\Users\beine\source\repos\RoslynMcpServer\RoslynMcpServer.slnx`
+**Call `roslyn_get_instructions` with the appropriate topic before each operation:**
 
-Use this path for all `roslyn_*` tool calls.
-
-## MANDATORY: Git Workflow for ALL Code Changes
-
-**You MUST follow this workflow for ANY code change. No exceptions.**
-
-### Before writing ANY code:
-1. **Create GitHub issue:** `gh issue create --title "Type: description" --label "bug|enhancement|documentation"`
-2. **Create branch:** `git checkout -b issues/N` (where N is issue number)
-
-### After making changes:
-3. **Check for errors:** `roslyn_get_diagnostics(solutionPath, severityFilter: "error")`
-4. **Run tests:** `dotnet test` - all must pass
-5. **Commit:** `git add -A && git commit -m "Type: description\n\nFixes #N\n\nCo-Authored-By: Claude <noreply@anthropic.com>"`
-6. **Push and create PR:** `git push -u origin issues/N && gh pr create --base rc/1.0.1 --title "Type: description" --body "Fixes #N"`
-7. **Merge and cleanup:** `gh pr merge --squash --delete-branch && git checkout rc/1.0.1 && git pull`
-
-**For detailed instructions:** Call `roslyn_get_instructions` with topic "git"
+| Before doing this... | Call with topic |
+|---------------------|-----------------|
+| Using any Roslyn tool | `"tools"` |
+| Making any code change | `"git"` |
+| Modifying C# code | `"code"` |
+| Writing or running tests | `"tdd"` |
+| Creating a pull request | `"pre-pr"` |
 
 ## MANDATORY: Documentation Updates
 
@@ -29,12 +18,12 @@ Use this path for all `roslyn_*` tool calls.
 
 | Change Type | Files to Update |
 |-------------|-----------------|
-| New tool added | `Instructions/Topics/tools.md`, `README.md` (Available Tools), `CLAUDE_TEMPLATE.md` |
+| New tool added | `Instructions/Topics/tools.md`, `README.md` (Available Tools table) |
 | Tool modified | `Instructions/Topics/tools.md`, `README.md` if signature changed |
 | New instruction topic | `Instructions/Topics/`, `Instructions.cs` (Available array) |
-| Workflow changed | `Instructions/Topics/git.md` or `pre-pr.md`, templates if affected |
+| Workflow changed | `Instructions/Topics/git.md` or relevant topic file |
 
-**Check before PR:** Are all relevant docs updated?
+**Note:** Templates (`CLAUDE_TEMPLATE.md`, `Instructions/Templates/*.md`) fetch instructions dynamically via `roslyn_get_instructions` - no updates needed for tool/workflow changes.
 
 ## MANDATORY: Real-World Testing for Tools
 
@@ -45,45 +34,9 @@ Use this path for all `roslyn_*` tool calls.
 3. Work with code owner to test on actual solutions
 4. Only after code owner confirms it works → push, PR, merge
 
-This ensures tools work correctly in production scenarios, not just unit test mocks.
-
-## Tool Preferences
-
-Use Roslyn MCP tools for C# files:
-
-| Task | Use This |
-|------|----------|
-| Find type/method | `roslyn_find_symbol` |
-| See class structure | `roslyn_get_type_members` |
-| Read a method | `roslyn_get_method_body` |
-| Edit a method | `roslyn_update_method` |
-| Add new member | `roslyn_add_member` |
-| Delete member | `roslyn_delete_member` |
-| Find references | `roslyn_get_references` |
-| Find callers | `roslyn_get_callers` |
-| Find callers (cached) | `roslyn_query_graph` (auto-refreshes stale files) |
-| Impact analysis | `roslyn_graph_impact` (auto-refreshes stale files) |
-| Find dead code | `roslyn_find_dead_code` (may have false positives*) |
-| Check errors | `roslyn_get_diagnostics` |
-| Fix warnings | `roslyn_apply_code_fix` or `roslyn_batch_apply_code_fixes` |
-| Rename symbol | `roslyn_rename_symbol` |
-
-*Dead code detection may flag DTO properties used via JSON serialization (reflection-based).
-
-**For full tool reference:** Call `roslyn_get_instructions` with topic "tools"
-
 ## Project Overview
 
 This is a **Model Context Protocol (MCP) server** written in C# (.NET 10.0) that provides C# solution analysis capabilities using Microsoft's Roslyn compiler platform.
-
-## Code Guidelines
-
-- Keep .cs files under 300 lines
-- Use C# 12 features (primary constructors, collection expressions)
-- Use `async/await` for all I/O operations
-- All logging goes to stderr (`Console.Error.WriteLine`)
-- Every code change MUST have unit tests
-- Follow TDD: write failing tests BEFORE implementation
 
 ## Build & Test
 
