@@ -79,6 +79,23 @@ EOF
 )"
 ```
 
+### 7. MERGE AND CLEANUP
+After the PR is ready (tests pass, no errors):
+```bash
+gh pr merge --squash --delete-branch
+```
+
+This will:
+- Squash merge the PR into the default branch
+- Delete the remote `issues/N` branch
+- Auto-close issue #N (because of "Fixes #N" in the PR body)
+
+Then update your local repo:
+```bash
+git checkout <default-branch>
+git pull
+```
+
 ## Commit Message Format
 
 ```
