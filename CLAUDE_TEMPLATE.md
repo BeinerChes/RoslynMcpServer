@@ -42,6 +42,7 @@ Use Roslyn MCP tools for C# files:
 | Read a method | `roslyn_get_method_body` |
 | Edit a method | `roslyn_update_method` |
 | Add new member | `roslyn_add_member` |
+| Delete member | `roslyn_delete_member` |
 | Find references | `roslyn_get_references` |
 | Find callers | `roslyn_get_callers` |
 | Find callers (cached) | `roslyn_query_graph` (auto-refreshes stale files) |
