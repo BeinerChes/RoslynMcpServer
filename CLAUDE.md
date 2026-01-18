@@ -23,6 +23,19 @@ Use this path for all `roslyn_*` tool calls.
 
 **For detailed instructions:** Call `roslyn_get_instructions` with topic "git"
 
+## MANDATORY: Documentation Updates
+
+**When adding or modifying tools/features, you MUST update these files:**
+
+| Change Type | Files to Update |
+|-------------|-----------------|
+| New tool added | `Instructions/Topics/tools.md`, `README.md` (Available Tools), `CLAUDE_TEMPLATE.md` |
+| Tool modified | `Instructions/Topics/tools.md`, `README.md` if signature changed |
+| New instruction topic | `Instructions/Topics/`, `Instructions.cs` (Available array) |
+| Workflow changed | `Instructions/Topics/git.md` or `pre-pr.md`, templates if affected |
+
+**Check before PR:** Are all relevant docs updated?
+
 ## Tool Preferences
 
 Use Roslyn MCP tools for C# files:
@@ -46,21 +59,12 @@ Use Roslyn MCP tools for C# files:
 
 This is a **Model Context Protocol (MCP) server** written in C# (.NET 10.0) that provides C# solution analysis capabilities using Microsoft's Roslyn compiler platform.
 
-## Project-Specific Rules
-
-### Maintain Instruction Files
-
-When adding new tools, **YOU MUST update `Instructions/Topics/tools.md`** and `CLAUDE_TEMPLATE.md`.
-
-### Code Guidelines
+## Code Guidelines
 
 - Keep .cs files under 300 lines
 - Use C# 12 features (primary constructors, collection expressions)
 - Use `async/await` for all I/O operations
 - All logging goes to stderr (`Console.Error.WriteLine`)
-
-### Test Requirements
-
 - Every code change MUST have unit tests
 - Follow TDD: write failing tests BEFORE implementation
 
@@ -77,17 +81,3 @@ The MCP server runs as a background process. To rebuild:
 1. Kill running process: `taskkill //F //PID <pid>`
 2. Rebuild: `dotnet build`
 3. Reconnect: `/mcp` → reconnect roslyn
-
-## Project Structure
-
-```
-RoslynMcpServer/
-├── RoslynMcpServer.slnx      # Solution file (use this path!)
-├── CLAUDE.md                 # This file
-├── Instructions/             # Instruction files (copied to output)
-│   ├── Templates/            # CLAUDE.md templates for users
-│   └── Topics/               # Topic-specific instructions
-├── src/                      # Source code
-├── RoslynMcpServer.Graph/    # Call graph database project
-└── RoslynMcpServer.Tests/    # xUnit tests
-```
