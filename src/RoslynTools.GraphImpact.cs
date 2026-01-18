@@ -269,9 +269,11 @@ public static partial class RoslynTools
         }
 
         // Get all symbols that are methods or properties
+        // Issue #36: Filter out external symbols (BCL, framework types)
         var allSymbols = await db.GetSymbolsAsync(solution.Id, null, null);
         var candidateSymbols = allSymbols
             .Where(s => s.Kind is SymbolKind.Method or SymbolKind.Property)
+            .Where(s => !string.IsNullOrEmpty(s.FilePath) && s.FilePath != "external")
             .Where(s => !IsEntryPoint(s))
             .Where(s => includePrivate || !IsPrivateSymbol(s))
             .Where(s => includeTests || !IsTestFile(s.FilePath))
@@ -279,13 +281,31 @@ public static partial class RoslynTools
 
         var deadCode = new List<DeadCodeEntry>();
 
+        // Issue #36: Load Roslyn solution to check for attributes
+        Microsoft.CodeAnalysis.Solution? roslynSolution = null;
+        if (_analyzerService != null)
+        {
+            roslynSolution = await _analyzerService.LoadSolutionAsync(solutionPath);
+        }
+
         foreach (var symbol in candidateSymbols)
         {
             if (deadCode.Count >= maxResults) break;
 
-            var callers = await db.GetCallersAsync(symbol.Id, EdgeType.Calls);
+            // Issue #36: For properties, check Reads/Accesses edges too, not just Calls
+            // Use null edgeType to check ALL edge types
+            var callers = await db.GetCallersAsync(symbol.Id, edgeType: null);
             if (callers.Count == 0)
             {
+                // Issue #36: Skip properties with any attributes (likely used for serialization)
+                if (symbol.Kind == SymbolKind.Property && roslynSolution != null)
+                {
+                    if (await HasAttributesAsync(roslynSolution, symbol.FilePath, symbol.Line))
+                    {
+                        continue;
+                    }
+                }
+
                 deadCode.Add(new DeadCodeEntry
                 {
                     Name = symbol.Name,
@@ -337,6 +357,7 @@ public static partial class RoslynTools
 
         // Common entry points that shouldn't be flagged as dead code
         return name == "Main" ||
+               name == "RunAsync" || // Issue #36: Common entry point pattern
                name.StartsWith("On") || // Event handlers: OnClick, OnLoad, etc.
                name.EndsWith("Async") && name.StartsWith("On") ||
                qualifiedName.Contains(".Program.") ||
@@ -355,6 +376,46 @@ public static partial class RoslynTools
         // and symbol name starts with underscore or lowercase, likely private
         return symbol.Name.StartsWith("_") ||
                (symbol.Name.Length > 0 && char.IsLower(symbol.Name[0]));
+    }
+
+    /// <summary>
+    /// Checks if a symbol at the given file/line has any attributes.
+    /// Issue: #36 - Properties with attributes are likely used for serialization.
+    /// </summary>
+    private static async Task<bool> HasAttributesAsync(
+        Microsoft.CodeAnalysis.Solution solution, string filePath, int line)
+    {
+        try
+        {
+            var document = solution.Projects
+                .SelectMany(p => p.Documents)
+                .FirstOrDefault(d => d.FilePath == filePath);
+
+            if (document == null) return false;
+
+            var syntaxRoot = await document.GetSyntaxRootAsync();
+            if (syntaxRoot == null) return false;
+
+            // Find the node at the given line (0-based in Roslyn)
+            var lineSpan = syntaxRoot.SyntaxTree.GetText().Lines[line - 1];
+            var node = syntaxRoot.FindNode(lineSpan.Span);
+
+            // Walk up to find a property declaration
+            while (node != null)
+            {
+                if (node is Microsoft.CodeAnalysis.CSharp.Syntax.PropertyDeclarationSyntax propDecl)
+                {
+                    return propDecl.AttributeLists.Count > 0;
+                }
+                node = node.Parent;
+            }
+
+            return false;
+        }
+        catch
+        {
+            return false; // If we can't check, assume no attributes
+        }
     }
 
     private static object CreateToolResponse(object result, bool isError = false)

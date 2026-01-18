@@ -291,4 +291,89 @@ public class DeadCodeDetectionTests : IAsyncLifetime
         // Assert
         Assert.Empty(callers);
     }
+
+    /// <summary>
+    /// Tests that external symbols (BCL, framework) are filtered out.
+    /// Issue: #36
+    /// </summary>
+    [Fact]
+    public async Task GetSymbolsAsync_ExternalSymbols_FilteredByFilePath()
+    {
+        // Arrange - create local and external symbols
+        await CreateSymbolAsync("LocalMethod", SymbolKind.Method, @"C:\test\Service.cs");
+        await CreateSymbolAsync("ExternalMethod", SymbolKind.Method, "external");
+
+        // Act - get all symbols
+        var allSymbols = await _db.GetSymbolsAsync(_solution.Id, kind: SymbolKind.Method);
+
+        // Filter like FindDeadCodeAsync does
+        var localSymbols = allSymbols
+            .Where(s => !string.IsNullOrEmpty(s.FilePath) && s.FilePath != "external")
+            .ToList();
+
+        // Assert - external symbols filtered out
+        Assert.Single(localSymbols);
+        Assert.Equal("LocalMethod", localSymbols[0].Name);
+    }
+
+    /// <summary>
+    /// Tests that properties accessed via Reads edge are not flagged as dead.
+    /// Issue: #36 - Properties use Reads/Accesses edges, not Calls.
+    /// </summary>
+    [Fact]
+    public async Task GetCallersAsync_PropertyWithReadsEdge_ReturnsCallers()
+    {
+        // Arrange - create property and reader
+        var reader = await CreateSymbolAsync("ReaderMethod", SymbolKind.Method);
+        var property = await CreateSymbolAsync("MyProperty", SymbolKind.Property);
+
+        // Property is read, not called
+        await _db.InsertEdgeAsync(reader.Id, property.Id, EdgeType.Reads);
+
+        // Act - check callers with null edgeType (all edges)
+        var callers = await _db.GetCallersAsync(property.Id, edgeType: null);
+
+        // Assert - should find the reader
+        Assert.Single(callers);
+        Assert.Equal("ReaderMethod", callers[0].Name);
+    }
+
+    /// <summary>
+    /// Tests that properties accessed via Accesses edge are not flagged as dead.
+    /// Issue: #36
+    /// </summary>
+    [Fact]
+    public async Task GetCallersAsync_PropertyWithAccessesEdge_ReturnsCallers()
+    {
+        // Arrange
+        var accessor = await CreateSymbolAsync("AccessorMethod", SymbolKind.Method);
+        var property = await CreateSymbolAsync("MyProperty", SymbolKind.Property);
+
+        await _db.InsertEdgeAsync(accessor.Id, property.Id, EdgeType.Accesses);
+
+        // Act - check callers with null edgeType
+        var callers = await _db.GetCallersAsync(property.Id, edgeType: null);
+
+        // Assert
+        Assert.Single(callers);
+    }
+
+    /// <summary>
+    /// Tests that Calls-only check misses property reads.
+    /// Issue: #36 - This was the original bug.
+    /// </summary>
+    [Fact]
+    public async Task GetCallersAsync_PropertyWithReadsEdge_CallsOnlyMissesIt()
+    {
+        // Arrange
+        var reader = await CreateSymbolAsync("ReaderMethod", SymbolKind.Method);
+        var property = await CreateSymbolAsync("MyProperty", SymbolKind.Property);
+        await _db.InsertEdgeAsync(reader.Id, property.Id, EdgeType.Reads);
+
+        // Act - check with Calls edge type only (old behavior)
+        var callersCallsOnly = await _db.GetCallersAsync(property.Id, edgeType: EdgeType.Calls);
+
+        // Assert - Calls-only misses the read
+        Assert.Empty(callersCallsOnly);
+    }
 }

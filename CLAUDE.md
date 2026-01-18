@@ -49,9 +49,14 @@ Use Roslyn MCP tools for C# files:
 | Add new member | `roslyn_add_member` |
 | Find references | `roslyn_get_references` |
 | Find callers | `roslyn_get_callers` |
+| Find callers (cached) | `roslyn_query_graph` (auto-refreshes stale files) |
+| Impact analysis | `roslyn_graph_impact` (auto-refreshes stale files) |
+| Find dead code | `roslyn_find_dead_code` (may have false positives*) |
 | Check errors | `roslyn_get_diagnostics` |
 | Fix warnings | `roslyn_apply_code_fix` or `roslyn_batch_apply_code_fixes` |
 | Rename symbol | `roslyn_rename_symbol` |
+
+*Dead code detection may flag DTO properties used via JSON serialization (reflection-based).
 
 **For full tool reference:** Call `roslyn_get_instructions` with topic "tools"
 

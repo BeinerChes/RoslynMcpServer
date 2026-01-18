@@ -146,9 +146,23 @@ The CLAUDE.md file is instructions **for Claude to read**, not commands for you 
 | `roslyn_get_projects_in_build_order` | Get solution structure and dependencies |
 | `roslyn_graph_status` | Check if a call graph database exists for a solution |
 | `roslyn_graph_analyze` | Build or update the call graph database |
-| `roslyn_query_graph` | Query callers/callees with recursive depth from the graph |
-| `roslyn_graph_impact` | Analyze blast radius - what breaks if you change a symbol |
-| `roslyn_find_dead_code` | Find methods and properties with no callers |
+| `roslyn_query_graph` | Query callers/callees with recursive depth (auto-refreshes stale files) |
+| `roslyn_graph_impact` | Analyze blast radius - what breaks if you change a symbol (auto-refreshes) |
+| `roslyn_find_dead_code` | Find methods/properties with no callers (see limitations below) |
+
+### Dead Code Detection Limitations
+
+`roslyn_find_dead_code` uses static analysis and may produce **false positives** for:
+- **DTO properties** used via JSON serialization (reflection-based access cannot be tracked)
+- **Properties without attributes** in model classes
+
+The tool automatically excludes:
+- Entry points (`Main`, `RunAsync`, event handlers)
+- Properties with any attributes (likely used for serialization)
+- External/BCL symbols
+- Test files (optional)
+
+Review results carefully - some flagged code may be used via reflection.
 
 ## Usage Examples
 
