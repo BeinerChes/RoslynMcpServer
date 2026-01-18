@@ -97,6 +97,10 @@ public static partial class RoslynTools
                     methodName,
                     parameterTypes);
 
+                // Track for visualization sync
+                if (result.Success)
+                    LastSymbolTracker.Track(solutionPath, $"{typeName}.{methodName}", "method");
+
                 return new
                 {
                     content = new[]

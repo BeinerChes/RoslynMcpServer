@@ -173,6 +173,10 @@
             <option value="">All projects</option>
         </select>
         <input type="text" id="search" placeholder="Search symbol...">
+        <label style="margin-left: 16px; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+            <input type="checkbox" id="meditation-mode" style="cursor: pointer;" checked>
+            <span>Meditation</span>
+        </label>
         <div id="stats"></div>
     </div>
 
@@ -225,6 +229,7 @@
         import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
         import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
         import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+        import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
         const kindColors = {
             namespace: 0xffd700,  // Gold - galaxy cluster
@@ -247,7 +252,7 @@
         };
 
         let scene, camera, renderer, controls;
-        let composer, bloomPass; // Post-processing for bloom
+        let composer; // Post-processing for selective bloom
         let starsMesh, planetsMesh, highlightEdges;
         let starLights = []; // Point lights for stars
         let graphData = { nodes: [], links: [] };
@@ -269,6 +274,10 @@
         let starViewMode = false;
         let selectedStar = null;
 
+        // Meditation mode - follow MCP server activity
+        let meditationMode = true;
+        let lastSymbolTimestamp = null;
+        let meditationInterval = null;
 
         function init() {
             const container = document.getElementById('canvas-container');
@@ -279,13 +288,18 @@
             scene.background = new THREE.Color(0x000000); // Pure black space
 
             // Ambient light for overall visibility
-            const ambientLight = new THREE.AmbientLight(0x444466, 1.5);
+            const ambientLight = new THREE.AmbientLight(0xffffff, 2.0);
             scene.add(ambientLight);
 
-            // Add a dim directional light for depth
-            const dirLight = new THREE.DirectionalLight(0xffffff, 0.3);
+            // Directional light for reflections
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
             dirLight.position.set(1, 1, 1);
             scene.add(dirLight);
+
+            // Second directional light from opposite side
+            const dirLight2 = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight2.position.set(-1, -0.5, -1);
+            scene.add(dirLight2);
 
             camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 50000);
             camera.position.set(0, 500, 1500);
@@ -293,7 +307,23 @@
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(width, height);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.0;
             container.appendChild(renderer.domElement);
+
+            // Set up post-processing with selective bloom
+            // High threshold (1.0) means only HDR bright colors (stars) will bloom
+            composer = new EffectComposer(renderer);
+            composer.addPass(new RenderPass(scene, camera));
+
+            const bloomPass = new UnrealBloomPass(
+                new THREE.Vector2(width, height),
+                0.6,   // strength
+                0.05,  // radius (very tight glow)
+                0.85   // threshold
+            );
+            composer.addPass(bloomPass);
+            composer.addPass(new OutputPass());
 
             controls = new OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
@@ -318,6 +348,7 @@
             });
             document.getElementById('project-filter').addEventListener('change', loadGraph);
             document.getElementById('search').addEventListener('input', handleSearch);
+            document.getElementById('meditation-mode').addEventListener('change', e => toggleMeditationMode(e.target.checked));
 
             renderer.domElement.addEventListener('mousemove', onMouseMove);
             renderer.domElement.addEventListener('click', onMouseClick);
@@ -350,7 +381,13 @@
             updateHighlightAnimation();
             updateOrbits();
             controls.update();
-            renderer.render(scene, camera);
+
+            // Use post-processing for bloom effect on stars
+            if (composer) {
+                composer.render();
+            } else {
+                renderer.render(scene, camera);
+            }
         }
 
         function updateHighlightAnimation() {
@@ -461,6 +498,7 @@
             camera.aspect = width / height;
             camera.updateProjectionMatrix();
             renderer.setSize(width, height);
+            if (composer) composer.setSize(width, height);
         }
 
         // Smooth zoom - target distance from orbit center
@@ -887,6 +925,11 @@
                 browserUrl.searchParams.set('solution', solutionPath);
                 window.history.replaceState({}, '', browserUrl);
 
+                // Start meditation mode if enabled by default
+                if (meditationMode && !meditationInterval) {
+                    toggleMeditationMode(true);
+                }
+
             } catch (error) {
                 showError(error.message);
             } finally {
@@ -1212,13 +1255,13 @@
                 typeCallers.set(key, current + callers);
             });
 
-            // Create stars (types) as glowing spheres
+            // Create stars (types) as bright glowing spheres that bloom
             if (typeNodes.length > 0) {
                 console.log('Creating', typeNodes.length, 'stars');
                 const starGeometry = new THREE.SphereGeometry(1, 24, 16);
-                // Clean white stars
+                // Bright white stars - will bloom due to high brightness
                 const starMaterial = new THREE.MeshBasicMaterial({
-                    color: 0xffffff
+                    color: new THREE.Color(1.2, 1.2, 1.2) // HDR white - slightly above 1.0, will bloom subtly
                 });
 
                 starsMesh = new THREE.InstancedMesh(starGeometry, starMaterial, typeNodes.length);
@@ -1268,12 +1311,10 @@
 
             // Create planets (members) with sphere geometry - use BasicMaterial so they glow
             if (memberNodes.length > 0) {
-                const sphereGeometry = new THREE.SphereGeometry(1, 10, 8);
-                // MeshBasicMaterial - planets glow on their own, no light needed
+                const sphereGeometry = new THREE.SphereGeometry(1, 16, 12);
+                // MeshBasicMaterial - self-illuminating planets
                 const sphereMaterial = new THREE.MeshBasicMaterial({
-                    color: 0xffffff,
-                    transparent: true,
-                    opacity: 0.9
+                    color: 0xffffff
                 });
 
                 planetsMesh = new THREE.InstancedMesh(sphereGeometry, sphereMaterial, memberNodes.length);
@@ -1557,6 +1598,90 @@
 
         function hideError() {
             document.getElementById('error').classList.remove('visible');
+        }
+
+        // Meditation mode - polls for last symbol and flies to it
+        function toggleMeditationMode(enabled) {
+            meditationMode = enabled;
+            if (enabled) {
+                console.log('Meditation mode enabled - polling every 10 seconds');
+                pollLastSymbol(); // Initial poll
+                meditationInterval = setInterval(pollLastSymbol, 10000);
+            } else {
+                console.log('Meditation mode disabled');
+                if (meditationInterval) {
+                    clearInterval(meditationInterval);
+                    meditationInterval = null;
+                }
+            }
+        }
+
+        async function pollLastSymbol() {
+            if (!meditationMode) return;
+
+            try {
+                const response = await fetch('/api/last-symbol');
+                const data = await response.json();
+
+                if (!data.exists) return;
+
+                // Check if this is a new symbol (different timestamp)
+                const newTimestamp = new Date(data.timestamp).getTime();
+                if (lastSymbolTimestamp === newTimestamp) return;
+
+                lastSymbolTimestamp = newTimestamp;
+                console.log('New symbol detected:', data.qualifiedName);
+
+                // Find the node by qualified name
+                const node = findNodeByQualifiedName(data.qualifiedName);
+                if (node) {
+                    console.log('Flying to:', node.qualifiedName || node.name);
+                    flyToNode(node);
+                    showNodeInfo(node);
+                } else {
+                    console.log('Symbol not found in current view:', data.qualifiedName);
+                }
+            } catch (err) {
+                console.error('Error polling last symbol:', err);
+            }
+        }
+
+        function findNodeByQualifiedName(qualifiedName) {
+            // First try exact match
+            for (const node of graphData.nodes) {
+                if (node.qualifiedName === qualifiedName) {
+                    return node;
+                }
+            }
+
+            // Try matching method (without parameters)
+            const nameWithoutParams = qualifiedName.split('(')[0];
+            for (const node of graphData.nodes) {
+                if (node.qualifiedName === nameWithoutParams) {
+                    return node;
+                }
+            }
+
+            // Try matching just the end part (Type.Method or just Type)
+            const parts = nameWithoutParams.split('.');
+            if (parts.length >= 2) {
+                const shortName = parts.slice(-2).join('.');
+                for (const node of graphData.nodes) {
+                    if (node.qualifiedName && node.qualifiedName.endsWith(shortName)) {
+                        return node;
+                    }
+                }
+            }
+
+            // Try type-only match (for get_type_members)
+            const typeName = parts.slice(-1)[0];
+            for (const node of typeNodes) {
+                if (node.typeName === typeName || node.qualifiedName?.endsWith('.' + typeName)) {
+                    return node;
+                }
+            }
+
+            return null;
         }
 
         init();
