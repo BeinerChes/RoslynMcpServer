@@ -40,7 +40,7 @@ public sealed partial class GraphDatabase
     }
 
     /// <summary>
-    /// Gets a symbol by its qualified name.
+    /// Gets a symbol by its qualified name (exact match).
     /// </summary>
     public async Task<SymbolRecord?> GetSymbolByQualifiedNameAsync(long solutionId, string qualifiedName)
     {
@@ -53,6 +53,59 @@ public sealed partial class GraphDatabase
             WHERE SolutionId = @SolutionId AND QualifiedName = @QualifiedName
             """,
             new { SolutionId = solutionId, QualifiedName = qualifiedName });
+    }
+
+    /// <summary>
+    /// Finds a symbol by partial name with smart matching.
+    /// Supports: exact match, method name only, Type.Method, or partial namespace.
+    /// Returns error with candidates if multiple matches found.
+    /// Issue: #33
+    /// </summary>
+    public async Task<SymbolSearchResult> FindSymbolAsync(long solutionId, string searchName)
+    {
+        if (_connection == null) throw new InvalidOperationException("Database not open");
+
+        // 1. Try exact match first
+        var exact = await GetSymbolByQualifiedNameAsync(solutionId, searchName);
+        if (exact != null)
+        {
+            return new SymbolSearchResult { Symbol = exact };
+        }
+
+        // 2. Try partial matching - search for symbols ending with the search term
+        // This handles: "MethodName", "Type.MethodName", "Namespace.Type.MethodName"
+        var candidates = await _connection.QueryAsync<SymbolRecord>(
+            """
+            SELECT Id, SolutionId, Kind, Name, QualifiedName, FilePath, Line, Column, BodyHash, ContainingTypeId, Status, LastAnalyzed
+            FROM Symbols
+            WHERE SolutionId = @SolutionId
+              AND (QualifiedName LIKE '%.' || @SearchName || '(%'
+                   OR QualifiedName LIKE '%.' || @SearchName
+                   OR Name = @SearchName)
+            """,
+            new { SolutionId = solutionId, SearchName = searchName });
+
+        var matches = candidates.ToList();
+
+        if (matches.Count == 0)
+        {
+            return new SymbolSearchResult
+            {
+                Error = $"Symbol '{searchName}' not found in graph."
+            };
+        }
+
+        if (matches.Count == 1)
+        {
+            return new SymbolSearchResult { Symbol = matches[0] };
+        }
+
+        // Multiple matches - return error with candidates
+        return new SymbolSearchResult
+        {
+            Error = $"Multiple symbols match '{searchName}'. Please be more specific.",
+            Candidates = matches
+        };
     }
 
     /// <summary>
@@ -173,4 +226,26 @@ public sealed class SymbolStats
     public int Analyzed { get; set; }
     public int Pending { get; set; }
     public int Dirty { get; set; }
+}
+
+/// <summary>
+/// Result of a symbol search operation.
+/// Issue: #33
+/// </summary>
+public sealed class SymbolSearchResult
+{
+    /// <summary>
+    /// The found symbol (null if not found or ambiguous).
+    /// </summary>
+    public SymbolRecord? Symbol { get; set; }
+
+    /// <summary>
+    /// Error message if symbol not found or ambiguous.
+    /// </summary>
+    public string? Error { get; set; }
+
+    /// <summary>
+    /// List of candidates when multiple symbols match.
+    /// </summary>
+    public List<SymbolRecord>? Candidates { get; set; }
 }
