@@ -39,9 +39,11 @@ You have access to Roslyn MCP tools for C# code analysis. These tools provide se
 |------|---------|
 | `roslyn_graph_status` | Check if call graph exists for solution |
 | `roslyn_graph_analyze` | Build/update call graph database |
-| `roslyn_query_graph` | Query callers/callees with recursive depth |
-| `roslyn_graph_impact` | Analyze blast radius if a symbol changes |
-| `roslyn_find_dead_code` | Find methods/properties with no callers |
+| `roslyn_query_graph` | Query callers/callees with recursive depth (auto-refreshes stale files) |
+| `roslyn_graph_impact` | Analyze blast radius if a symbol changes (auto-refreshes stale files) |
+| `roslyn_find_dead_code` | Find methods/properties with no callers (may have false positives*) |
+
+*Dead code detection limitations: DTO properties used via JSON serialization (reflection-based) may be flagged as dead code since the call graph cannot track reflection. Properties with attributes are automatically excluded.
 
 ### Solution & Project
 
@@ -111,7 +113,11 @@ Use native tools (Read, Edit, Grep, Glob) only for:
 ### Finding dead code
 1. `roslyn_graph_analyze(solutionPath)` → build call graph
 2. `roslyn_find_dead_code(solutionPath)` → find unused methods/properties
-3. Review results - excludes entry points like Main, event handlers, interface implementations
+3. Review results - excludes:
+   - Entry points (Main, RunAsync, event handlers)
+   - Properties with attributes (likely serialization)
+   - External/BCL symbols
+4. **Note**: May produce false positives for DTO properties used via JSON serialization (reflection-based access not tracked)
 
 ### Fixing compiler warnings
 1. `roslyn_get_diagnostics(severityFilter: "warning")` → see all warnings
