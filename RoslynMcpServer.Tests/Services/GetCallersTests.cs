@@ -38,7 +38,7 @@ public class GetCallersTests
         // Arrange
         var service = new SolutionAnalyzerService();
         var solutionPath = Path.GetFullPath(
-            Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "RoslynMcpServer.slnx"));
+            Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "RoslynMcpServer.slnx"));
 
         // Act
         var result = await service.GetCallersAsync(

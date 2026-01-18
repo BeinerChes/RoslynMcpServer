@@ -46,12 +46,18 @@ public partial class SolutionAnalyzerService
             };
         }
 
+        // Run design-time builds for WPF projects to generate *.g.cs files
+        RunDesignTimeBuildsForSolution(solutionPath);
+
         using var workspace = CreateWorkspace();
 
         try
         {
             Console.Error.WriteLine($"Loading solution: {solutionPath}");
             var solution = await workspace.OpenSolutionAsync(solutionPath);
+
+            // Enhance solution with WPF/XAML generated files (fallback for any missed files)
+            solution = EnhanceSolutionWithGeneratedFiles(solution);
 
             // Find the document
             var documentId = solution.GetDocumentIdsWithFilePath(filePath).FirstOrDefault();

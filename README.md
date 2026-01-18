@@ -335,6 +335,26 @@ If multiple fixes are available, the tool returns the list. Specify `fixIndex` t
 
 The tool updates all references across the entire solution automatically.
 
+## WPF/XAML Support
+
+As of version 1.0.0, the server fully supports WPF/XAML projects.
+
+**How it works:**
+
+1. Before loading a solution, the server detects WPF projects (by checking for `UseWPF=true` or WPF references)
+2. For each WPF project, it runs a **design-time build** to generate `*.g.cs` files
+3. This uses MSBuild's `MarkupCompilePass1` and `MarkupCompilePass2` targets - the same mechanism Visual Studio uses
+4. Generated files are then included in the Roslyn compilation
+
+**Benefits:**
+- Works even if the project has never been built before
+- No false positive errors for `InitializeComponent` or `x:Name` elements
+- Same behavior as Visual Studio's IntelliSense
+
+**Note:** The first analysis of a WPF project may take a few extra seconds while the design-time build runs.
+
+See [GitHub issue #11](https://github.com/BeinerChes/RoslynMcpServer/issues/11) for details
+
 ## Troubleshooting
 
 ### "Solution file not found"
