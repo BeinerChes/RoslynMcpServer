@@ -120,14 +120,42 @@ public static partial class RoslynTools
                     };
                 }
 
+                // For git topic, generate a token for hook validation
+                string? tokenInfo = null;
+                if (topicName == "git")
+                {
+                    var token = HookTokenService.Instance.GenerateToken("git");
+                    // Write token to file for hook to read
+                    WriteGitToken(token);
+                    tokenInfo = $"\n\n---\n**Hook Token Generated:** Valid for 5 minutes. Token written to `~/.claude/roslyn-git-token`";
+                }
+
                 // Return just the instructions text directly for easy consumption
                 return new
                 {
                     content = new[]
                     {
-                        new { type = "text", text = instructions }
+                        new { type = "text", text = instructions + (tokenInfo ?? "") }
                     }
                 };
             });
+    }
+
+    private static void WriteGitToken(string token)
+    {
+        try
+        {
+            var claudeDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                ".claude");
+            Directory.CreateDirectory(claudeDir);
+
+            var tokenFile = Path.Combine(claudeDir, "roslyn-git-token");
+            File.WriteAllText(tokenFile, token);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Warning: Could not write git token file: {ex.Message}");
+        }
     }
 }

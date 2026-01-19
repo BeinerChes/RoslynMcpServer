@@ -46,6 +46,7 @@ public static partial class RoslynTools
         RegisterFindDeadCodeTool(server);
         RegisterGetTemplateTool(server);
         RegisterGetInstructionsTool(server);
+        RegisterSetupHooksTool(server);
     }
 
     /// <summary>
