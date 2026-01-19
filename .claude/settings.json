@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/enforce-git-instructions.sh\""
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/enforce-git-instructions.py\""
           }
         ]
       }
