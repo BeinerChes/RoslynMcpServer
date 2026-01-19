@@ -15,7 +15,7 @@ public static class Instructions
     {
         private static readonly string TemplatesPath = Path.Combine(BasePath, "Templates");
 
-        public static string[] Available => ["minimal", "standard", "tdd", "team"];
+        public static string[] Available => ["standard"];
 
         public static string? Get(string templateName)
         {
@@ -32,7 +32,7 @@ public static class Instructions
     {
         private static readonly string TopicsPath = Path.Combine(BasePath, "Topics");
 
-        public static string[] Available => ["code", "git", "tdd", "pre-pr", "tools"];
+        public static string[] Available => ["code", "git", "plan", "tdd", "pre-pr", "tools"];
 
         public static string? Get(string topicName)
         {

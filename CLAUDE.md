@@ -1,11 +1,16 @@
 # CLAUDE.md - Instructions for Claude Code
 
+## MANDATORY: Start Every Session with Plan Instructions
+
+**Before doing anything else**, call `roslyn_get_instructions("plan")` and follow those instructions.
+
 ## MANDATORY: Get Instructions Before Operations
 
 **Call `roslyn_get_instructions` with the appropriate topic before each operation:**
 
 | Before doing this... | Call with topic |
 |---------------------|-----------------|
+| Starting or resuming a task | `"plan"` |
 | Using any Roslyn tool | `"tools"` |
 | Making any code change | `"git"` |
 | Modifying C# code | `"code"` |
@@ -47,7 +52,13 @@ dotnet test            # Run tests
 
 ### Rebuilding After Code Changes
 
-The MCP server runs as a background process. To rebuild:
-1. Kill running process: `taskkill //F //PID <pid>`
-2. Rebuild: `dotnet build`
-3. Reconnect: `/mcp` → reconnect roslyn
+The MCP server runs as a background process and locks the exe. **Before rebuilding, kill it automatically:**
+
+```bash
+taskkill //F //IM RoslynMcpServer.exe
+dotnet build
+```
+
+After successful build, tell the user: "Reconnect MCP with `/mcp` → reconnect roslyn"
+
+**Do NOT ask the user to kill processes** - just do it.

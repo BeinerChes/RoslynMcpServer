@@ -100,18 +100,15 @@ If it uses `roslyn_find_symbol`, everything is working. If it uses `grep`, check
 - The path to RoslynMcpServer is correct
 - The `CLAUDE.md` file exists
 
-## Available Templates
+## Available Template
 
-The server provides different CLAUDE.md templates for different workflows:
+Get the CLAUDE.md template for your project:
 
-| Template | Best For | Get It |
-|----------|----------|--------|
-| `minimal` | Quick setup, basic Roslyn tools | `roslyn_get_template(template: "minimal")` |
-| `standard` | Most projects - tools + git workflow | `roslyn_get_template(template: "standard")` |
-| `tdd` | Test-driven development teams | `roslyn_get_template(template: "tdd")` |
-| `team` | Full workflow with issues + TDD | `roslyn_get_template(template: "team")` |
+```
+Ask Claude: "Get the standard template using roslyn_get_template"
+```
 
-Ask Claude to fetch any template: "Get the tdd template using roslyn_get_template"
+The template tells Claude to fetch topic-specific instructions via `roslyn_get_instructions`. Available topics: `plan`, `tools`, `git`, `code`, `tdd`, `pre-pr`.
 
 ## Why CLAUDE.md Matters
 
@@ -150,6 +147,8 @@ The CLAUDE.md file is instructions **for Claude to read**, not commands for you 
 | `roslyn_query_graph` | Query callers/callees with recursive depth (auto-refreshes stale files) |
 | `roslyn_graph_impact` | Analyze blast radius - what breaks if you change a symbol (auto-refreshes) |
 | `roslyn_find_dead_code` | Find methods/properties with no callers (see limitations below) |
+| `roslyn_get_template` | Get CLAUDE.md template for your project |
+| `roslyn_get_instructions` | Get topic-specific instructions (tools, git, code, plan, tdd, pre-pr) |
 
 ### Dead Code Detection Limitations
 
@@ -308,11 +307,14 @@ The first operation loads the entire solution into memory. Subsequent operations
 
 ```
 RoslynMcpServer/
-├── RoslynMcpServer/              # Main MCP server
-│   ├── Program.cs                # Entry point
+├── src/                          # Main MCP server source
 │   ├── McpServer.cs              # MCP protocol (JSON-RPC over stdio)
 │   ├── RoslynTools.*.cs          # Tool registrations (partial class)
-│   └── SolutionAnalyzerService.*.cs  # Roslyn logic (partial class)
+│   ├── SolutionAnalyzerService.*.cs  # Roslyn logic (partial class)
+│   └── Instructions.cs           # Dynamic instruction loading
+├── Instructions/                 # Markdown instruction files
+│   ├── Topics/                   # Topic instructions (code, git, plan, tdd, pre-pr, tools)
+│   └── Templates/                # CLAUDE.md templates (minimal, standard, tdd, team)
 ├── RoslynMcpServer.Graph/        # Call graph database
 │   ├── GraphDatabase.cs          # SQLite-based call graph storage
 │   └── GraphAnalyzer.cs          # Builds call graph from Roslyn
@@ -367,6 +369,8 @@ MIT
 | `CLAUDE_TEMPLATE.md` | **Copy this to your projects** as `CLAUDE.md` - tells Claude to use Roslyn tools |
 | `CLAUDE.md` | Instructions for developing this repository itself (not for end users) |
 | `.mcp.json` | Example MCP configuration for Claude Code |
+| `Instructions/Topics/` | Topic instructions fetched by `roslyn_get_instructions` |
+| `Instructions/Templates/` | CLAUDE.md templates fetched by `roslyn_get_template` |
 
 ## Contributing
 
