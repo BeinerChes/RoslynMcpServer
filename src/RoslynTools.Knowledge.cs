@@ -241,7 +241,6 @@ public static partial class RoslynTools
                             r.Entry.Id,
                             r.Entry.Category,
                             r.Entry.Title,
-                            r.Entry.Content,
                             r.Entry.SymbolLinks,
                             r.Entry.Tags,
                             r.Entry.Confidence,
@@ -341,7 +340,6 @@ public static partial class RoslynTools
                             e.Id,
                             e.Category,
                             e.Title,
-                            e.Content,
                             e.SymbolLinks,
                             e.Tags,
                             e.Confidence,
@@ -426,6 +424,88 @@ public static partial class RoslynTools
                 catch (Exception ex)
                 {
                     return CreateErrorResponse($"Error deleting knowledge: {ex.Message}");
+                }
+            });
+    }
+
+    /// <summary>
+    /// Registers the roslyn_knowledge_get tool.
+    /// </summary>
+    internal static void RegisterKnowledgeGetTool(McpServer server)
+    {
+        server.RegisterTool(
+            "roslyn_knowledge_get",
+            new ToolDefinition
+            {
+                Description = "Gets a single knowledge entry by ID with full content. Use this after searching or listing to fetch complete details.",
+                InputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        solutionPath = new
+                        {
+                            type = "string",
+                            description = "Absolute path to the .sln or .slnx solution file"
+                        },
+                        id = new
+                        {
+                            type = "integer",
+                            description = "ID of the knowledge entry to retrieve"
+                        }
+                    },
+                    required = new[] { "solutionPath", "id" }
+                },
+                Annotations = new ToolAnnotations
+                {
+                    ReadOnlyHint = true,
+                    IdempotentHint = true
+                }
+            },
+            async args =>
+            {
+                var solutionPath = args?["solutionPath"]?.GetValue<string>();
+                var id = args?["id"]?.GetValue<long>() ?? 0;
+
+                if (string.IsNullOrWhiteSpace(solutionPath))
+                    return CreateErrorResponse("Error: solutionPath is required");
+
+                if (!File.Exists(solutionPath))
+                    return CreateErrorResponse($"Error: Solution file not found: {solutionPath}");
+
+                if (id <= 0)
+                    return CreateErrorResponse("Error: valid id is required");
+
+                try
+                {
+                    var db = await GetKnowledgeDatabaseAsync(solutionPath);
+                    var entry = await db.GetEntryByIdAsync(id);
+
+                    if (entry == null)
+                    {
+                        return CreateErrorResponse($"Error: Knowledge entry {id} not found");
+                    }
+
+                    return CreateJsonResponse(new
+                    {
+                        success = true,
+                        entry = new
+                        {
+                            entry.Id,
+                            entry.Category,
+                            entry.Title,
+                            entry.Content,
+                            entry.SymbolLinks,
+                            entry.Tags,
+                            entry.Confidence,
+                            entry.CreatedAt,
+                            entry.UpdatedAt
+                        }
+                    });
+                }
+                catch (Exception ex)
+                {
+                    return CreateErrorResponse($"Error getting knowledge entry: {ex.Message}");
                 }
             });
     }
