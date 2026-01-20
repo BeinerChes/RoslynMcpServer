@@ -27,6 +27,7 @@
 | Tool modified | `Instructions/Topics/tools.md`, `README.md` if signature changed |
 | New instruction topic | `Instructions/Topics/`, `Instructions.cs` (Available array) |
 | Workflow changed | `Instructions/Topics/git.md` or relevant topic file |
+| Hook added/modified | `Instructions/Hooks/`, `RoslynTools.SetupHooks.cs` |
 
 **Note:** Templates (`CLAUDE_TEMPLATE.md`, `Instructions/Templates/*.md`) fetch instructions dynamically via `roslyn_get_instructions` - no updates needed for tool/workflow changes.
 

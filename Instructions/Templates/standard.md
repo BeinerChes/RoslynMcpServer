@@ -19,6 +19,13 @@
 | Writing or running tests | `"tdd"` |
 | Creating a pull request | `"pre-pr"` |
 
+## Plan Files
+
+Plans are stored **per-solution** in `.claude/plans/`:
+- Create plan files for non-trivial tasks
+- Links to GitHub issues: `.claude/plans/issue-<number>.md`
+- Tracks work across sessions, prevents context loss
+
 ## Build Commands
 
 ```bash

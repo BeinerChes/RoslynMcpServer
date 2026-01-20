@@ -91,8 +91,8 @@ public static partial class RoslynTools
                         topic = new
                         {
                             type = "string",
-                            description = "Topic: 'code' (C# best practices), 'git' (workflow, branches, commits), 'tdd' (test-driven development), 'pre-pr' (checklist before PR), 'tools' (Roslyn tool preferences)",
-                            @enum = new[] { "code", "git", "tdd", "pre-pr", "tools" }
+                            description = "Topic: 'code' (C# best practices), 'git' (workflow, branches, commits), 'plan' (session planning, issue tracking), 'tdd' (test-driven development), 'pre-pr' (checklist before PR), 'tools' (Roslyn tool preferences)",
+                            @enum = new[] { "code", "git", "plan", "tdd", "pre-pr", "tools" }
                         }
                     },
                     required = new[] { "topic" }
@@ -120,14 +120,19 @@ public static partial class RoslynTools
                     };
                 }
 
-                // For git topic, generate a token for hook validation
+                // For git and plan topics, generate a token for hook validation
                 string? tokenInfo = null;
                 if (topicName == "git")
                 {
                     var token = HookTokenService.Instance.GenerateToken("git");
-                    // Write token to file for hook to read
-                    WriteGitToken(token);
+                    WriteToken("roslyn-git-token", token);
                     tokenInfo = $"\n\n---\n**Hook Token Generated:** Valid for 5 minutes. Token written to `~/.claude/roslyn-git-token`";
+                }
+                else if (topicName == "plan")
+                {
+                    var token = HookTokenService.Instance.GenerateToken("plan");
+                    WriteToken("roslyn-plan-token", token);
+                    tokenInfo = $"\n\n---\n**Hook Token Generated:** Valid for 10 minutes. Token written to `~/.claude/roslyn-plan-token`";
                 }
 
                 // Return just the instructions text directly for easy consumption
@@ -141,7 +146,7 @@ public static partial class RoslynTools
             });
     }
 
-    private static void WriteGitToken(string token)
+    private static void WriteToken(string fileName, string token)
     {
         try
         {
@@ -150,12 +155,12 @@ public static partial class RoslynTools
                 ".claude");
             Directory.CreateDirectory(claudeDir);
 
-            var tokenFile = Path.Combine(claudeDir, "roslyn-git-token");
+            var tokenFile = Path.Combine(claudeDir, fileName);
             File.WriteAllText(tokenFile, token);
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"Warning: Could not write git token file: {ex.Message}");
+            Console.Error.WriteLine($"Warning: Could not write token file {fileName}: {ex.Message}");
         }
     }
 }

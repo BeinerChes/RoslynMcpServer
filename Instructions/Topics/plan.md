@@ -13,12 +13,18 @@ You are working on tasks that may span multiple sessions. Long sessions experien
 
 ## Plan File Location
 
-Create plan files at:
+Create plan files **in the solution directory**:
 ```
-~/.claude/plans/<descriptive-name>.md
+<solution-root>/.claude/plans/<descriptive-name>.md
 ```
 
-For issue-linked work: `~/.claude/plans/issue-<number>.md`
+For issue-linked work: `.claude/plans/issue-<number>.md`
+
+**Why per-solution?**
+- Plans are project-specific
+- Can be version controlled (or .gitignored)
+- No mixing up plans from different projects
+- Team members can share plans
 
 ## At Session Start
 
@@ -27,12 +33,12 @@ For issue-linked work: `~/.claude/plans/issue-<number>.md`
 2. **If new issue:**
    - Create GitHub issue: `gh issue create --title "Type: description" --body "Details"`
    - Create branch: `git checkout -b issues/<number>`
-   - Create plan file: `~/.claude/plans/issue-<number>.md`
+   - Create plan file: `.claude/plans/issue-<number>.md`
 
 3. **If continuing existing work:**
    - Get issue number from user
    - Read GitHub issue and comments: `gh issue view <number>`
-   - Check for local plan: `ls ~/.claude/plans/`
+   - Check for local plan: `ls .claude/plans/`
    - Read plan file if exists (create if not)
 
 ## Plan Structure
