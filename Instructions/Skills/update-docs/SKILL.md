@@ -1,7 +1,7 @@
 ---
 name: update-docs
 description: Update documentation files (README.md, tools.md, etc.) after code changes. Use when tools are added/modified or features change.
-model: claude-3-5-haiku
+model: claude-haiku-4-5-20251001
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 disable-model-invocation: true
 ---
