@@ -6,19 +6,25 @@ You are working on tasks that may span multiple sessions. Long sessions experien
 
 ## Critical Rules
 
+- ALWAYS create a GitHub issue before writing any code
 - ALWAYS create a plan file for any non-trivial task
+- ALWAYS name plan files `issue-<number>.md` (matches GitHub issue)
 - ALWAYS update the plan after each significant change
 - ALWAYS re-read CLAUDE.md after each fix
 - NEVER assume context is preserved between sessions
+- NEVER create plans with descriptive names - use issue numbers only
 
 ## Plan File Location
 
 Create plan files **in the solution directory**:
 ```
-<solution-root>/.claude/plans/<descriptive-name>.md
+<solution-root>/.claude/plans/issue-<number>.md
 ```
 
-For issue-linked work: `.claude/plans/issue-<number>.md`
+**Why issue numbers?**
+- Links plan to GitHub issue for traceability
+- Prevents orphaned plans with no tracking
+- Makes it easy to find the plan for any issue
 
 **Why per-solution?**
 - Plans are project-specific
@@ -30,16 +36,23 @@ For issue-linked work: `.claude/plans/issue-<number>.md`
 
 1. **Ask user:** "New issue or continuing existing work?"
 
-2. **If new issue:**
-   - Create GitHub issue: `gh issue create --title "Type: description" --body "Details"`
-   - Create branch: `git checkout -b issues/<number>`
-   - Create plan file: `.claude/plans/issue-<number>.md`
+2. **Get the issue number** (REQUIRED before any code changes):
 
-3. **If continuing existing work:**
+   **If new work:**
+   - Create GitHub issue FIRST: `gh issue create --title "Type: description" --body "Details"`
+   - Note the issue number (e.g., #57)
+   - Create branch: `git checkout -b issues/57`
+   - Create plan file: `.claude/plans/issue-57.md`
+
+   **If continuing existing work:**
    - Get issue number from user
    - Read GitHub issue and comments: `gh issue view <number>`
    - Check for local plan: `ls .claude/plans/`
    - Read plan file if exists (create if not)
+
+3. **Search knowledge base:** `roslyn_knowledge_search(query: "<brief description of task>")`
+   - Look for relevant lessons, error resolutions, or conventions
+   - Past sessions may have captured useful insights
 
 ## Plan Structure
 
@@ -68,6 +81,32 @@ After each fix:
 3. **Update this plan**
 4. Keep working until issue is resolved
 ```
+
+## Capture Learnings
+
+**Add to knowledge base when you encounter:**
+
+| Situation | Category | Example |
+|-----------|----------|---------|
+| Fixed error after 2+ attempts | `error-resolution` | "CA2007 fix requires ConfigureAwait(false) in library code" |
+| Discovered non-obvious behavior | `lesson` | "roslyn_find_symbol doesn't search method bodies" |
+| User corrected your approach | `convention` | "This project uses record types for DTOs, not classes" |
+| Found hidden dependency | `lesson` | "Changing X.cs requires also updating Y.cs" |
+| Workflow insight | `instruction` | "Always run tests before committing in this repo" |
+
+**How to capture:**
+```
+roslyn_knowledge_add(
+    category: "error-resolution",
+    title: "Brief summary of the learning",
+    content: "Detailed explanation with context",
+    symbolLinks: ["Namespace.Class.Method"],  // optional
+    tags: ["relevant", "keywords"],           // optional
+    confidence: 0.8                           // lower if uncertain
+)
+```
+
+**Lower confidence (0.5-0.8)** for learnings you're not 100% sure about - they can be verified or updated later.
 
 ## Why Plan Files Matter
 

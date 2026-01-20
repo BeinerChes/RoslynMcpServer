@@ -46,7 +46,13 @@ Branch name format: `issues/N` where N is issue number
 ### 4. PRE-PR CHECKLIST
 Before creating a PR, complete the checklist: call `roslyn_get_instructions` with topic "pre-pr"
 
-### 5. COMMIT
+### 5. CAPTURE LEARNINGS
+Before committing, consider: did you learn anything that would help future sessions?
+- Errors that took multiple attempts to fix → `roslyn_knowledge_add(category: "error-resolution", ...)`
+- Non-obvious codebase behaviors discovered → `roslyn_knowledge_add(category: "lesson", ...)`
+- User corrections to your approach → `roslyn_knowledge_add(category: "convention", ...)`
+
+### 6. COMMIT
 ```bash
 git add -A
 git commit -m "$(cat <<'EOF'
@@ -61,7 +67,7 @@ EOF
 )"
 ```
 
-### 6. PUSH AND CREATE PR
+### 7. PUSH AND CREATE PR
 ```bash
 git push -u origin issues/42
 gh pr create --base <default-branch> --title "Type: description" --body "$(cat <<'EOF'
@@ -79,7 +85,7 @@ EOF
 )"
 ```
 
-### 7. MERGE AND CLEANUP
+### 8. MERGE AND CLEANUP
 After the PR is ready (tests pass, no errors):
 ```bash
 gh pr merge --squash --delete-branch
