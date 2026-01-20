@@ -172,10 +172,11 @@ Plans are stored **per-solution** in `.claude/plans/`:
 | `roslyn_get_instructions` | Get topic-specific instructions (tools, git, code, plan, tdd, pre-pr) |
 | `roslyn_setup_hooks` | Set up Claude Code hooks to enforce instruction reading before git/GitHub operations |
 | `roslyn_knowledge_add` | Add knowledge entries (gotchas, patterns, insights) linked to symbols |
-| `roslyn_knowledge_search` | Semantic search using symbol links, FTS5, and vector similarity |
-| `roslyn_knowledge_list` | List knowledge entries with category/tag filtering |
+| `roslyn_knowledge_search` | Semantic search (returns compact results: id, title, category, tags) |
+| `roslyn_knowledge_list` | List knowledge entries (returns compact results: id, title, category, tags) |
+| `roslyn_knowledge_get` | Get full content of a single entry by ID |
 | `roslyn_knowledge_delete` | Delete a knowledge entry by ID |
-| `roslyn_knowledge_for_symbol` | Get all knowledge linked to a specific symbol |
+| `roslyn_knowledge_for_symbol` | Get all knowledge linked to a specific symbol (full content) |
 
 ### Dead Code Detection Limitations
 

@@ -66,10 +66,11 @@ You have access to Roslyn MCP tools for C# code analysis. These tools provide se
 | Tool | Purpose |
 |------|---------|
 | `roslyn_knowledge_add` | Add gotchas, patterns, or insights linked to symbols |
-| `roslyn_knowledge_search` | Semantic search using symbol links, FTS5, and vector similarity |
-| `roslyn_knowledge_list` | List entries with optional category/tag filtering |
+| `roslyn_knowledge_search` | Semantic search (returns compact results: id, title, category, tags) |
+| `roslyn_knowledge_list` | List entries (returns compact results: id, title, category, tags) |
+| `roslyn_knowledge_get` | Get full content of a single entry by ID |
 | `roslyn_knowledge_delete` | Delete an entry by ID |
-| `roslyn_knowledge_for_symbol` | Get all knowledge linked to a specific symbol |
+| `roslyn_knowledge_for_symbol` | Get all knowledge linked to a specific symbol (full content) |
 
 Knowledge entries support:
 - **Code-specific categories**: gotcha, pattern, architecture, debugging, performance, security, testing, workaround
@@ -164,6 +165,7 @@ Use native tools (Read, Edit, Grep, Glob) only for:
 3. Next time you work on that symbol, knowledge is searchable
 
 ### Finding relevant knowledge
-1. `roslyn_knowledge_search(query: "caching performance")` → semantic search
-2. `roslyn_knowledge_for_symbol(symbolName: "FeatureLayer.BuildCache")` → exact match
-3. `roslyn_knowledge_list(category: "gotcha")` → browse by category
+1. `roslyn_knowledge_search(query: "caching performance")` → semantic search (compact results)
+2. `roslyn_knowledge_get(id: 5)` → fetch full content for interesting result
+3. `roslyn_knowledge_for_symbol(symbolName: "FeatureLayer.BuildCache")` → exact match (full content)
+4. `roslyn_knowledge_list(category: "gotcha")` → browse by category (compact results)
