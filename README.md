@@ -19,36 +19,66 @@ When you use **Claude Code** (Anthropic's AI coding assistant for the terminal),
 
 ## Prerequisites
 
-Before you start, you need:
-
-1. **.NET 10.0 SDK** - [Download from Microsoft](https://dotnet.microsoft.com/download)
-2. **Visual Studio 2022** (any edition) or **Build Tools for Visual Studio** - needed for MSBuild
-3. **Claude Code CLI** - Anthropic's terminal-based AI assistant. Install with:
+**For Quick Install (pre-built release):**
+1. **Windows x64**
+2. **Python 3.x** - for workflow hooks
+3. **Claude Code CLI** - Install with:
    ```bash
    npm install -g @anthropic-ai/claude-code
    ```
    Then authenticate: `claude` and follow the prompts.
 
-## Quick Start (3 Steps)
+**Additional requirements for building from source:**
+4. **.NET 10.0 SDK** - [Download from Microsoft](https://dotnet.microsoft.com/download)
+5. **Visual Studio 2022** (any edition) or **Build Tools for Visual Studio** - needed for MSBuild
 
-### Step 1: Download and Build the Server
+## Quick Start
 
-```bash
-git clone https://github.com/BeinerChes/RoslynMcpServer.git
-cd RoslynMcpServer
-dotnet build
-```
+### Option 1: Quick Install (Recommended)
 
-### Step 2: Set Up Your Project
+1. **Download** the latest release from [GitHub Releases](https://github.com/BeinerChes/RoslynMcpServer/releases)
+2. **Extract** `RoslynMcpServer-v1.0.2-win-x64.zip` to a temporary folder
+3. **Run the installer:**
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File install.ps1
+   ```
+   This installs to `%LOCALAPPDATA%\RoslynMcpServer`
 
-Navigate to your C# solution directory and run the setup script:
+4. **Set up your C# project:**
+   ```powershell
+   cd C:\path\to\your\solution
+   powershell -ExecutionPolicy Bypass -File "$env:LOCALAPPDATA\RoslynMcpServer\setup.ps1"
+   ```
 
-```powershell
-cd C:\path\to\your\solution
-powershell -ExecutionPolicy Bypass -File C:\path\to\RoslynMcpServer\setup.ps1
-```
+5. **Start Claude Code and verify:**
+   ```bash
+   claude
+   ```
+   Run `/mcp` - you should see `roslyn` listed.
 
-This creates:
+### Option 2: Build from Source
+
+1. **Clone and build:**
+   ```bash
+   git clone https://github.com/BeinerChes/RoslynMcpServer.git
+   cd RoslynMcpServer
+   dotnet build
+   ```
+
+2. **Set up your C# project:**
+   ```powershell
+   cd C:\path\to\your\solution
+   powershell -ExecutionPolicy Bypass -File C:\path\to\RoslynMcpServer\setup.ps1
+   ```
+
+3. **Start Claude Code and verify:**
+   ```bash
+   claude
+   ```
+   Run `/mcp` - you should see `roslyn` listed.
+
+### What Setup Creates
+
 ```
 YourSolution/
 ├── .mcp.json                          # MCP server configuration
@@ -61,15 +91,8 @@ YourSolution/
     └── settings.json                  # Hook configuration
 ```
 
-### Step 3: Start Claude Code
+### Test It
 
-```bash
-claude
-```
-
-Verify the connection with `/mcp`. You should see `roslyn` listed.
-
-**Test it:**
 ```
 Find all types containing "Controller" in this solution
 ```
