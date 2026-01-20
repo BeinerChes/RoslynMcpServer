@@ -13,8 +13,41 @@ You are working on tasks that may span multiple sessions. Long sessions experien
 - ALWAYS re-read CLAUDE.md after each fix
 - ALWAYS use Roslyn MCP tools for C# code (NOT Explore/Grep/Glob agents)
 - ALWAYS search knowledge base before starting work on an issue
+- ALWAYS search knowledge base before exploring unfamiliar code
 - NEVER assume context is preserved between sessions
 - NEVER create plans with descriptive names - use issue numbers only
+
+## Knowledge Base: Read First, Write Often
+
+**The knowledge base is your persistent memory. Use it proactively.**
+
+### When to READ knowledge (BEFORE exploring code):
+
+| Situation | Action |
+|-----------|--------|
+| Don't know how something works | `roslyn_knowledge_search("how does X work")` |
+| Unfamiliar with a component | `roslyn_knowledge_search("ComponentName")` |
+| About to explore large codebase | Search knowledge FIRST - someone may have documented it |
+| Stuck or unsure what to do | `roslyn_knowledge_list()` - browse for relevant insights |
+| Working on a specific symbol | `roslyn_knowledge_for_symbol("Namespace.Class.Method")` |
+
+**Why read first?** Previous sessions may have already documented:
+- How a feature works (saves hours of exploration)
+- Gotchas and pitfalls to avoid
+- Architectural decisions and their rationale
+- Conventions the project follows
+
+### When to WRITE knowledge (as you work):
+
+| Situation | Action |
+|-----------|--------|
+| Discovered how something works | Add with category `architecture` or `lesson` |
+| Found a non-obvious gotcha | Add with category `gotcha` |
+| Figured out why code is written a certain way | Add with category `pattern` |
+| Fixed a tricky bug | Add with category `error-resolution` |
+| User explained a convention | Add with category `convention` |
+
+**Write immediately** - don't wait until the end of the session. Context gets lost.
 
 ## Plan File Location
 
