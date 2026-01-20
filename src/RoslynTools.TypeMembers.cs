@@ -1,4 +1,5 @@
 using System.Text.Json;
+using RoslynMcpServer.Graph;
 
 namespace RoslynMcpServer;
 
@@ -109,11 +110,50 @@ public static partial class RoslynTools
                 if (result.Success)
                     LastSymbolTracker.Track(solutionPath, typeName, "type");
 
+                // Fetch related knowledge entries for the type
+                List<object>? knowledge = null;
+                if (result.Success)
+                {
+                    try
+                    {
+                        var db = await GetKnowledgeDatabaseAsync(solutionPath);
+                        var entries = await db.GetEntriesForSymbolAsync(typeName);
+
+                        if (entries.Count > 0)
+                        {
+                            knowledge = entries.Select(e => (object)new
+                            {
+                                e.Id,
+                                e.Category,
+                                e.Title,
+                                e.Content,
+                                e.Confidence
+                            }).ToList();
+                        }
+                    }
+                    catch
+                    {
+                        // Knowledge lookup failure shouldn't break the main functionality
+                    }
+                }
+
+                // Build response with optional knowledge
+                var response = new
+                {
+                    result.Success,
+                    result.Error,
+                    result.SolutionPath,
+                    result.Type,
+                    result.TotalMembers,
+                    result.Members,
+                    Knowledge = knowledge
+                };
+
                 return new
                 {
                     content = new[]
                     {
-                        new { type = "text", text = JsonSerializer.Serialize(result, JsonOptions) }
+                        new { type = "text", text = JsonSerializer.Serialize(response, JsonOptions) }
                     },
                     isError = !result.Success
                 };

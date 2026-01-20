@@ -23,12 +23,12 @@ Add a knowledge base system that stores learnings, gotchas, and insights about c
 - [x] Add `roslyn_knowledge_delete` tool
 - [x] Add `roslyn_knowledge_for_symbol` tool
 
-### Phase 3: Integration
-- [ ] Integrate into `roslyn_get_method_body`
-- [ ] Integrate into `roslyn_get_type_members`
-- [ ] Add knowledge flags to `roslyn_find_symbol`
+### Phase 3: Integration ✅
+- [x] Integrate into `roslyn_get_method_body` - returns linked knowledge
+- [x] Integrate into `roslyn_get_type_members` - returns type-level knowledge
+- [x] Add knowledge flags to `roslyn_find_symbol` - `hasKnowledge` flag on results
 
-### Phase 4: Advanced Features
+### Phase 4: Advanced Features (Future)
 - [ ] Add `roslyn_knowledge_context` for task-based retrieval
 - [ ] Add `roslyn_knowledge_suggest` for pre-PR insights
 - [ ] Add optional Ollama provider
@@ -45,28 +45,19 @@ Add a knowledge base system that stores learnings, gotchas, and insights about c
 - Created `Models.Knowledge.cs` - Data models and categories
 - Created `RoslynTools.Knowledge.cs` - Five MCP tools
 
-### New Tools Added
-| Tool | Purpose |
-|------|---------|
-| `roslyn_knowledge_add` | Add knowledge entries with symbol links and tags |
-| `roslyn_knowledge_search` | Semantic search using all three layers |
-| `roslyn_knowledge_list` | List entries with category/tag filtering |
-| `roslyn_knowledge_delete` | Delete entries by ID |
-| `roslyn_knowledge_for_symbol` | Get all knowledge linked to a symbol |
+### Phase 3 Integration
+- Modified `RoslynTools.MethodBody.cs` - includes linked knowledge entries in response
+- Modified `RoslynTools.TypeMembers.cs` - includes type-level knowledge in response
+- Modified `RoslynTools.FindSymbol.cs` - adds `hasKnowledge` flag to each symbol
 
 ## Test Results
 - All 74 tests pass
 - Build succeeds with no errors or warnings
+- Real-world tested: add, search, list, for_symbol tools work correctly
 
 ## Current Status
-- Phase 1 & 2 complete
-- Ready for real-world testing
-- Phase 3 (tool integration) pending
-
-## Next Steps
-1. Real-world test the knowledge tools on this solution
-2. Implement Phase 3: Integrate knowledge into existing tools
-3. Update README.md with new tools
+- Phase 1, 2, 3 complete
+- Ready for PR
 
 ## Workflow Reminder (MANDATORY)
 After each fix:
