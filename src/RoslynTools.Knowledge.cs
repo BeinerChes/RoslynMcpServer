@@ -52,7 +52,7 @@ public static partial class RoslynTools
                         category = new
                         {
                             type = "string",
-                            description = "Category of knowledge: 'gotcha', 'pattern', 'architecture', 'debugging', 'performance', 'security', 'testing', 'workaround'",
+                            description = "Category of knowledge. Code-specific: 'gotcha', 'pattern', 'architecture', 'debugging', 'performance', 'security', 'testing', 'workaround'. Session learnings: 'lesson' (non-obvious discoveries), 'error-resolution' (problems and fixes), 'convention' (project rules), 'instruction' (workflow guidance)",
                             @enum = KnowledgeCategories.All
                         },
                         title = new

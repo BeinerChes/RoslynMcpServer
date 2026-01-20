@@ -72,11 +72,18 @@ You have access to Roslyn MCP tools for C# code analysis. These tools provide se
 | `roslyn_knowledge_for_symbol` | Get all knowledge linked to a specific symbol |
 
 Knowledge entries support:
-- **Categories**: gotcha, pattern, architecture, debugging, performance, security, testing, workaround
+- **Code-specific categories**: gotcha, pattern, architecture, debugging, performance, security, testing, workaround
+- **Session learning categories**: lesson, error-resolution, convention, instruction
 - **Symbol links**: Associate knowledge with specific methods, classes, or namespaces
 - **Tags**: Free-form tags for additional categorization
 - **Confidence levels**: 0.0-1.0 for uncertain vs verified learnings
 - **Semantic search**: Uses embeddings (all-MiniLM-L6-v2) for "what did we learn about caching?" style queries
+
+**When to add session learnings:**
+- `lesson`: "Oh, that's how it works" - non-obvious codebase behaviors
+- `error-resolution`: After troubleshooting an error (2+ attempts to fix)
+- `convention`: When user corrects your approach ("no, we do it this way")
+- `instruction`: General workflow guidance that would help future sessions
 
 ## Tool Selection Guide
 

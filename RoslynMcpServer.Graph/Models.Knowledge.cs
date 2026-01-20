@@ -35,6 +35,7 @@ public class KnowledgeSymbolLink
 /// </summary>
 public static class KnowledgeCategories
 {
+    // Code-specific categories
     public const string Gotcha = "gotcha";
     public const string Pattern = "pattern";
     public const string Architecture = "architecture";
@@ -44,10 +45,17 @@ public static class KnowledgeCategories
     public const string Testing = "testing";
     public const string Workaround = "workaround";
 
+    // Session learning categories
+    public const string Lesson = "lesson";                   // Non-obvious discoveries, "oh that's how it works"
+    public const string ErrorResolution = "error-resolution"; // Problems encountered and their fixes
+    public const string Convention = "convention";           // Project-specific conventions
+    public const string Instruction = "instruction";         // General workflow/process guidance
+
     public static readonly string[] All =
     [
         Gotcha, Pattern, Architecture, Debugging,
-        Performance, Security, Testing, Workaround
+        Performance, Security, Testing, Workaround,
+        Lesson, ErrorResolution, Convention, Instruction
     ];
 
     public static bool IsValid(string category) =>
