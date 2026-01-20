@@ -112,12 +112,13 @@ public static partial class RoslynTools
 
                 // Fetch related knowledge entries for the type
                 List<object>? knowledge = null;
-                if (result.Success)
+                if (result.Success && result.Type?.FullyQualifiedName != null)
                 {
                     try
                     {
                         var db = await GetKnowledgeDatabaseAsync(solutionPath);
-                        var entries = await db.GetEntriesForSymbolAsync(typeName);
+                        // Use fully qualified type name from result
+                        var entries = await db.GetEntriesForSymbolAsync(result.Type.FullyQualifiedName);
 
                         if (entries.Count > 0)
                         {

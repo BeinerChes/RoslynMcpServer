@@ -104,16 +104,17 @@ public static partial class RoslynTools
 
                 // Fetch related knowledge entries
                 List<object>? knowledge = null;
-                if (result.Success)
+                if (result.Success && result.TypeName != null)
                 {
                     try
                     {
                         var db = await GetKnowledgeDatabaseAsync(solutionPath);
-                        var symbolName = $"{typeName}.{methodName}";
-                        var entries = await db.GetEntriesForSymbolAsync(symbolName);
+                        // Use fully qualified type name from result
+                        var fullyQualifiedSymbol = $"{result.TypeName}.{methodName}";
+                        var entries = await db.GetEntriesForSymbolAsync(fullyQualifiedSymbol);
 
                         // Also search for type-level knowledge
-                        var typeEntries = await db.GetEntriesForSymbolAsync(typeName);
+                        var typeEntries = await db.GetEntriesForSymbolAsync(result.TypeName);
                         entries.AddRange(typeEntries.Where(e => !entries.Any(x => x.Id == e.Id)));
 
                         if (entries.Count > 0)
