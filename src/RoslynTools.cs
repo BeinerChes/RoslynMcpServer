@@ -53,6 +53,7 @@ public static partial class RoslynTools
         RegisterKnowledgeSearchTool(server);
         RegisterKnowledgeListTool(server);
         RegisterKnowledgeDeleteTool(server);
+        RegisterKnowledgeGetTool(server);
         RegisterKnowledgeForSymbolTool(server);
     }
 
