@@ -35,17 +35,15 @@
     <PackageReference Include="Microsoft.Build.Framework" ExcludeAssets="runtime" PrivateAssets="all" />
     <PackageReference Include="Microsoft.Build" ExcludeAssets="runtime" PrivateAssets="all" />
     <PackageReference Include="Microsoft.Build.Tasks.Core" ExcludeAssets="runtime" PrivateAssets="all" />
+    <PackageReference Include="SmartComponents.LocalEmbeddings" />
   </ItemGroup>
 
   <!-- Copy .NET Analyzers to output directory for self-contained deployment -->
   <Target Name="CopyNetAnalyzers" AfterTargets="Build">
     <ItemGroup>
-      <NetAnalyzerDlls Include="$(PkgMicrosoft_CodeAnalysis_NetAnalyzers)\analyzers\dotnet\**\*.dll"
-                       Exclude="$(PkgMicrosoft_CodeAnalysis_NetAnalyzers)\analyzers\dotnet\**\*.resources.dll" />
+      <NetAnalyzerDlls Include="$(PkgMicrosoft_CodeAnalysis_NetAnalyzers)\analyzers\dotnet\**\*.dll" Exclude="$(PkgMicrosoft_CodeAnalysis_NetAnalyzers)\analyzers\dotnet\**\*.resources.dll" />
     </ItemGroup>
-    <Copy SourceFiles="@(NetAnalyzerDlls)"
-          DestinationFolder="$(OutputPath)analyzers\%(RecursiveDir)"
-          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(NetAnalyzerDlls)" DestinationFolder="$(OutputPath)analyzers\%(RecursiveDir)" SkipUnchangedFiles="true" />
   </Target>
 
 </Project>

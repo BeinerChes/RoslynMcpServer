@@ -1,4 +1,5 @@
 using System.Text.Json;
+using RoslynMcpServer.Graph;
 
 namespace RoslynMcpServer;
 
@@ -101,11 +102,61 @@ public static partial class RoslynTools
                 if (result.Success)
                     LastSymbolTracker.Track(solutionPath, $"{typeName}.{methodName}", "method");
 
+                // Fetch related knowledge entries
+                List<object>? knowledge = null;
+                if (result.Success && result.TypeName != null)
+                {
+                    try
+                    {
+                        var db = await GetKnowledgeDatabaseAsync(solutionPath);
+                        // Use fully qualified type name from result
+                        var fullyQualifiedSymbol = $"{result.TypeName}.{methodName}";
+                        var entries = await db.GetEntriesForSymbolAsync(fullyQualifiedSymbol);
+
+                        // Also search for type-level knowledge
+                        var typeEntries = await db.GetEntriesForSymbolAsync(result.TypeName);
+                        entries.AddRange(typeEntries.Where(e => !entries.Any(x => x.Id == e.Id)));
+
+                        if (entries.Count > 0)
+                        {
+                            knowledge = entries.Select(e => (object)new
+                            {
+                                e.Id,
+                                e.Category,
+                                e.Title,
+                                e.Content,
+                                e.Confidence
+                            }).ToList();
+                        }
+                    }
+                    catch
+                    {
+                        // Knowledge lookup failure shouldn't break the main functionality
+                    }
+                }
+
+                // Build response with optional knowledge
+                var response = new
+                {
+                    result.Success,
+                    result.Error,
+                    result.SolutionPath,
+                    result.TypeName,
+                    result.MethodName,
+                    result.FilePath,
+                    result.StartLine,
+                    result.EndLine,
+                    result.Signature,
+                    result.SourceCode,
+                    result.AvailableOverloads,
+                    Knowledge = knowledge
+                };
+
                 return new
                 {
                     content = new[]
                     {
-                        new { type = "text", text = JsonSerializer.Serialize(result, JsonOptions) }
+                        new { type = "text", text = JsonSerializer.Serialize(response, JsonOptions) }
                     },
                     isError = !result.Success
                 };
