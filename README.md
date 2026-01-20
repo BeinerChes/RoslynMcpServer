@@ -321,9 +321,13 @@ RoslynMcpServer/
 │   ├── Topics/                   # Topic instructions (code, git, plan, tdd, pre-pr, tools)
 │   ├── Templates/                # CLAUDE.md templates (minimal, standard, tdd, team)
 │   └── Hooks/                    # Python hook scripts for Claude Code
-├── RoslynMcpServer.Graph/        # Call graph database
+├── RoslynMcpServer.Graph/        # Call graph and knowledge database
 │   ├── GraphDatabase.cs          # SQLite-based call graph storage
-│   └── GraphAnalyzer.cs          # Builds call graph from Roslyn
+│   ├── GraphAnalyzer.cs          # Builds call graph from Roslyn
+│   ├── KnowledgeDatabase.cs      # SQLite-based knowledge storage with FTS5
+│   ├── IEmbeddingProvider.cs     # Interface for embedding providers
+│   ├── SmartComponentsEmbeddingProvider.cs  # Default embeddings (all-MiniLM-L6-v2)
+│   └── Models.Knowledge.cs       # Knowledge entry data models
 ├── RoslynMcpServer.Web/          # 3D visualization web app
 │   ├── Program.cs                # ASP.NET minimal API
 │   ├── GraphApi.cs               # REST endpoints for visualization
@@ -336,7 +340,8 @@ The server uses:
 - **Roslyn Compiler APIs** for semantic analysis
 - **Roslyn Formatter** for code formatting
 - **Bundled .NET Analyzers** for CA* diagnostic rules
-- **SQLite** for call graph persistence
+- **SQLite** for call graph and knowledge persistence
+- **SmartComponents.LocalEmbeddings** for semantic search (all-MiniLM-L6-v2)
 - **Three.js** for 3D visualization
 - **JSON-RPC 2.0** over stdio for MCP communication
 - **Python hooks** for Claude Code workflow enforcement
@@ -373,11 +378,12 @@ MIT
 | File | Purpose |
 |------|---------|
 | `README.md` | This file - how to install and use the server |
-| `CLAUDE_TEMPLATE.md` | **Copy this to your projects** as `CLAUDE.md` - tells Claude to use Roslyn tools |
+| `setup.ps1` | **Run this in your projects** to set up CLAUDE.md, hooks, and MCP config |
 | `CLAUDE.md` | Instructions for developing this repository itself (not for end users) |
 | `.mcp.json` | Example MCP configuration for Claude Code |
 | `Instructions/Topics/` | Topic instructions fetched by `roslyn_get_instructions` |
 | `Instructions/Templates/` | CLAUDE.md templates fetched by `roslyn_get_template` |
+| `Instructions/Hooks/` | Python hook scripts installed by `setup.ps1` |
 
 ## Contributing
 
