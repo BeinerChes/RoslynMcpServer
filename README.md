@@ -87,6 +87,8 @@ YourSolution/
     ├── hooks/                         # Workflow enforcement hooks
     │   ├── enforce-git-instructions.py
     │   └── enforce-plan-instructions.py
+    ├── skills/                        # Custom skills (cost-optimized)
+    │   └── update-docs/SKILL.md       # Uses Haiku model (~20x cheaper)
     ├── plans/                         # Plan files (per-solution)
     └── settings.json                  # Hook configuration
 ```
@@ -144,6 +146,29 @@ Plans are stored **per-solution** in `.claude/plans/`:
 - Tracks work across sessions
 - Links to GitHub issues
 - Prevents context loss during long sessions
+
+## Cost-Optimized Skills
+
+The setup includes custom skills that use cheaper models for specific tasks:
+
+| Skill | Model | Cost Savings | Usage |
+|-------|-------|--------------|-------|
+| `/update-docs` | Haiku | ~20x cheaper than Opus | Update README.md, tools.md after code changes |
+
+### Why Use Skills with Cheaper Models?
+
+- **Documentation updates** don't need Opus-level reasoning
+- **Haiku** handles straightforward tasks at 5% of Opus cost
+- Skills specify allowed tools, preventing unnecessary operations
+
+### Using the Update-Docs Skill
+
+After making code changes:
+```
+/update-docs
+```
+
+Claude will use Haiku to update relevant documentation files based on your recent changes.
 
 ## Available Tools
 
