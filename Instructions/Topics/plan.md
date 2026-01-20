@@ -12,6 +12,7 @@ You are working on tasks that may span multiple sessions. Long sessions experien
 - ALWAYS update the plan after each significant change
 - ALWAYS re-read CLAUDE.md after each fix
 - ALWAYS use Roslyn MCP tools for C# code (NOT Explore/Grep/Glob agents)
+- ALWAYS search knowledge base before starting work on an issue
 - NEVER assume context is preserved between sessions
 - NEVER create plans with descriptive names - use issue numbers only
 
