@@ -61,6 +61,23 @@ You have access to Roslyn MCP tools for C# code analysis. These tools provide se
 | `roslyn_get_template` | Get CLAUDE.md template for projects |
 | `roslyn_get_instructions` | Get topic-specific development instructions |
 
+### Knowledge Base (Semantic Search)
+
+| Tool | Purpose |
+|------|---------|
+| `roslyn_knowledge_add` | Add gotchas, patterns, or insights linked to symbols |
+| `roslyn_knowledge_search` | Semantic search using symbol links, FTS5, and vector similarity |
+| `roslyn_knowledge_list` | List entries with optional category/tag filtering |
+| `roslyn_knowledge_delete` | Delete an entry by ID |
+| `roslyn_knowledge_for_symbol` | Get all knowledge linked to a specific symbol |
+
+Knowledge entries support:
+- **Categories**: gotcha, pattern, architecture, debugging, performance, security, testing, workaround
+- **Symbol links**: Associate knowledge with specific methods, classes, or namespaces
+- **Tags**: Free-form tags for additional categorization
+- **Confidence levels**: 0.0-1.0 for uncertain vs verified learnings
+- **Semantic search**: Uses embeddings (all-MiniLM-L6-v2) for "what did we learn about caching?" style queries
+
 ## Tool Selection Guide
 
 | Task | Roslyn Tool | Why NOT native tool |
@@ -81,6 +98,8 @@ You have access to Roslyn MCP tools for C# code analysis. These tools provide se
 | Fix warning | `roslyn_apply_code_fix` | Manual edit may introduce errors |
 | Fix many warnings | `roslyn_batch_apply_code_fixes` | One-by-one is slow |
 | Rename | `roslyn_rename_symbol` | Find/replace misses some references |
+| Document a gotcha | `roslyn_knowledge_add` | Comments get lost, knowledge persists |
+| Find past learnings | `roslyn_knowledge_search` | Semantic search finds related concepts |
 
 ## When to Use Native Tools
 
@@ -131,3 +150,13 @@ Use native tools (Read, Edit, Grep, Glob) only for:
 1. `roslyn_get_diagnostics(severityFilter: "warning")` → see all warnings
 2. `roslyn_get_diagnostics(diagnosticId: "CS8618")` → get details
 3. `roslyn_batch_apply_code_fixes(diagnosticId: "CS8618")` → auto-fix
+
+### Documenting code learnings
+1. After fixing a tricky bug or discovering a gotcha:
+2. `roslyn_knowledge_add(category: "gotcha", title: "...", content: "...", symbolLinks: ["Namespace.Class.Method"])` → save the learning
+3. Next time you work on that symbol, knowledge is searchable
+
+### Finding relevant knowledge
+1. `roslyn_knowledge_search(query: "caching performance")` → semantic search
+2. `roslyn_knowledge_for_symbol(symbolName: "FeatureLayer.BuildCache")` → exact match
+3. `roslyn_knowledge_list(category: "gotcha")` → browse by category

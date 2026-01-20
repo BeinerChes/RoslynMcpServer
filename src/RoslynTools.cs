@@ -47,6 +47,13 @@ public static partial class RoslynTools
         RegisterGetTemplateTool(server);
         RegisterGetInstructionsTool(server);
         RegisterSetupHooksTool(server);
+
+        // Knowledge base tools
+        RegisterKnowledgeAddTool(server);
+        RegisterKnowledgeSearchTool(server);
+        RegisterKnowledgeListTool(server);
+        RegisterKnowledgeDeleteTool(server);
+        RegisterKnowledgeForSymbolTool(server);
     }
 
     /// <summary>
