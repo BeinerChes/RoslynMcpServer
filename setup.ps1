@@ -28,11 +28,14 @@ Write-Host "Creating directories..." -ForegroundColor White
 $claudeDir = ".claude"
 $hooksDir = Join-Path $claudeDir "hooks"
 $plansDir = Join-Path $claudeDir "plans"
+$skillsDir = Join-Path $claudeDir "skills"
 
 New-Item -ItemType Directory -Path $hooksDir -Force | Out-Null
 New-Item -ItemType Directory -Path $plansDir -Force | Out-Null
+New-Item -ItemType Directory -Path $skillsDir -Force | Out-Null
 Write-Host "  Created: $hooksDir" -ForegroundColor Gray
 Write-Host "  Created: $plansDir" -ForegroundColor Gray
+Write-Host "  Created: $skillsDir" -ForegroundColor Gray
 
 # Copy hook files
 Write-Host ""
@@ -47,6 +50,23 @@ if (Test-Path $sourceHooksDir) {
 } else {
     Write-Host "  ERROR: Hook source files not found at $sourceHooksDir" -ForegroundColor Red
     exit 1
+}
+
+# Copy skills
+Write-Host ""
+Write-Host "Installing skills..." -ForegroundColor White
+$sourceSkillsDir = Join-Path $RoslynMcpPath "Instructions\Skills"
+
+if (Test-Path $sourceSkillsDir) {
+    $skillFolders = Get-ChildItem -Path $sourceSkillsDir -Directory
+    foreach ($skill in $skillFolders) {
+        $destSkillDir = Join-Path $skillsDir $skill.Name
+        New-Item -ItemType Directory -Path $destSkillDir -Force | Out-Null
+        Copy-Item -Path (Join-Path $skill.FullName "*") -Destination $destSkillDir -Recurse -Force
+        Write-Host "  Installed: $($skill.Name) (uses Haiku model)" -ForegroundColor Gray
+    }
+} else {
+    Write-Host "  No skills found at $sourceSkillsDir - skipping" -ForegroundColor Yellow
 }
 
 # Create settings.json
@@ -144,6 +164,7 @@ Write-Host ""
 Write-Host "Files created:" -ForegroundColor White
 Write-Host "  .claude/hooks/enforce-git-instructions.py" -ForegroundColor Gray
 Write-Host "  .claude/hooks/enforce-plan-instructions.py" -ForegroundColor Gray
+Write-Host "  .claude/skills/update-docs/ (Haiku model)" -ForegroundColor Gray
 Write-Host "  .claude/settings.json" -ForegroundColor Gray
 Write-Host "  .claude/plans/ (directory)" -ForegroundColor Gray
 if (-not (Test-Path $claudeMdFile -PathType Leaf)) {
