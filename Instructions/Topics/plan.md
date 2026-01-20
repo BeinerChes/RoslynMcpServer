@@ -11,6 +11,7 @@ You are working on tasks that may span multiple sessions. Long sessions experien
 - ALWAYS name plan files `issue-<number>.md` (matches GitHub issue)
 - ALWAYS update the plan after each significant change
 - ALWAYS re-read CLAUDE.md after each fix
+- ALWAYS use Roslyn MCP tools for C# code (NOT Explore/Grep/Glob agents)
 - NEVER assume context is preserved between sessions
 - NEVER create plans with descriptive names - use issue numbers only
 
@@ -53,6 +54,10 @@ Create plan files **in the solution directory**:
 3. **Search knowledge base:** `roslyn_knowledge_search(query: "<brief description of task>")`
    - Look for relevant lessons, error resolutions, or conventions
    - Past sessions may have captured useful insights
+
+4. **Get Roslyn tool guidance:** `roslyn_get_instructions("tools")`
+   - Use Roslyn tools for C# code navigation, NOT Explore/Grep/Glob
+   - Roslyn provides semantic understanding (types, references, callers)
 
 ## Plan Structure
 
