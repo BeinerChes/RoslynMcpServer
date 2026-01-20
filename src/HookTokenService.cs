@@ -15,7 +15,12 @@ public class HookTokenService
     public static HookTokenService Instance => _instance.Value;
 
     private readonly ConcurrentDictionary<string, TokenInfo> _tokens = new();
-    private readonly TimeSpan _tokenExpiration = TimeSpan.FromMinutes(5);
+    private readonly Dictionary<string, TimeSpan> _tokenExpirations = new()
+    {
+        ["git"] = TimeSpan.FromMinutes(5),
+        ["plan"] = TimeSpan.FromMinutes(10)
+    };
+    private readonly TimeSpan _defaultExpiration = TimeSpan.FromMinutes(5);
     private readonly byte[] _secretKey;
 
     private HookTokenService()
@@ -75,8 +80,9 @@ public class HookTokenService
         var tokenTime = DateTimeOffset.FromUnixTimeSeconds(unixTime);
         var age = DateTimeOffset.UtcNow - tokenTime;
 
-        if (age > _tokenExpiration)
-            return new TokenValidationResult(false, $"Token expired ({age.TotalMinutes:F1} minutes old, max {_tokenExpiration.TotalMinutes} minutes)");
+        var expiration = _tokenExpirations.GetValueOrDefault(expectedTopic, _defaultExpiration);
+        if (age > expiration)
+            return new TokenValidationResult(false, $"Token expired ({age.TotalMinutes:F1} minutes old, max {expiration.TotalMinutes} minutes)");
 
         // Verify topic
         if (!string.Equals(topic, expectedTopic, StringComparison.OrdinalIgnoreCase))
@@ -98,7 +104,8 @@ public class HookTokenService
 
     private void CleanupExpiredTokens()
     {
-        var cutoff = DateTimeOffset.UtcNow - _tokenExpiration - TimeSpan.FromMinutes(1);
+        var maxExpiration = _tokenExpirations.Values.Max();
+        var cutoff = DateTimeOffset.UtcNow - maxExpiration - TimeSpan.FromMinutes(1);
         var expiredKeys = _tokens
             .Where(kvp => kvp.Value.CreatedAt < cutoff)
             .Select(kvp => kvp.Key)

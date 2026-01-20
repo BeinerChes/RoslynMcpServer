@@ -19,16 +19,12 @@
 | Writing or running tests | `"tdd"` |
 | Creating a pull request | `"pre-pr"` |
 
-## Project Structure
+## Plan Files
 
-<!-- Customize this section for your project -->
-```
-YourProject/
-├── CLAUDE.md                 # This file
-├── YourProject.sln           # Solution file
-├── src/                      # Source code
-└── tests/                    # Test projects
-```
+Plans are stored **per-solution** in `.claude/plans/`:
+- Create plan files for non-trivial tasks
+- Links to GitHub issues: `.claude/plans/issue-<number>.md`
+- Tracks work across sessions, prevents context loss
 
 ## Build Commands
 

@@ -18,6 +18,7 @@
   <!-- Copy instruction files to output directory -->
   <ItemGroup>
     <Content Include="Instructions\**\*.md" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Instructions\**\*.py" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

@@ -29,7 +29,7 @@ Before you start, you need:
    ```
    Then authenticate: `claude` and follow the prompts.
 
-## Quick Start (5 Steps)
+## Quick Start (3 Steps)
 
 ### Step 1: Download and Build the Server
 
@@ -39,76 +39,55 @@ cd RoslynMcpServer
 dotnet build
 ```
 
-Note the full path to the RoslynMcpServer folder (e.g., `C:\Dev\RoslynMcpServer`). You'll need it in Step 2.
+### Step 2: Set Up Your Project
 
-### Step 2: Tell Claude Code About the Server
+Navigate to your C# solution directory and run the setup script:
 
-Create a file called `.mcp.json` in your C# project's root folder (where your `.sln` file is):
-
-```json
-{
-  "mcpServers": {
-    "roslyn": {
-      "type": "stdio",
-      "command": "dotnet",
-      "args": ["run", "--project", "C:\\Dev\\RoslynMcpServer"]
-    }
-  }
-}
+```powershell
+cd C:\path\to\your\solution
+powershell -ExecutionPolicy Bypass -File C:\path\to\RoslynMcpServer\setup.ps1
 ```
 
-**Important:** Replace `C:\\Dev\\RoslynMcpServer` with the actual path from Step 1. Use double backslashes on Windows.
-
-### Step 3: Add Instructions for Claude
-
-Create a file called `CLAUDE.md` in your project root. This file tells Claude HOW to work with your code.
-
-**Option A: Get a template from the server** (recommended)
-
-Start Claude Code in your project folder, then ask:
+This creates:
 ```
-Get the standard template using roslyn_get_template
-```
-
-Claude will fetch the template and you can save it as CLAUDE.md.
-
-**Option B: Download directly**
-```bash
-curl -o CLAUDE.md https://raw.githubusercontent.com/BeinerChes/RoslynMcpServer/rc/1.0.2/CLAUDE_TEMPLATE.md
+YourSolution/
+├── .mcp.json                          # MCP server configuration
+├── CLAUDE.md                          # Instructions for Claude
+└── .claude/
+    ├── hooks/                         # Workflow enforcement hooks
+    │   ├── enforce-git-instructions.py
+    │   └── enforce-plan-instructions.py
+    ├── plans/                         # Plan files (per-solution)
+    └── settings.json                  # Hook configuration
 ```
 
-**What is CLAUDE.md?** It's a file that Claude reads to understand your project's conventions. With Roslyn MCP, it tells Claude to use Roslyn tools instead of basic text search/replace. You don't execute anything in this file - Claude reads it automatically.
+### Step 3: Start Claude Code
 
-### Step 4: Start Claude Code
-
-Open a terminal in your project folder and run:
 ```bash
 claude
 ```
 
-The Roslyn server should connect automatically. You'll see it listed when you type `/mcp`.
+Verify the connection with `/mcp`. You should see `roslyn` listed.
 
-### Step 5: Verify It's Working
-
-Ask Claude:
+**Test it:**
 ```
 Find all types containing "Controller" in this solution
 ```
 
-If it uses `roslyn_find_symbol`, everything is working. If it uses `grep`, check that:
-- The `.mcp.json` file is in your project root
-- The path to RoslynMcpServer is correct
-- The `CLAUDE.md` file exists
+If Claude uses `roslyn_find_symbol`, everything is working.
 
-## Available Template
+## Available Topics
 
-Get the CLAUDE.md template for your project:
+The template tells Claude to fetch topic-specific instructions via `roslyn_get_instructions`:
 
-```
-Ask Claude: "Get the standard template using roslyn_get_template"
-```
-
-The template tells Claude to fetch topic-specific instructions via `roslyn_get_instructions`. Available topics: `plan`, `tools`, `git`, `code`, `tdd`, `pre-pr`.
+| Topic | Description |
+|-------|-------------|
+| `plan` | Session planning, issue tracking, plan file management |
+| `tools` | Roslyn tool preferences and usage |
+| `git` | Git workflow, branches, commits |
+| `code` | C# best practices |
+| `tdd` | Test-driven development |
+| `pre-pr` | Checklist before creating pull request |
 
 ## Why CLAUDE.md Matters
 
@@ -123,6 +102,25 @@ With `CLAUDE.md` pointing to Roslyn tools:
 - Edits precisely (modifies exactly one method)
 
 The CLAUDE.md file is instructions **for Claude to read**, not commands for you to run. You create it once and Claude follows it automatically.
+
+## Hook Enforcement System
+
+The server includes hooks that enforce Claude to read instructions before performing operations. This ensures consistent workflow and prevents Claude from skipping important steps.
+
+### What Hooks Enforce
+
+| Operation | Required First |
+|-----------|----------------|
+| `git commit`, `git push` | `roslyn_get_instructions("git")` |
+| `gh issue create/close/edit` | `roslyn_get_instructions("plan")` |
+| `gh pr create/merge` | `roslyn_get_instructions("plan")` |
+
+### Plan Files
+
+Plans are stored **per-solution** in `.claude/plans/`:
+- Tracks work across sessions
+- Links to GitHub issues
+- Prevents context loss during long sessions
 
 ## Available Tools
 
@@ -149,6 +147,7 @@ The CLAUDE.md file is instructions **for Claude to read**, not commands for you 
 | `roslyn_find_dead_code` | Find methods/properties with no callers (see limitations below) |
 | `roslyn_get_template` | Get CLAUDE.md template for your project |
 | `roslyn_get_instructions` | Get topic-specific instructions (tools, git, code, plan, tdd, pre-pr) |
+| `roslyn_setup_hooks` | Set up Claude Code hooks to enforce instruction reading before git/GitHub operations |
 
 ### Dead Code Detection Limitations
 
@@ -311,10 +310,12 @@ RoslynMcpServer/
 │   ├── McpServer.cs              # MCP protocol (JSON-RPC over stdio)
 │   ├── RoslynTools.*.cs          # Tool registrations (partial class)
 │   ├── SolutionAnalyzerService.*.cs  # Roslyn logic (partial class)
-│   └── Instructions.cs           # Dynamic instruction loading
+│   ├── Instructions.cs           # Dynamic instruction loading
+│   └── HookTokenService.cs       # Token generation for hook validation
 ├── Instructions/                 # Markdown instruction files
 │   ├── Topics/                   # Topic instructions (code, git, plan, tdd, pre-pr, tools)
-│   └── Templates/                # CLAUDE.md templates (minimal, standard, tdd, team)
+│   ├── Templates/                # CLAUDE.md templates (minimal, standard, tdd, team)
+│   └── Hooks/                    # Python hook scripts for Claude Code
 ├── RoslynMcpServer.Graph/        # Call graph database
 │   ├── GraphDatabase.cs          # SQLite-based call graph storage
 │   └── GraphAnalyzer.cs          # Builds call graph from Roslyn
@@ -333,6 +334,7 @@ The server uses:
 - **SQLite** for call graph persistence
 - **Three.js** for 3D visualization
 - **JSON-RPC 2.0** over stdio for MCP communication
+- **Python hooks** for Claude Code workflow enforcement
 
 ## Roadmap
 
