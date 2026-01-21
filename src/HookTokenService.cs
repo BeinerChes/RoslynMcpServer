@@ -18,7 +18,8 @@ public class HookTokenService
     private readonly Dictionary<string, TimeSpan> _tokenExpirations = new()
     {
         ["git"] = TimeSpan.FromMinutes(5),
-        ["plan"] = TimeSpan.FromMinutes(10)
+        ["plan"] = TimeSpan.FromMinutes(10),
+        ["tools"] = TimeSpan.FromMinutes(10)
     };
     private readonly TimeSpan _defaultExpiration = TimeSpan.FromMinutes(5);
     private readonly byte[] _secretKey;
