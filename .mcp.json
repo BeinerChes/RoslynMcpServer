@@ -1,9 +1,9 @@
 {
-  "mcpServers": {
-    "roslyn": {
-      "type": "stdio",
-      "command": "dotnet",
-      "args": [ "run", "--project", "c:\\Users\\cbein\\source\\repos\\RoslynMcpServer" ]
+    "mcpServers": {
+      "roslyn": {
+        "type": "stdio",
+        "command": "C:\\Users\\cbein\\source\\repos\\RoslynMcpServer\\bin\\Debug\\net10.0\\RoslynMcpServer.exe",
+        "args": []
+      }
     }
   }
-}
