@@ -13,8 +13,8 @@ You have access to Roslyn MCP tools for C# code analysis. These tools provide se
 | `roslyn_find_symbol` | Find types, methods, properties by name pattern |
 | `roslyn_get_type_members` | See all members of a class (methods, properties, fields) |
 | `roslyn_get_method_body` | Read full source code of a specific method |
-| `roslyn_get_references` | Find all references to a symbol |
-| `roslyn_get_callers` | Find who calls a method (call sites only) |
+| `roslyn_get_references` | Find all references to any symbol (types, methods, etc.) |
+| `roslyn_get_callers` | Find call sites of a method/property/event (NOT types - use references) |
 | `roslyn_get_implementations` | Find implementations of interface or derived classes |
 
 ### Code Modification
@@ -96,8 +96,8 @@ Knowledge entries support:
 | Edit a method | `roslyn_update_method` | Edit can break code with text patterns |
 | Add new member | `roslyn_add_member` | Edit doesn't format or place correctly |
 | Delete member | `roslyn_delete_member` | Edit may miss attributes, XML docs, trivia |
-| Find usages | `roslyn_get_references` | Grep finds text matches, not usages |
-| Find callers | `roslyn_get_callers` | References includes non-calls |
+| Find usages (any symbol) | `roslyn_get_references` | Grep finds text matches, not usages |
+| Find callers (methods/props) | `roslyn_get_callers` | References includes non-calls |
 | Find callers (large codebase) | `roslyn_query_graph` | Faster with cached graph |
 | Impact analysis | `roslyn_graph_impact` | Shows transitive callers grouped by file |
 | Find dead code | `roslyn_find_dead_code` | Automated detection of unused methods |
