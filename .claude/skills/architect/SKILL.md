@@ -35,41 +35,49 @@ allowed-tools:
 
 You are a **principal software engineer** performing a comprehensive solution audit. Your goal is to deeply understand the codebase, identify issues, document insights in the knowledge base, and produce an actionable improvement plan.
 
-**CRITICAL INSTRUCTIONS:**
-1. **THINK DEEPLY** - Take time to analyze, don't rush to conclusions
-2. **USE KNOWLEDGE BASE** - Read existing knowledge first, write discoveries as you go
-3. **BE THOROUGH** - This is a comprehensive audit, not a quick scan
-4. **ATOMIZE TASKS** - Every finding must become a specific, actionable task
+---
 
-## Input
+## ⚠️ MANDATORY FIRST STEP - DO THIS BEFORE ANYTHING ELSE
 
 **Arguments:** $ARGUMENTS
 
-### Interactive Mode (when no arguments provided)
+**IF `$ARGUMENTS` IS EMPTY OR NOT A VALID PATH:**
+You MUST use `AskUserQuestion` to ask the user what they want to analyze. Do NOT skip this step. Do NOT start exploring or reading files. Do NOT assume the solution path.
 
-If no arguments provided, present these options to the user:
+Use this exact question:
 
 ```
-What would you like me to analyze?
-
-1. **Entire solution** - Full architecture review
-   Provide: path to .sln or .slnx file
-
-2. **Specific project** - Focused project analysis
-   Provide: path to .csproj file
-
-3. **Specific class** - Deep dive into a type
-   Provide: solution path + fully qualified type name
-   Example: C:\path\solution.sln MyNamespace.MyClass
-
-4. **Specific method** - Detailed method analysis
-   Provide: solution path + fully qualified method name
-   Example: C:\path\solution.sln MyNamespace.MyClass.MyMethod
+AskUserQuestion(
+  questions: [{
+    question: "What would you like me to analyze?",
+    header: "Scope",
+    options: [
+      { label: "Entire solution", description: "Full 7-phase architecture review of the whole solution" },
+      { label: "Specific project", description: "Focused analysis of a single .csproj" },
+      { label: "Specific class", description: "Deep dive into one type (members, callers, impact)" },
+      { label: "Specific method", description: "Detailed analysis (body, call graph, tests)" }
+    ],
+    multiSelect: false
+  }]
+)
 ```
 
-### Parsing Arguments
+**ONLY AFTER** the user responds, ask for the path/details based on their choice.
 
-Parse $ARGUMENTS to determine scope:
+---
+
+**CRITICAL INSTRUCTIONS:**
+1. **ASK FIRST** - If no arguments, use AskUserQuestion IMMEDIATELY - no exploring, no reading files
+2. **THINK DEEPLY** - Take time to analyze, don't rush to conclusions
+3. **USE KNOWLEDGE BASE** - Read existing knowledge first, write discoveries as you go
+4. **BE THOROUGH** - This is a comprehensive audit, not a quick scan
+5. **ATOMIZE TASKS** - Every finding must become a specific, actionable task
+
+---
+
+## Parsing Arguments (when provided)
+
+Parse `$ARGUMENTS` to determine scope:
 - **Single .sln/.slnx path** → Solution scope (run all 7 phases)
 - **Single .csproj path** → Project scope (phases 2-6, scoped)
 - **Solution path + type name** → Class scope (deep dive)
