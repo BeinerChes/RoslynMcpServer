@@ -10,6 +10,7 @@ allowed-tools:
   - Bash
   - WebSearch
   - TodoWrite
+  - AskUserQuestion
   - mcp__roslyn__roslyn_get_projects_in_build_order
   - mcp__roslyn__roslyn_find_symbol
   - mcp__roslyn__roslyn_get_references
@@ -42,9 +43,101 @@ You are a **principal software engineer** performing a comprehensive solution au
 
 ## Input
 
-**Solution Path:** $ARGUMENTS
+**Arguments:** $ARGUMENTS
 
-If no solution path provided, ask the user for it.
+### Interactive Mode (when no arguments provided)
+
+If no arguments provided, present these options to the user:
+
+```
+What would you like me to analyze?
+
+1. **Entire solution** - Full architecture review
+   Provide: path to .sln or .slnx file
+
+2. **Specific project** - Focused project analysis
+   Provide: path to .csproj file
+
+3. **Specific class** - Deep dive into a type
+   Provide: solution path + fully qualified type name
+   Example: C:\path\solution.sln MyNamespace.MyClass
+
+4. **Specific method** - Detailed method analysis
+   Provide: solution path + fully qualified method name
+   Example: C:\path\solution.sln MyNamespace.MyClass.MyMethod
+```
+
+### Parsing Arguments
+
+Parse $ARGUMENTS to determine scope:
+- **Single .sln/.slnx path** → Solution scope (run all 7 phases)
+- **Single .csproj path** → Project scope (phases 2-6, scoped)
+- **Solution path + type name** → Class scope (deep dive)
+- **Solution path + method name** → Method scope (detailed analysis)
+
+---
+
+## Scope-Specific Analysis
+
+### Class Scope Analysis
+
+When analyzing a specific class, perform this focused deep dive:
+
+```
+1. Get all members:
+   roslyn_get_type_members(solutionPath, typeName, compact: false, includeInherited: true)
+
+2. Find all callers (who uses this class):
+   roslyn_get_references(solutionPath, filePath, line, column)
+
+3. Analyze impact (what breaks if this changes):
+   roslyn_graph_impact(solutionPath, symbolName: "Namespace.ClassName")
+
+4. Check for implementations (if interface/base class):
+   roslyn_get_implementations(solutionPath, typeName)
+
+5. Get diagnostics for this type:
+   roslyn_get_diagnostics(solutionPath) - filter to files containing this type
+```
+
+**Output for Class Scope:**
+- Class overview (purpose, responsibilities)
+- Member summary table (methods, properties, fields)
+- Dependency graph (what it uses, what uses it)
+- Coupling analysis (fan-in/fan-out)
+- Identified issues with deep task format
+- Refactoring recommendations
+
+### Method Scope Analysis
+
+When analyzing a specific method, perform this detailed analysis:
+
+```
+1. Get method body:
+   roslyn_get_method_body(solutionPath, typeName, methodName)
+
+2. Find all callers:
+   roslyn_get_callers(solutionPath, filePath, line, column)
+
+3. Query call graph (what this method calls):
+   roslyn_query_graph(solutionPath, symbolName, direction: "callees", maxDepth: 3)
+
+4. Analyze impact:
+   roslyn_graph_impact(solutionPath, symbolName)
+
+5. Check for existing knowledge:
+   roslyn_knowledge_for_symbol(solutionPath, symbolName)
+```
+
+**Output for Method Scope:**
+- Method signature and purpose
+- Full source code with annotations
+- Call chain (callers → this method → callees)
+- Complexity analysis (cyclomatic, cognitive)
+- Test coverage assessment
+- Performance characteristics
+- Identified issues with deep task format
+- Specific improvement recommendations
 
 ---
 
@@ -352,18 +445,145 @@ roslyn_knowledge_add(
 - Minor refactoring
 - Dead code cleanup
 
-### 6.2 Create Atomized Tasks
+### 6.2 Create Deep Developer Tasks
+
+**CRITICAL:** Every task must be detailed enough for a developer to implement without asking questions.
 
 **BAD task:** "Fix performance issues"
-**GOOD task:** "Add Redis caching to UserService.GetUserById() - method called 500x/request, 200ms each"
+**GOOD task:** See template below
 
-**BAD task:** "Improve error handling"
-**GOOD task:** "Add structured logging to PaymentProcessor.ProcessPayment():142 - exceptions currently swallowed"
+#### Deep Task Template
 
-Every task must have:
-- Specific file/method location
-- Clear problem description
-- Measurable success criteria
+For EACH finding, generate a task using this format:
+
+```markdown
+## Task: <Specific action> in <Location>
+
+### Problem
+<What's wrong, with metrics and impact>
+- **Location:** `Namespace.Class.Method():line`
+- **Severity:** P0/P1/P2/P3
+- **Impact:** <Who/what is affected, how badly>
+- **Metrics:** <Current performance/error rate/etc.>
+
+### Root Cause
+<Why this is happening - technical explanation>
+
+### Implementation Steps
+1. <Specific step with code location>
+2. <Next step>
+3. ...
+
+### Code Changes
+```csharp
+// Before (current code)
+public void BadMethod() { ... }
+
+// After (recommended)
+public void BetterMethod() { ... }
+```
+
+### Best Practices
+- <Industry standard to follow>
+- <Pattern to use>
+- <Anti-pattern to avoid>
+
+### Unit Tests Required
+- [ ] Test: <scenario> → Expected: <result>
+- [ ] Test: <edge case> → Expected: <result>
+- [ ] Test: <error case> → Expected: <exception/fallback>
+
+### Acceptance Criteria
+- [ ] <Measurable outcome 1>
+- [ ] <Measurable outcome 2>
+- [ ] All unit tests pass
+- [ ] No new warnings introduced
+
+### Dependencies
+- Requires: <other tasks that must complete first>
+- Blocks: <tasks waiting on this>
+
+### Estimated Complexity
+<Low/Medium/High> - <brief justification>
+```
+
+#### Task Examples by Category
+
+**Performance Task:**
+```markdown
+## Task: Add caching to UserService.GetUserById()
+
+### Problem
+- **Location:** `MyApp.Services.UserService.GetUserById():47`
+- **Severity:** P1
+- **Impact:** API response time 500ms avg, affects all authenticated requests
+- **Metrics:** Called 500x/request, 200ms DB query each time
+
+### Root Cause
+No caching layer. Every call hits database directly.
+
+### Implementation Steps
+1. Add `IDistributedCache` to UserService constructor
+2. Implement cache-aside pattern in GetUserById()
+3. Add cache key format: `user:{id}`
+4. Set 5-minute sliding expiration
+5. Add cache invalidation in UpdateUser()
+
+### Best Practices
+- Use structured cache keys with prefix
+- Handle cache failures gracefully (fallback to DB)
+- Log cache hits/misses for monitoring
+- Use sliding expiration for active users
+
+### Unit Tests Required
+- [ ] Test: cache hit → returns cached user without DB call
+- [ ] Test: cache miss → fetches from DB, caches result
+- [ ] Test: cache failure → falls back to DB gracefully
+- [ ] Test: user update → invalidates cache entry
+
+### Acceptance Criteria
+- [ ] Response time < 50ms for cached users
+- [ ] 90%+ cache hit rate after warmup
+- [ ] No increase in error rate
+```
+
+**Security Task:**
+```markdown
+## Task: Fix SQL injection in SearchProducts()
+
+### Problem
+- **Location:** `MyApp.Data.ProductRepository.SearchProducts():23`
+- **Severity:** P0 (CRITICAL)
+- **Impact:** Full database compromise possible
+- **Metrics:** Endpoint receives 1000 req/day from untrusted input
+
+### Root Cause
+String concatenation used to build SQL query with user input.
+
+### Implementation Steps
+1. Replace string concatenation with parameterized query
+2. Add input validation for search term
+3. Add SQL injection test to security test suite
+
+### Code Changes
+```csharp
+// Before (VULNERABLE)
+var sql = $"SELECT * FROM Products WHERE Name LIKE '%{searchTerm}%'";
+
+// After (SAFE)
+var sql = "SELECT * FROM Products WHERE Name LIKE @SearchTerm";
+cmd.Parameters.AddWithValue("@SearchTerm", $"%{searchTerm}%");
+```
+
+### Unit Tests Required
+- [ ] Test: normal search → returns matching products
+- [ ] Test: SQL injection attempt `'; DROP TABLE--` → safely escaped
+- [ ] Test: empty search → returns empty or all (per requirements)
+
+### Acceptance Criteria
+- [ ] No SQL injection possible (verified by security scan)
+- [ ] Existing search functionality unchanged
+```
 
 ### 6.3 Write Plan File
 

@@ -147,28 +147,53 @@ Plans are stored **per-solution** in `.claude/plans/`:
 - Links to GitHub issues
 - Prevents context loss during long sessions
 
-## Cost-Optimized Skills
+## Skills
 
-The setup includes custom skills that use cheaper models for specific tasks:
+The setup includes custom skills for specialized tasks:
 
-| Skill | Model | Cost Savings | Usage |
-|-------|-------|--------------|-------|
-| `/update-docs` | Haiku | ~20x cheaper than Opus | Update README.md, tools.md after code changes |
+| Skill | Description |
+|-------|-------------|
+| `/architect` | Deep solution analysis with detailed task generation |
+| `/update-docs` | Update documentation after code changes (uses Haiku - 20x cheaper) |
 
-### Why Use Skills with Cheaper Models?
+### Architect Skill
 
-- **Documentation updates** don't need Opus-level reasoning
-- **Haiku** handles straightforward tasks at 5% of Opus cost
-- Skills specify allowed tools, preventing unnecessary operations
+The `/architect` skill performs comprehensive code analysis like a principal software engineer:
 
-### Using the Update-Docs Skill
+**Interactive Mode** - Run without arguments to choose scope:
+```
+/architect
+```
+
+Options:
+1. **Entire solution** - Full 7-phase architecture review
+2. **Specific project** - Focused .csproj analysis
+3. **Specific class** - Deep dive (members, callers, impact)
+4. **Specific method** - Detailed analysis (body, call graph, tests)
+
+**Direct Mode** - Provide scope as argument:
+```
+/architect C:\path\solution.slnx
+/architect C:\path\solution.slnx MyNamespace.MyClass
+/architect C:\path\solution.slnx MyNamespace.MyClass.MyMethod
+```
+
+**Deep Task Generation** - Every finding becomes an actionable task with:
+- Problem statement (location, severity, metrics)
+- Root cause analysis
+- Implementation steps with code examples
+- Best practices to follow
+- Unit tests required (checkboxes)
+- Acceptance criteria (measurable outcomes)
+
+### Update-Docs Skill
 
 After making code changes:
 ```
 /update-docs
 ```
 
-Claude will use Haiku to update relevant documentation files based on your recent changes.
+Uses Haiku model (~20x cheaper than Opus) for straightforward documentation updates.
 
 ## Available Tools
 

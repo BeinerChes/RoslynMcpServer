@@ -1,72 +1,63 @@
-# Plan: Graph tools cannot query constructors with .ctor syntax
+# Plan: Enhance architect skill with interactive mode and deep task generation
+
+GitHub Issue: https://github.com/BeinerChes/RoslynMcpServer/issues/65
 
 ## Problem Statement
+The architect skill currently:
+1. Requires solution path as argument, only asks for it if missing
+2. Generates high-level task summaries that lack implementation details
 
-`roslyn_query_graph` fails to find constructors when queried with `.ctor` syntax because:
-- Roslyn's `ToDisplayString()` returns `Namespace.Type.Type(params)` for constructors
-- Users query with `Namespace.Type..ctor(params)`
-- The SQL pattern matching doesn't handle this translation
-
-## Root Cause
-
-In `GraphDatabase.Symbols.cs:FindSymbolAsync`:
-- Stored QualifiedName: `Atlas.Data.FeatureSet.FeatureSet(string)`
-- User query: `Atlas.Data.FeatureSet..ctor(string)`
-- SQL pattern `'%.' || @SearchName` doesn't match
-
-## Solution
-
-Modify `FindSymbolAsync` to detect `.ctor` queries and translate them:
-1. Check if searchName contains `.ctor`
-2. Extract the type path (e.g., `Atlas.Data.FeatureSet` from `Atlas.Data.FeatureSet..ctor(string)`)
-3. Extract parameter signature if present
-4. Search for symbols where `Name = '.ctor'` AND `QualifiedName` matches the type path pattern
+Need to add:
+1. Interactive scope selection when no args provided
+2. Deep task generation with best practices, tests, acceptance criteria
 
 ## Completed Fixes
 
-1. **GraphDatabase.Symbols.cs** - Added `FindConstructorAsync` method that translates `.ctor` syntax to Roslyn's actual naming convention:
-   - `MyApp.Type..ctor(string)` → searches for `MyApp.Type.Type(string)`
-   - Handles both full namespace and partial type paths
-   - Returns candidates when multiple constructors exist
+### 1. Interactive Mode Section
+Added to `Instructions/Skills/architect/SKILL.md` after `## Input`:
+- 4 scope options when no arguments provided (solution, project, class, method)
+- Argument parsing logic to determine scope
+- Added `AskUserQuestion` to allowed-tools
 
-2. **GraphSymbolSearchTests.cs** - Added 6 unit tests covering:
-   - Full path with params: `MyApp.Models.User..ctor(string)`
-   - Multiple params: `MyApp.Models.User..ctor(string, int)`
-   - No params, single constructor: `MyApp.Services.OrderService..ctor`
-   - No params, multiple constructors: returns candidates
-   - Empty parens: `OrderService..ctor()`
-   - Partial path: `User..ctor(string)`
+### 2. Scope-Specific Analysis Sections
+Added new section with detailed instructions for:
+- **Class Scope Analysis** - members, references, impact, implementations, diagnostics
+- **Method Scope Analysis** - body, callers, call graph, impact, knowledge
+
+### 3. Deep Task Generation Template
+Replaced section 6.2 with comprehensive template including:
+- Problem (location, severity, impact, metrics)
+- Root Cause
+- Implementation Steps
+- Code Changes (before/after)
+- Best Practices
+- Unit Tests Required (checkboxes)
+- Acceptance Criteria (checkboxes)
+- Dependencies
+- Estimated Complexity
+
+Added examples:
+- Performance task (caching)
+- Security task (SQL injection fix)
 
 ## Test Results
-
-All 6 constructor tests passing:
-```
-Passed!  - Failed: 0, Passed: 6, Skipped: 0, Total: 6
-```
+Ready for real-world testing with `/architect` command.
 
 ## Current Status
+✅ Implementation complete - awaiting user testing
 
-✅ **Complete** - Real-world testing passed on Atlas3 solution.
-
-## Real-World Test Results (Atlas3.sln)
-
-| Query | Result |
-|-------|--------|
-| `Atlas.Data.FeatureSet..ctor` | Multiple constructors found, lists 5 candidates ✓ |
-| `Atlas.Data.FeatureSet..ctor(string)` | Found exact: `FeatureSet.FeatureSet(string)` ✓ |
-| `FeatureSet..ctor(string, bool)` | Partial path resolved correctly ✓ |
-| `Atlas.Data.FeatureSet..ctor(string, bool, bool)` | Full path with callees returned ✓ |
+## Files Modified
+- `Instructions/Skills/architect/SKILL.md` - All changes
 
 ## Next Steps
-
-1. ~~Modify `FindSymbolAsync` to handle `.ctor` syntax~~ ✅
-2. ~~Add unit tests for constructor queries~~ ✅
-3. ~~Test with real solution~~ ✅
-4. Commit, push, and create PR
+1. ~~Add interactive mode section to SKILL.md~~ ✅
+2. ~~Add deep task generation template~~ ✅
+3. ~~Add scope-specific analysis instructions~~ ✅
+4. Test the enhanced skill with user
+5. Commit and create PR
 
 ## Workflow Reminder (MANDATORY)
 After each fix:
-1. Run `roslyn_get_diagnostics` to check for errors
-2. Re-read and follow CLAUDE.md
-3. Update this plan
-4. Keep working until issue is resolved
+1. Re-read and follow CLAUDE.md
+2. Update this plan
+3. Keep working until issue is resolved
