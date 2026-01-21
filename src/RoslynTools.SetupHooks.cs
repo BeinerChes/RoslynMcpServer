@@ -96,6 +96,8 @@ public static partial class RoslynTools
         var settingsFile = Path.Combine(claudeDir, "settings.json");
         var gitHookFile = Path.Combine(hooksDir, "enforce-git-instructions.py");
         var planHookFile = Path.Combine(hooksDir, "enforce-plan-instructions.py");
+        var roslynSuggestHookFile = Path.Combine(hooksDir, "suggest-roslyn-for-csharp.py");
+        var roslynReadHookFile = Path.Combine(hooksDir, "suggest-roslyn-for-read.py");
         var claudeMdFile = Path.Combine(projectPath, "CLAUDE.md");
 
         // Create directories
@@ -105,6 +107,8 @@ public static partial class RoslynTools
         // Write the hook files (read from Instructions/Hooks/)
         File.WriteAllText(gitHookFile, GetHookContent("enforce-git-instructions.py"));
         File.WriteAllText(planHookFile, GetHookContent("enforce-plan-instructions.py"));
+        File.WriteAllText(roslynSuggestHookFile, GetHookContent("suggest-roslyn-for-csharp.py"));
+        File.WriteAllText(roslynReadHookFile, GetHookContent("suggest-roslyn-for-read.py"));
 
         // Handle CLAUDE.md
         var templateContent = Instructions.Templates.Get(templateName);
@@ -172,6 +176,42 @@ public static partial class RoslynTools
                             ["command"] = "python .claude/hooks/enforce-plan-instructions.py"
                         }
                     }
+                },
+                new Dictionary<string, object>
+                {
+                    ["matcher"] = "Edit",
+                    ["hooks"] = new[]
+                    {
+                        new Dictionary<string, object>
+                        {
+                            ["type"] = "command",
+                            ["command"] = "python .claude/hooks/suggest-roslyn-for-csharp.py"
+                        }
+                    }
+                },
+                new Dictionary<string, object>
+                {
+                    ["matcher"] = "Write",
+                    ["hooks"] = new[]
+                    {
+                        new Dictionary<string, object>
+                        {
+                            ["type"] = "command",
+                            ["command"] = "python .claude/hooks/suggest-roslyn-for-csharp.py"
+                        }
+                    }
+                },
+                new Dictionary<string, object>
+                {
+                    ["matcher"] = "Read",
+                    ["hooks"] = new[]
+                    {
+                        new Dictionary<string, object>
+                        {
+                            ["type"] = "command",
+                            ["command"] = "python .claude/hooks/suggest-roslyn-for-read.py"
+                        }
+                    }
                 }
             }
         };
@@ -181,7 +221,7 @@ public static partial class RoslynTools
             WriteIndented = true
         }));
 
-        var filesCreated = new List<string> { gitHookFile, planHookFile, settingsFile };
+        var filesCreated = new List<string> { gitHookFile, planHookFile, roslynSuggestHookFile, roslynReadHookFile, settingsFile };
         if (claudeMdAction == "created" || claudeMdAction == "updated")
         {
             filesCreated.Add(claudeMdFile);
@@ -201,7 +241,9 @@ public static partial class RoslynTools
             instructions = new[]
             {
                 "The git hook requires calling roslyn_get_instructions(topic: \"git\") before any git commit or push.",
-                "The plan hook requires calling roslyn_get_instructions(topic: \"plan\") before GitHub issue/PR operations."
+                "The plan hook requires calling roslyn_get_instructions(topic: \"plan\") before GitHub issue/PR operations.",
+                "The C# edit hook suggests using Roslyn MCP tools for .cs file edits (soft reminder, can be ignored if not applicable).",
+                "The C# read hook requires calling roslyn_get_instructions(topic: \"tools\") before reading .cs files."
             }
         };
     }
