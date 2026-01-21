@@ -13,6 +13,33 @@
             "command": "python .claude/hooks/enforce-plan-instructions.py"
           }
         ]
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python .claude/hooks/suggest-roslyn-for-csharp.py"
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python .claude/hooks/suggest-roslyn-for-csharp.py"
+          }
+        ]
+      },
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python .claude/hooks/suggest-roslyn-for-read.py"
+          }
+        ]
       }
     ]
   }

@@ -86,7 +86,9 @@ YourSolution/
 └── .claude/
     ├── hooks/                         # Workflow enforcement hooks
     │   ├── enforce-git-instructions.py
-    │   └── enforce-plan-instructions.py
+    │   ├── enforce-plan-instructions.py
+    │   ├── suggest-roslyn-for-csharp.py
+    │   └── suggest-roslyn-for-read.py
     ├── skills/                        # Custom skills (cost-optimized)
     │   └── update-docs/SKILL.md       # Uses Haiku model (~20x cheaper)
     ├── plans/                         # Plan files (per-solution)
@@ -139,6 +141,8 @@ The server includes hooks that enforce Claude to read instructions before perfor
 | `git commit`, `git push` | `roslyn_get_instructions("git")` |
 | `gh issue create/close/edit` | `roslyn_get_instructions("plan")` |
 | `gh pr create/merge` | `roslyn_get_instructions("plan")` |
+| `Read` on `.cs` files | `roslyn_get_instructions("tools")` |
+| `Edit`/`Write` on `.cs` files | `roslyn_get_instructions("tools")` (soft reminder) |
 
 ### Plan Files
 
