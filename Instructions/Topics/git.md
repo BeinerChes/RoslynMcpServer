@@ -11,13 +11,16 @@ You are performing git operations in a project that follows issue-first developm
 - NEVER use `git push --force` on main/master/release branches
 - NEVER use `git commit --amend` unless explicitly requested
 - NEVER skip hooks (`--no-verify`)
+- **ALWAYS get the default branch from GitHub** - never assume it's `main` or `master`
 
-## Before Starting
+## Before Starting (MANDATORY)
 
-Get the default branch name:
+**FIRST STEP: Get the default branch name from GitHub:**
 ```bash
 gh repo view --json defaultBranchRef -q .defaultBranchRef.name
 ```
+
+Store this value and use it for ALL branch operations below. The default branch may be `main`, `master`, `rc/X.Y.Z`, or something else. **Never assume - always check.**
 
 ## Workflow
 
@@ -32,8 +35,10 @@ Note the issue number (e.g., #42)
 Labels: `bug`, `enhancement`, `documentation`, `refactor`
 
 ### 2. CREATE BRANCH
+Use the default branch from step "Before Starting":
 ```bash
-git checkout <default-branch>
+# Example: if default branch is rc/1.0.3
+git checkout rc/1.0.3
 git pull
 git checkout -b issues/42
 ```
@@ -68,9 +73,11 @@ EOF
 ```
 
 ### 7. PUSH AND CREATE PR
+Use the default branch from step "Before Starting" for `--base`:
 ```bash
 git push -u origin issues/42
-gh pr create --base <default-branch> --title "Type: description" --body "$(cat <<'EOF'
+# Example: if default branch is rc/1.0.3
+gh pr create --base rc/1.0.3 --title "Type: description" --body "$(cat <<'EOF'
 ## Summary
 - Brief description of changes
 
@@ -98,7 +105,8 @@ This will:
 
 Then update your local repo:
 ```bash
-git checkout <default-branch>
+# Example: if default branch is rc/1.0.3
+git checkout rc/1.0.3
 git pull
 ```
 
