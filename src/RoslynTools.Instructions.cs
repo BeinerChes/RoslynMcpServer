@@ -120,7 +120,7 @@ public static partial class RoslynTools
                     };
                 }
 
-                // For git and plan topics, generate a token for hook validation
+                // For git, plan, and tools topics, generate a token for hook validation
                 string? tokenInfo = null;
                 if (topicName == "git")
                 {
@@ -133,6 +133,12 @@ public static partial class RoslynTools
                     var token = HookTokenService.Instance.GenerateToken("plan");
                     WriteToken("roslyn-plan-token", token);
                     tokenInfo = $"\n\n---\n**Hook Token Generated:** Valid for 10 minutes. Token written to `~/.claude/roslyn-plan-token`";
+                }
+                else if (topicName == "tools")
+                {
+                    var token = HookTokenService.Instance.GenerateToken("tools");
+                    WriteToken("roslyn-tools-token", token);
+                    tokenInfo = $"\n\n---\n**Hook Token Generated:** Valid for 10 minutes. Token written to `~/.claude/roslyn-tools-token`\nThis token allows Edit/Write operations on .cs files without blocking.";
                 }
 
                 // Return just the instructions text directly for easy consumption

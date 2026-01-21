@@ -4,7 +4,8 @@
       "Bash",
       "mcp__roslyn__*",
       "WebSearch",
-      "Skill(architect)"
+      "Skill(architect)",
+      "WebFetch(domain:docs.claude.com)"
     ]
   },
   "enableAllProjectMcpServers": true,
