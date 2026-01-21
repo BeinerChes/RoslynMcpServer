@@ -58,8 +58,9 @@ public sealed partial class GraphDatabase
     /// <summary>
     /// Finds a symbol by partial name with smart matching.
     /// Supports: exact match, method name only, Type.Method, or partial namespace.
+    /// Also handles .ctor syntax for constructors (Issue #65).
     /// Returns error with candidates if multiple matches found.
-    /// Issue: #33
+    /// Issue: #33, #65
     /// </summary>
     public async Task<SymbolSearchResult> FindSymbolAsync(long solutionId, string searchName)
     {
@@ -72,7 +73,19 @@ public sealed partial class GraphDatabase
             return new SymbolSearchResult { Symbol = exact };
         }
 
-        // 2. Try partial matching - search for symbols ending with the search term
+        // 2. Handle .ctor syntax for constructors (Issue #65)
+        // Roslyn stores constructors as "Namespace.Type.Type(params)" but users query with ".ctor"
+        if (searchName.Contains(".ctor"))
+        {
+            var ctorResult = await FindConstructorAsync(solutionId, searchName);
+            if (ctorResult.Symbol != null || ctorResult.Candidates?.Count > 0)
+            {
+                return ctorResult;
+            }
+            // Fall through to normal search if constructor search found nothing
+        }
+
+        // 3. Try partial matching - search for symbols ending with the search term
         // This handles: "MethodName", "Type.MethodName", "Namespace.Type.MethodName"
         var candidates = await _connection.QueryAsync<SymbolRecord>(
             """
@@ -106,6 +119,104 @@ public sealed partial class GraphDatabase
             Error = $"Multiple symbols match '{searchName}'. Please be more specific.",
             Candidates = matches
         };
+    }
+
+    /// <summary>
+    /// Finds a constructor by .ctor syntax (Issue #65).
+    /// Translates "Namespace.Type..ctor(params)" to "Namespace.Type.Type(params)".
+    /// </summary>
+    private async Task<SymbolSearchResult> FindConstructorAsync(long solutionId, string searchName)
+    {
+        if (_connection == null) throw new InvalidOperationException("Database not open");
+
+        // Parse the .ctor syntax: "Namespace.Type..ctor" or "Namespace.Type..ctor(params)"
+        // Extract type path and parameter signature
+        var ctorIndex = searchName.IndexOf(".ctor", StringComparison.Ordinal);
+        if (ctorIndex <= 0)
+        {
+            return new SymbolSearchResult { Error = $"Invalid constructor syntax: '{searchName}'" };
+        }
+
+        // Get the type path (everything before .ctor, minus the trailing dot)
+        var typePath = searchName.Substring(0, ctorIndex);
+        if (typePath.EndsWith('.'))
+        {
+            typePath = typePath.Substring(0, typePath.Length - 1);
+        }
+
+        // Get the type name (last part of the path)
+        var lastDotIndex = typePath.LastIndexOf('.');
+        var typeName = lastDotIndex >= 0 ? typePath.Substring(lastDotIndex + 1) : typePath;
+
+        // Get parameter signature if present
+        var paramStart = searchName.IndexOf('(', ctorIndex);
+        var paramSignature = paramStart >= 0 ? searchName.Substring(paramStart) : "";
+
+        // Build the expected qualified name pattern: "TypePath.TypeName(params)"
+        // e.g., "Atlas.Data.FeatureSet.FeatureSet(string)"
+        var expectedQualifiedName = $"{typePath}.{typeName}{paramSignature}";
+
+        // First try exact match with the translated name
+        var exact = await GetSymbolByQualifiedNameAsync(solutionId, expectedQualifiedName);
+        if (exact != null)
+        {
+            return new SymbolSearchResult { Symbol = exact };
+        }
+
+        // If no params specified, search for all constructors of this type
+        if (string.IsNullOrEmpty(paramSignature))
+        {
+            var candidates = await _connection.QueryAsync<SymbolRecord>(
+                """
+                SELECT Id, SolutionId, Kind, Name, QualifiedName, FilePath, Line, Column, BodyHash, ContainingTypeId, Status, LastAnalyzed
+                FROM Symbols
+                WHERE SolutionId = @SolutionId
+                  AND Name = '.ctor'
+                  AND QualifiedName LIKE @TypePattern
+                """,
+                new { SolutionId = solutionId, TypePattern = $"{typePath}.{typeName}(%" });
+
+            var matches = candidates.ToList();
+            if (matches.Count == 1)
+            {
+                return new SymbolSearchResult { Symbol = matches[0] };
+            }
+            if (matches.Count > 1)
+            {
+                return new SymbolSearchResult
+                {
+                    Error = $"Multiple constructors found for '{typePath}'. Please specify parameters.",
+                    Candidates = matches
+                };
+            }
+        }
+
+        // Try partial matching for type path (in case namespace is partial)
+        var partialCandidates = await _connection.QueryAsync<SymbolRecord>(
+            """
+            SELECT Id, SolutionId, Kind, Name, QualifiedName, FilePath, Line, Column, BodyHash, ContainingTypeId, Status, LastAnalyzed
+            FROM Symbols
+            WHERE SolutionId = @SolutionId
+              AND Name = '.ctor'
+              AND QualifiedName LIKE @Pattern
+            """,
+            new { SolutionId = solutionId, Pattern = $"%.{typeName}.{typeName}{paramSignature}%" });
+
+        var partialMatches = partialCandidates.ToList();
+        if (partialMatches.Count == 1)
+        {
+            return new SymbolSearchResult { Symbol = partialMatches[0] };
+        }
+        if (partialMatches.Count > 1)
+        {
+            return new SymbolSearchResult
+            {
+                Error = $"Multiple constructors match '{searchName}'. Please be more specific.",
+                Candidates = partialMatches
+            };
+        }
+
+        return new SymbolSearchResult(); // Empty result, let caller handle
     }
 
     /// <summary>

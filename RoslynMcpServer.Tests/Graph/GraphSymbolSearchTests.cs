@@ -183,3 +183,167 @@ public class GraphSymbolSearchTests : IAsyncLifetime
         Assert.Equal(SymbolKind.Property, result.Symbol.Kind);
     }
 }
+
+/// <summary>
+/// Tests for constructor search with .ctor syntax.
+/// Issue: #65
+/// </summary>
+public class GraphConstructorSearchTests : IAsyncLifetime
+{
+    private GraphDatabase _db = null!;
+    private SolutionRecord _solution = null!;
+
+    public async Task InitializeAsync()
+    {
+        _db = GraphDatabase.CreateInMemory();
+        await _db.OpenAsync();
+        _solution = await _db.GetOrCreateSolutionAsync(@"C:\test\MySolution.sln");
+
+        // Create constructor symbols as Roslyn stores them (TypeName.TypeName(params))
+        await _db.InsertSymbolAsync(new SymbolRecord
+        {
+            SolutionId = _solution.Id,
+            Kind = SymbolKind.Constructor,
+            Name = ".ctor",
+            QualifiedName = "MyApp.Models.User.User(string)",
+            FilePath = @"C:\test\User.cs",
+            Line = 10,
+            Column = 5
+        });
+
+        await _db.InsertSymbolAsync(new SymbolRecord
+        {
+            SolutionId = _solution.Id,
+            Kind = SymbolKind.Constructor,
+            Name = ".ctor",
+            QualifiedName = "MyApp.Models.User.User(string, int)",
+            FilePath = @"C:\test\User.cs",
+            Line = 15,
+            Column = 5
+        });
+
+        await _db.InsertSymbolAsync(new SymbolRecord
+        {
+            SolutionId = _solution.Id,
+            Kind = SymbolKind.Constructor,
+            Name = ".ctor",
+            QualifiedName = "MyApp.Services.OrderService.OrderService()",
+            FilePath = @"C:\test\OrderService.cs",
+            Line = 5,
+            Column = 5
+        });
+    }
+
+    public Task DisposeAsync()
+    {
+        _db.Dispose();
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Tests that .ctor syntax with full namespace and params finds the constructor.
+    /// Issue: #65
+    /// </summary>
+    [Fact]
+    public async Task FindSymbolAsync_CtorWithFullPathAndParams_FindsConstructor()
+    {
+        // Act - Query with .ctor syntax
+        var result = await _db.FindSymbolAsync(
+            _solution.Id,
+            "MyApp.Models.User..ctor(string)");
+
+        // Assert
+        Assert.NotNull(result.Symbol);
+        Assert.Equal(".ctor", result.Symbol.Name);
+        Assert.Equal("MyApp.Models.User.User(string)", result.Symbol.QualifiedName);
+        Assert.Equal(SymbolKind.Constructor, result.Symbol.Kind);
+    }
+
+    /// <summary>
+    /// Tests that .ctor syntax with multiple params works.
+    /// Issue: #65
+    /// </summary>
+    [Fact]
+    public async Task FindSymbolAsync_CtorWithMultipleParams_FindsConstructor()
+    {
+        // Act
+        var result = await _db.FindSymbolAsync(
+            _solution.Id,
+            "MyApp.Models.User..ctor(string, int)");
+
+        // Assert
+        Assert.NotNull(result.Symbol);
+        Assert.Equal("MyApp.Models.User.User(string, int)", result.Symbol.QualifiedName);
+    }
+
+    /// <summary>
+    /// Tests that .ctor without params on a type with single constructor finds it.
+    /// Issue: #65
+    /// </summary>
+    [Fact]
+    public async Task FindSymbolAsync_CtorNoParams_SingleConstructor_FindsIt()
+    {
+        // Act - OrderService has only one constructor
+        var result = await _db.FindSymbolAsync(
+            _solution.Id,
+            "MyApp.Services.OrderService..ctor");
+
+        // Assert
+        Assert.NotNull(result.Symbol);
+        Assert.Equal("MyApp.Services.OrderService.OrderService()", result.Symbol.QualifiedName);
+    }
+
+    /// <summary>
+    /// Tests that .ctor without params on type with multiple constructors returns candidates.
+    /// Issue: #65
+    /// </summary>
+    [Fact]
+    public async Task FindSymbolAsync_CtorNoParams_MultipleConstructors_ReturnsCandidates()
+    {
+        // Act - User has two constructors
+        var result = await _db.FindSymbolAsync(
+            _solution.Id,
+            "MyApp.Models.User..ctor");
+
+        // Assert
+        Assert.Null(result.Symbol);
+        Assert.NotNull(result.Error);
+        Assert.Contains("Multiple", result.Error);
+        Assert.NotNull(result.Candidates);
+        Assert.Equal(2, result.Candidates.Count);
+    }
+
+    /// <summary>
+    /// Tests that parameterless constructor can be found with empty parens.
+    /// Issue: #65
+    /// </summary>
+    [Fact]
+    public async Task FindSymbolAsync_CtorWithEmptyParens_FindsParameterlessConstructor()
+    {
+        // Act
+        var result = await _db.FindSymbolAsync(
+            _solution.Id,
+            "MyApp.Services.OrderService..ctor()");
+
+        // Assert
+        Assert.NotNull(result.Symbol);
+        Assert.Equal("MyApp.Services.OrderService.OrderService()", result.Symbol.QualifiedName);
+    }
+
+    /// <summary>
+    /// Tests partial type path with .ctor syntax.
+    /// Issue: #65
+    /// </summary>
+    [Fact]
+    public async Task FindSymbolAsync_CtorWithPartialPath_FindsConstructor()
+    {
+        // Act - Using just "User..ctor(string)" without full namespace
+        var result = await _db.FindSymbolAsync(
+            _solution.Id,
+            "User..ctor(string)");
+
+        // Assert
+        Assert.NotNull(result.Symbol);
+        Assert.Equal("MyApp.Models.User.User(string)", result.Symbol.QualifiedName);
+    }
+}
