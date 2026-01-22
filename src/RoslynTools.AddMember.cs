@@ -108,4 +108,23 @@ public static partial class RoslynTools
                 };
             });
     }
+
+
+    private static void WriteToken(string fileName, string token)
+    {
+        try
+        {
+            var claudeDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                ".claude");
+            Directory.CreateDirectory(claudeDir);
+
+            var tokenFile = Path.Combine(claudeDir, fileName);
+            File.WriteAllText(tokenFile, token);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Warning: Could not write token file {fileName}: {ex.Message}");
+        }
+    }
 }
