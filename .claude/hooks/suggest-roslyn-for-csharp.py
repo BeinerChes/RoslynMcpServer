@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 """
-Hook: Enforce Roslyn MCP tools for C# file edits.
+Hook: Suggest Roslyn MCP tools for C# file edits.
 
-This hook BLOCKS Edit/Write operations on .cs files by default.
+This hook shows a SUGGESTION when Edit/Write is used on .cs files,
+recommending Roslyn tools for semantic code modifications.
+Uses exit code 0 (allow) with a message to avoid "hook error" presentation.
 
-To proceed, Claude must either:
-1. Call roslyn_get_instructions("tools") first (generates a valid token)
-2. Include a bypass marker in the content: // ROSLYN_BYPASS: <reason>
+The suggestion is skipped if:
+1. roslyn_get_instructions("tools") was called recently for the same solution (1 min token)
+2. The content includes a bypass marker: // ROSLYN_BYPASS: <reason>
 
-The bypass marker should explain why Roslyn tools can't be used, e.g.:
+The bypass marker should explain why Roslyn tools aren't being used, e.g.:
   // ROSLYN_BYPASS: Adding comment to non-compiled file
   // ROSLYN_BYPASS: Creating new file, will use roslyn_add_member after
   // ROSLYN_BYPASS: Editing .csproj embedded C# code
@@ -18,28 +20,64 @@ import json
 import os
 import time
 import re
+import hashlib
 
 
-def get_token_file_path():
-    """Get path to the tools token file."""
+def find_solution_file(file_path):
+    """Find the .sln or .slnx file by walking up from the file path."""
+    current = os.path.dirname(os.path.abspath(file_path))
+
+    # Walk up to 10 levels
+    for _ in range(10):
+        if not current or current == os.path.dirname(current):
+            break
+
+        # Check for solution files
+        for ext in ['.slnx', '.sln']:
+            for item in os.listdir(current):
+                if item.endswith(ext):
+                    return os.path.join(current, item)
+
+        current = os.path.dirname(current)
+
+    return None
+
+
+def get_solution_hash(solution_path):
+    """Get a short hash of the solution path for unique token filename."""
+    if not solution_path:
+        return "global"
+    # Use first 8 chars of MD5 hash
+    return hashlib.md5(solution_path.lower().encode()).hexdigest()[:8]
+
+
+def get_token_file_path(solution_path):
+    """Get path to the per-solution tools token file."""
     home = os.path.expanduser("~")
-    return os.path.join(home, ".claude", "roslyn-tools-token")
+    solution_hash = get_solution_hash(solution_path)
+    return os.path.join(home, ".claude", f"roslyn-tools-token-{solution_hash}")
 
 
-def is_token_valid():
-    """Check if a valid (non-expired) tools token exists."""
-    token_file = get_token_file_path()
+def get_log_file_path():
+    """Get path to the suggestions log file."""
+    home = os.path.expanduser("~")
+    return os.path.join(home, ".claude", "roslyn-suggestions.log")
+
+
+def is_token_valid(solution_path):
+    """Check if a valid (non-expired) tools token exists for this solution."""
+    token_file = get_token_file_path(solution_path)
 
     if not os.path.exists(token_file):
         return False, "No token file found"
 
     try:
-        # Check file age (token valid for 10 minutes)
+        # Check file age (token valid for 1 minute)
         file_age = time.time() - os.path.getmtime(token_file)
-        max_age = 10 * 60  # 10 minutes in seconds
+        max_age = 1 * 60  # 1 minute in seconds
 
         if file_age > max_age:
-            return False, f"Token expired ({file_age/60:.1f} minutes old, max 10 minutes)"
+            return False, f"Token expired ({file_age/60:.1f} minutes old, max 1 minute)"
 
         # Token exists and is fresh
         return True, "Valid token"
@@ -78,8 +116,11 @@ def main():
     if not file_path.lower().endswith('.cs'):
         sys.exit(0)  # Not a C# file, allow silently
 
+    # Find solution file for this C# file
+    solution_path = find_solution_file(file_path)
+
     # Check for valid token (from roslyn_get_instructions("tools"))
-    token_valid, token_msg = is_token_valid()
+    token_valid, token_msg = is_token_valid(solution_path)
     if token_valid:
         # Token is valid, allow the operation
         print(f'[Roslyn Hook] Token valid - allowing {tool_name} on C# file', file=sys.stderr)
@@ -97,39 +138,22 @@ def main():
         print(f'[Roslyn Hook] Bypass accepted: {bypass_reason}', file=sys.stderr)
         sys.exit(0)
 
-    # BLOCK - No valid token and no bypass marker
-    print('', file=sys.stderr)
-    print('=' * 70, file=sys.stderr)
-    print('BLOCKED: C# file edit requires Roslyn MCP tools or explicit bypass', file=sys.stderr)
-    print('=' * 70, file=sys.stderr)
-    print('', file=sys.stderr)
-    print(f'File: {file_path}', file=sys.stderr)
-    print(f'Token status: {token_msg}', file=sys.stderr)
-    print('', file=sys.stderr)
-    print('TO PROCEED, choose one option:', file=sys.stderr)
-    print('', file=sys.stderr)
-    print('OPTION 1 - Use Roslyn tools (RECOMMENDED):', file=sys.stderr)
-    print('  1. Call: roslyn_get_instructions("tools")', file=sys.stderr)
-    print('  2. Use the appropriate Roslyn tool:', file=sys.stderr)
-    print('     - roslyn_update_method: Replace a method implementation', file=sys.stderr)
-    print('     - roslyn_add_member: Add new method/property/field to a type', file=sys.stderr)
-    print('     - roslyn_delete_member: Remove a member from a type', file=sys.stderr)
-    print('     - roslyn_rename_symbol: Rename across entire solution', file=sys.stderr)
-    print('', file=sys.stderr)
-    print('OPTION 2 - Bypass with reason (if Roslyn not applicable):', file=sys.stderr)
-    print('  Add this comment in your code change:', file=sys.stderr)
-    print('    // ROSLYN_BYPASS: <your reason here>', file=sys.stderr)
-    print('', file=sys.stderr)
-    print('  Valid reasons include:', file=sys.stderr)
-    print('    - Creating new file (use roslyn_add_member after)', file=sys.stderr)
-    print('    - Editing comments or documentation only', file=sys.stderr)
-    print('    - Non-standard C# (T4 templates, .csx scripts)', file=sys.stderr)
-    print('    - Simple text changes not involving code structure', file=sys.stderr)
-    print('', file=sys.stderr)
-    print('=' * 70, file=sys.stderr)
+    # Write suggestion to log file (Claude Code doesn't display stdout for exit 0)
+    from datetime import datetime
+    log_file = get_log_file_path()
+    try:
+        with open(log_file, 'a') as f:
+            f.write(f'\n[{datetime.now().strftime("%H:%M:%S")}] {tool_name}: {file_path}\n')
+            if solution_path:
+                f.write(f'  Solution: {os.path.basename(solution_path)}\n')
+            f.write(f'  Token: {token_msg}\n')
+            f.write('  Suggestion: Use Roslyn tools (roslyn_update_method, roslyn_add_member, etc.)\n')
+            f.write('  Alternative: Add // ROSLYN_BYPASS: <reason> to skip this suggestion\n')
+    except:
+        pass  # Don't fail if logging fails
 
-    # Exit 2 = BLOCK
-    sys.exit(2)
+    # Exit 0 - allow the operation (suggestion logged to ~/.claude/roslyn-suggestions.log)
+    sys.exit(0)
 
 
 if __name__ == '__main__':
