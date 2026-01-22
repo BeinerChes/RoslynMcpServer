@@ -242,8 +242,8 @@ public static partial class RoslynTools
             {
                 "The git hook requires calling roslyn_get_instructions(topic: \"git\") before any git commit or push.",
                 "The plan hook requires calling roslyn_get_instructions(topic: \"plan\") before GitHub issue/PR operations.",
-                "The C# edit hook suggests using Roslyn MCP tools for .cs file edits (soft reminder, can be ignored if not applicable).",
-                "The C# read hook requires calling roslyn_get_instructions(topic: \"tools\") before reading .cs files."
+                "The C# edit hook requires calling roslyn_get_instructions(topic: \"tools\") before Edit/Write on .cs files.",
+                "The C# read hook requires calling roslyn_get_instructions(topic: \"tools\") before Read on .cs files."
             }
         };
     }
