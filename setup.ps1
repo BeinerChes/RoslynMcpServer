@@ -48,8 +48,10 @@ $sourceHooksDir = Join-Path $RoslynMcpPath "Instructions\Hooks"
 if (Test-Path $sourceHooksDir) {
     Copy-Item -Path (Join-Path $sourceHooksDir "enforce-git-instructions.py") -Destination $hooksDir -Force
     Copy-Item -Path (Join-Path $sourceHooksDir "enforce-plan-instructions.py") -Destination $hooksDir -Force
+    Copy-Item -Path (Join-Path $sourceHooksDir "enforce-branch-naming.py") -Destination $hooksDir -Force
     Write-Host "  Installed: enforce-git-instructions.py" -ForegroundColor Gray
     Write-Host "  Installed: enforce-plan-instructions.py" -ForegroundColor Gray
+    Write-Host "  Installed: enforce-branch-naming.py" -ForegroundColor Gray
 } else {
     Write-Host "  ERROR: Hook source files not found at $sourceHooksDir" -ForegroundColor Red
     exit 1
@@ -89,6 +91,10 @@ $settings = @{
                     @{
                         type = "command"
                         command = "python .claude/hooks/enforce-plan-instructions.py"
+                    },
+                    @{
+                        type = "command"
+                        command = "python .claude/hooks/enforce-branch-naming.py"
                     }
                 )
             }
@@ -167,6 +173,7 @@ Write-Host ""
 Write-Host "Files created:" -ForegroundColor White
 Write-Host "  .claude/hooks/enforce-git-instructions.py" -ForegroundColor Gray
 Write-Host "  .claude/hooks/enforce-plan-instructions.py" -ForegroundColor Gray
+Write-Host "  .claude/hooks/enforce-branch-naming.py" -ForegroundColor Gray
 Write-Host "  .claude/skills/update-docs/ (Haiku model)" -ForegroundColor Gray
 Write-Host "  .claude/settings.json" -ForegroundColor Gray
 Write-Host "  .claude/plans/ (directory)" -ForegroundColor Gray
