@@ -1,5 +1,7 @@
 # CLAUDE.md - Instructions for Claude Code
 
+> **Note:** This file is for developing RoslynMcpServer itself. Other projects use the template at `Instructions/Templates/standard.md`.
+
 ## MANDATORY: Start Every Session with Plan Instructions
 
 **Before doing anything else**, call `roslyn_get_instructions("plan")` and follow those instructions.
@@ -17,6 +19,26 @@
 | Writing or running tests | `"tdd"` |
 | Creating a pull request | `"pre-pr"` |
 
+## IMPORTANT: Self-Referential Project
+
+This project **uses itself** for development. There are TWO copies of hooks and skills:
+
+| Location | Purpose | When to Edit |
+|----------|---------|--------------|
+| `.claude/hooks/` | **ACTIVE** - Used when developing this project | Edit here FIRST |
+| `.claude/skills/` | **ACTIVE** - Used when developing this project | Edit here FIRST |
+| `Instructions/Hooks/` | **TEMPLATE** - Copied to other projects via setup.ps1 | Sync FROM .claude/ |
+| `Instructions/Skills/` | **TEMPLATE** - Copied to other projects via setup.ps1 | Sync FROM .claude/ |
+
+**Workflow for modifying hooks/skills:**
+1. Edit in `.claude/hooks/` or `.claude/skills/` (these are active)
+2. Test the changes in this project
+3. **SYNC to Instructions/** before committing:
+   ```bash
+   cp .claude/hooks/*.py Instructions/Hooks/
+   cp -r .claude/skills/* Instructions/Skills/
+   ```
+
 ## MANDATORY: Documentation Updates
 
 **When adding or modifying tools/features, you MUST update these files:**
@@ -27,9 +49,25 @@
 | Tool modified | `Instructions/Topics/tools.md`, `README.md` if signature changed |
 | New instruction topic | `Instructions/Topics/`, `Instructions.cs` (Available array) |
 | Workflow changed | `Instructions/Topics/git.md` or relevant topic file |
-| Hook added/modified | `Instructions/Hooks/`, `RoslynTools.SetupHooks.cs` |
+| Hook added/modified | `.claude/hooks/` (edit), then sync to `Instructions/Hooks/` |
+| Skill added/modified | `.claude/skills/` (edit), then sync to `Instructions/Skills/` |
 
 **Note:** Templates (`CLAUDE_TEMPLATE.md`, `Instructions/Templates/*.md`) fetch instructions dynamically via `roslyn_get_instructions` - no updates needed for tool/workflow changes.
+
+## MANDATORY: Pre-Commit Sync Check
+
+**Before committing changes to hooks or skills, verify sync status:**
+
+```bash
+# Check if hooks are in sync
+diff .claude/hooks/enforce-git-instructions.py Instructions/Hooks/enforce-git-instructions.py
+diff .claude/hooks/enforce-plan-instructions.py Instructions/Hooks/enforce-plan-instructions.py
+diff .claude/hooks/suggest-roslyn-for-csharp.py Instructions/Hooks/suggest-roslyn-for-csharp.py
+diff .claude/hooks/suggest-roslyn-for-read.py Instructions/Hooks/suggest-roslyn-for-read.py
+
+# If any diff shows output, sync is needed:
+cp .claude/hooks/*.py Instructions/Hooks/
+```
 
 ## MANDATORY: Real-World Testing for Tools
 

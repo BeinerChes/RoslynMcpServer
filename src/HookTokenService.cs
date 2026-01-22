@@ -17,11 +17,11 @@ public class HookTokenService
     private readonly ConcurrentDictionary<string, TokenInfo> _tokens = new();
     private readonly Dictionary<string, TimeSpan> _tokenExpirations = new()
     {
-        ["git"] = TimeSpan.FromMinutes(5),
-        ["plan"] = TimeSpan.FromMinutes(10),
-        ["tools"] = TimeSpan.FromMinutes(10)
+        ["git"] = TimeSpan.FromMinutes(1),
+        ["plan"] = TimeSpan.FromMinutes(1),
+        ["tools"] = TimeSpan.FromMinutes(1)
     };
-    private readonly TimeSpan _defaultExpiration = TimeSpan.FromMinutes(5);
+    private readonly TimeSpan _defaultExpiration = TimeSpan.FromMinutes(1);
     private readonly byte[] _secretKey;
 
     private HookTokenService()
