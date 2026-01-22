@@ -2,6 +2,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.FlowAnalysis;
+using Microsoft.CodeAnalysis.Formatting;
 using Microsoft.CodeAnalysis.Operations;
 
 namespace RoslynMcpServer;
@@ -323,8 +324,11 @@ public partial class SolutionAnalyzerService
             // Update the syntax tree
             var newRoot = syntaxRoot.ReplaceNode(containingType, newContainingType);
 
+            // Format the code
+            var formattedRoot = Formatter.Format(newRoot, workspace);
+
             // Write the updated file
-            var newText = newRoot.ToFullString();
+            var newText = formattedRoot.ToFullString();
             await File.WriteAllTextAsync(filePath, newText);
 
             Console.Error.WriteLine($"Extracted method '{methodName}' at {filePath}");

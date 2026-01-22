@@ -32,9 +32,13 @@ Implement `roslyn_extract_method` tool that extracts a code block into a new met
 All 88 tests pass (80 original + 8 new)
 
 ## Current Status
-COMPLETED - Ready for commit and PR
+COMPLETED - Formatting fix applied
+
+## Fixes Applied
+1. Added `Formatter.Format()` call before writing file to ensure proper code formatting
+2. All 8 tests pass
 
 ## Next Steps
-1. Commit changes
-2. Create PR
-3. Real-world testing before merge
+1. Amend commit with formatting fix
+2. Update PR
+3. Real-world testing (reconnect MCP with `/mcp` → reconnect roslyn)
