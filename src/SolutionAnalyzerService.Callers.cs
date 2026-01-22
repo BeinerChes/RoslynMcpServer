@@ -80,7 +80,8 @@ public partial class SolutionAnalyzerService
             var text = await document.GetTextAsync();
             var position = text.Lines[line - 1].Start + (column - 1);
 
-            var symbol = await SymbolFinder.FindSymbolAtPositionAsync(semanticModel, position, workspace);
+            // Use tolerant symbol finder (Issue #68)
+            var symbol = await FindSymbolAtPositionWithToleranceAsync(semanticModel, position, workspace);
 
             if (symbol == null)
             {
