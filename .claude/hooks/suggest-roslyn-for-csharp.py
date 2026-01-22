@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 """
-Hook: Enforce Roslyn MCP tools for C# file edits.
+Hook: Suggest Roslyn MCP tools for C# file edits.
 
-This hook BLOCKS Edit/Write operations on .cs files by default.
+This hook shows a SUGGESTION when Edit/Write is used on .cs files,
+recommending Roslyn tools for semantic code modifications.
+Uses exit code 0 (allow) with a message to avoid "hook error" presentation.
 
-To proceed, Claude must either:
-1. Call roslyn_get_instructions("tools") first (generates a valid token)
-2. Include a bypass marker in the content: // ROSLYN_BYPASS: <reason>
+The suggestion is skipped if:
+1. roslyn_get_instructions("tools") was called recently (generates a valid token)
+2. The content includes a bypass marker: // ROSLYN_BYPASS: <reason>
 
-The bypass marker should explain why Roslyn tools can't be used, e.g.:
+The bypass marker should explain why Roslyn tools aren't being used, e.g.:
   // ROSLYN_BYPASS: Adding comment to non-compiled file
   // ROSLYN_BYPASS: Creating new file, will use roslyn_add_member after
   // ROSLYN_BYPASS: Editing .csproj embedded C# code
@@ -24,6 +26,12 @@ def get_token_file_path():
     """Get path to the tools token file."""
     home = os.path.expanduser("~")
     return os.path.join(home, ".claude", "roslyn-tools-token")
+
+
+def get_log_file_path():
+    """Get path to the suggestions log file."""
+    home = os.path.expanduser("~")
+    return os.path.join(home, ".claude", "roslyn-suggestions.log")
 
 
 def is_token_valid():
@@ -97,39 +105,20 @@ def main():
         print(f'[Roslyn Hook] Bypass accepted: {bypass_reason}', file=sys.stderr)
         sys.exit(0)
 
-    # BLOCK - No valid token and no bypass marker
-    print('', file=sys.stderr)
-    print('=' * 70, file=sys.stderr)
-    print('BLOCKED: C# file edit requires Roslyn MCP tools or explicit bypass', file=sys.stderr)
-    print('=' * 70, file=sys.stderr)
-    print('', file=sys.stderr)
-    print(f'File: {file_path}', file=sys.stderr)
-    print(f'Token status: {token_msg}', file=sys.stderr)
-    print('', file=sys.stderr)
-    print('TO PROCEED, choose one option:', file=sys.stderr)
-    print('', file=sys.stderr)
-    print('OPTION 1 - Use Roslyn tools (RECOMMENDED):', file=sys.stderr)
-    print('  1. Call: roslyn_get_instructions("tools")', file=sys.stderr)
-    print('  2. Use the appropriate Roslyn tool:', file=sys.stderr)
-    print('     - roslyn_update_method: Replace a method implementation', file=sys.stderr)
-    print('     - roslyn_add_member: Add new method/property/field to a type', file=sys.stderr)
-    print('     - roslyn_delete_member: Remove a member from a type', file=sys.stderr)
-    print('     - roslyn_rename_symbol: Rename across entire solution', file=sys.stderr)
-    print('', file=sys.stderr)
-    print('OPTION 2 - Bypass with reason (if Roslyn not applicable):', file=sys.stderr)
-    print('  Add this comment in your code change:', file=sys.stderr)
-    print('    // ROSLYN_BYPASS: <your reason here>', file=sys.stderr)
-    print('', file=sys.stderr)
-    print('  Valid reasons include:', file=sys.stderr)
-    print('    - Creating new file (use roslyn_add_member after)', file=sys.stderr)
-    print('    - Editing comments or documentation only', file=sys.stderr)
-    print('    - Non-standard C# (T4 templates, .csx scripts)', file=sys.stderr)
-    print('    - Simple text changes not involving code structure', file=sys.stderr)
-    print('', file=sys.stderr)
-    print('=' * 70, file=sys.stderr)
+    # Write suggestion to log file (Claude Code doesn't display stdout for exit 0)
+    from datetime import datetime
+    log_file = get_log_file_path()
+    try:
+        with open(log_file, 'a') as f:
+            f.write(f'\n[{datetime.now().strftime("%H:%M:%S")}] {tool_name}: {file_path}\n')
+            f.write(f'  Token: {token_msg}\n')
+            f.write('  Suggestion: Use Roslyn tools (roslyn_update_method, roslyn_add_member, etc.)\n')
+            f.write('  Alternative: Add // ROSLYN_BYPASS: <reason> to skip this suggestion\n')
+    except:
+        pass  # Don't fail if logging fails
 
-    # Exit 2 = BLOCK
-    sys.exit(2)
+    # Exit 0 - allow the operation (suggestion logged to ~/.claude/roslyn-suggestions.log)
+    sys.exit(0)
 
 
 if __name__ == '__main__':

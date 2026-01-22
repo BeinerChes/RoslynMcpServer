@@ -2,10 +2,11 @@
 """
 Hook: Suggest Roslyn MCP tools for reading C# files.
 
-This hook BLOCKS Read operations on .cs files by default.
-Uses exit code 2 for hard blocking (cannot be bypassed without token).
+This hook shows a SUGGESTION when Read is used on .cs files,
+recommending Roslyn tools for semantic code understanding.
+Uses exit code 0 (allow) with a message to avoid "hook error" presentation.
 
-To proceed, call roslyn_get_instructions("tools") first.
+The suggestion is skipped if roslyn_get_instructions("tools") was called recently.
 """
 import sys
 import json
@@ -17,6 +18,12 @@ def get_token_file_path():
     """Get path to the tools token file."""
     home = os.path.expanduser("~")
     return os.path.join(home, ".claude", "roslyn-tools-token")
+
+
+def get_log_file_path():
+    """Get path to the suggestions log file."""
+    home = os.path.expanduser("~")
+    return os.path.join(home, ".claude", "roslyn-suggestions.log")
 
 
 def is_token_valid():
@@ -51,19 +58,18 @@ def main():
     if is_token_valid():
         sys.exit(0)  # Already aware of Roslyn tools
 
-    # Print blocking message to stderr
-    print('BLOCKED: Consider using Roslyn tools for C# files.', file=sys.stderr)
-    print('', file=sys.stderr)
-    print('Roslyn tools provide semantic understanding, not just text:', file=sys.stderr)
-    print('  - roslyn_get_type_members: Get all members of a class/interface', file=sys.stderr)
-    print('  - roslyn_get_method_body: Get a specific method implementation', file=sys.stderr)
-    print('  - roslyn_find_symbol: Search for types/methods by name', file=sys.stderr)
-    print('  - roslyn_get_callers: Find all callers of a method', file=sys.stderr)
-    print('', file=sys.stderr)
-    print('TO PROCEED: Call roslyn_get_instructions("tools") first.', file=sys.stderr)
+    # Write suggestion to log file (Claude Code doesn't display stdout for exit 0)
+    from datetime import datetime
+    log_file = get_log_file_path()
+    try:
+        with open(log_file, 'a') as f:
+            f.write(f'\n[{datetime.now().strftime("%H:%M:%S")}] Read: {file_path}\n')
+            f.write('  Suggestion: Use Roslyn tools for C# files (roslyn_get_type_members, roslyn_get_method_body, etc.)\n')
+    except:
+        pass  # Don't fail if logging fails
 
-    # Exit 2 - hard block that requires token
-    sys.exit(2)
+    # Exit 0 - allow the Read (suggestion logged to ~/.claude/roslyn-suggestions.log)
+    sys.exit(0)
 
 
 if __name__ == '__main__':
