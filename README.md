@@ -111,7 +111,7 @@ The template tells Claude to fetch topic-specific instructions via `roslyn_get_i
 |-------|-------------|
 | `plan` | Session planning, issue tracking, plan file management |
 | `tools` | Roslyn tool preferences and usage |
-| `git` | Git workflow, branches, commits |
+| `git` | Git workflow, branches, commits, **unit testing** |
 | `code` | C# best practices |
 | `tdd` | Test-driven development |
 | `pre-pr` | Checklist before creating pull request |
