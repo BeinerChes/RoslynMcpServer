@@ -48,16 +48,67 @@ Branch name format: `issues/N` where N is issue number
 - Follow TDD if required: call `roslyn_get_instructions` with topic "tdd"
 - Use Roslyn tools for C# changes: call `roslyn_get_instructions` with topic "code"
 
-### 4. PRE-PR CHECKLIST
+### 4. WRITE AND RUN TESTS
+
+**Every code change should have unit tests.** Use the existing test framework in the solution (xUnit preferred).
+
+**Discover the test framework:**
+```bash
+# Check existing test projects
+ls *Tests*/*.csproj
+# Or look for test packages in .csproj files
+grep -r "xunit\|nunit\|mstest" *.csproj
+```
+
+**Write tests following these patterns:**
+- Place tests in the corresponding `*.Tests` project
+- Name test classes `<ClassUnderTest>Tests.cs`
+- Use `[Fact]` for single tests, `[Theory]` for parameterized tests
+- Follow Arrange/Act/Assert pattern
+- Link to issue number in XML doc: `/// Issue: #N`
+
+**Test file structure:**
+```csharp
+namespace MyProject.Tests;
+
+/// <summary>
+/// Tests for <ClassName>.
+/// Issue: #42
+/// </summary>
+public class ClassNameTests
+{
+    [Fact]
+    public void MethodName_Scenario_ExpectedResult()
+    {
+        // Arrange
+        var sut = new ClassName();
+
+        // Act
+        var result = sut.Method();
+
+        // Assert
+        Assert.Equal(expected, result);
+    }
+}
+```
+
+**Run tests before committing:**
+```bash
+dotnet test --no-build
+```
+
+If tests fail, fix them before proceeding. **Do not commit with failing tests.**
+
+### 5. PRE-PR CHECKLIST
 Before creating a PR, complete the checklist: call `roslyn_get_instructions` with topic "pre-pr"
 
-### 5. CAPTURE LEARNINGS
+### 6. CAPTURE LEARNINGS
 Before committing, consider: did you learn anything that would help future sessions?
 - Errors that took multiple attempts to fix → `roslyn_knowledge_add(category: "error-resolution", ...)`
 - Non-obvious codebase behaviors discovered → `roslyn_knowledge_add(category: "lesson", ...)`
 - User corrections to your approach → `roslyn_knowledge_add(category: "convention", ...)`
 
-### 6. COMMIT
+### 7. COMMIT
 ```bash
 git add -A
 git commit -m "$(cat <<'EOF'
@@ -72,7 +123,7 @@ EOF
 )"
 ```
 
-### 7. PUSH AND CREATE PR
+### 8. PUSH AND CREATE PR
 Use the default branch from step "Before Starting" for `--base`:
 ```bash
 git push -u origin issues/42
@@ -92,7 +143,7 @@ EOF
 )"
 ```
 
-### 8. MERGE AND CLEANUP
+### 9. MERGE AND CLEANUP
 After the PR is ready (tests pass, no errors):
 ```bash
 gh pr merge --squash --delete-branch
