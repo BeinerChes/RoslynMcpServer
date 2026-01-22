@@ -328,4 +328,41 @@ public partial class SolutionAnalyzerService
         }
         return fixableIds;
     }
+
+
+    private static async Task<ISymbol?> FindSymbolAtPositionWithToleranceAsync(
+            SemanticModel semanticModel,
+            int position,
+            Workspace workspace)
+    {
+        // First try exact position
+        var symbol = await SymbolFinder.FindSymbolAtPositionAsync(semanticModel, position, workspace);
+        if (symbol != null) return symbol;
+
+        // Get the syntax root and try to find a token at this position
+        var syntaxRoot = await semanticModel.SyntaxTree.GetRootAsync();
+        var token = syntaxRoot.FindToken(position);
+
+        // If position is within the token (not at start), try the token's start position
+        if (token.SpanStart < position && position < token.Span.End)
+        {
+            symbol = await SymbolFinder.FindSymbolAtPositionAsync(semanticModel, token.SpanStart, workspace);
+            if (symbol != null) return symbol;
+        }
+
+        // Try the parent node - sometimes the position is on a child but the symbol is on the parent
+        var node = token.Parent;
+        while (node != null)
+        {
+            symbol = semanticModel.GetDeclaredSymbol(node);
+            if (symbol != null) return symbol;
+
+            symbol = semanticModel.GetSymbolInfo(node).Symbol;
+            if (symbol != null) return symbol;
+
+            node = node.Parent;
+        }
+
+        return null;
+    }
 }
