@@ -126,26 +126,29 @@ public static partial class RoslynTools
                     };
                 }
 
-                // For git, plan, and tools topics, generate a token for hook validation
+                // For git, plan, and tools topics, generate a per-solution token for hook validation
                 string? tokenInfo = null;
+                var solutionInfo = string.IsNullOrEmpty(solutionPath) ? " (global)" : $" for {Path.GetFileName(solutionPath)}";
+
                 if (topicName == "git")
                 {
                     var token = HookTokenService.Instance.GenerateToken("git");
-                    WriteToken("roslyn-git-token", token);
-                    tokenInfo = $"\n\n---\n**Hook Token Generated:** Valid for 5 minutes. Token written to `~/.claude/roslyn-git-token`";
+                    var tokenFileName = GetTokenFileName("git", solutionPath);
+                    WriteToken(tokenFileName, token);
+                    tokenInfo = $"\n\n---\n**Hook Token Generated:** Valid for 1 minute{solutionInfo}. Token written to `~/.claude/{tokenFileName}`";
                 }
                 else if (topicName == "plan")
                 {
                     var token = HookTokenService.Instance.GenerateToken("plan");
-                    WriteToken("roslyn-plan-token", token);
-                    tokenInfo = $"\n\n---\n**Hook Token Generated:** Valid for 10 minutes. Token written to `~/.claude/roslyn-plan-token`";
+                    var tokenFileName = GetTokenFileName("plan", solutionPath);
+                    WriteToken(tokenFileName, token);
+                    tokenInfo = $"\n\n---\n**Hook Token Generated:** Valid for 1 minute{solutionInfo}. Token written to `~/.claude/{tokenFileName}`";
                 }
                 else if (topicName == "tools")
                 {
                     var token = HookTokenService.Instance.GenerateToken("tools");
-                    var tokenFileName = GetToolsTokenFileName(solutionPath);
+                    var tokenFileName = GetTokenFileName("tools", solutionPath);
                     WriteToken(tokenFileName, token);
-                    var solutionInfo = string.IsNullOrEmpty(solutionPath) ? " (global)" : $" for {Path.GetFileName(solutionPath)}";
                     tokenInfo = $"\n\n---\n**Hook Token Generated:** Valid for 1 minute{solutionInfo}. Token written to `~/.claude/{tokenFileName}`\nThis token allows Edit/Write operations on .cs files without suggestions.";
                 }
 
@@ -160,17 +163,16 @@ public static partial class RoslynTools
             });
     }
 
-    private static string GetToolsTokenFileName(string? solutionPath)
+    private static string GetTokenFileName(string topic, string? solutionPath)
     {
-        if (string.IsNullOrEmpty(solutionPath))
+        var solutionHash = "global";
+        if (!string.IsNullOrEmpty(solutionPath))
         {
-            return "roslyn-tools-token-global";
+            // Use first 8 chars of MD5 hash (same algorithm as hooks)
+            using var md5 = System.Security.Cryptography.MD5.Create();
+            var hashBytes = md5.ComputeHash(System.Text.Encoding.UTF8.GetBytes(solutionPath.ToLowerInvariant()));
+            solutionHash = Convert.ToHexString(hashBytes)[..8].ToLowerInvariant();
         }
-
-        // Use first 8 chars of MD5 hash (same algorithm as hooks)
-        using var md5 = System.Security.Cryptography.MD5.Create();
-        var hashBytes = md5.ComputeHash(System.Text.Encoding.UTF8.GetBytes(solutionPath.ToLowerInvariant()));
-        var hashString = Convert.ToHexString(hashBytes)[..8].ToLowerInvariant();
-        return $"roslyn-tools-token-{hashString}";
+        return $"roslyn-{topic}-token-{solutionHash}";
     }
 }
