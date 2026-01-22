@@ -365,3 +365,4 @@ FodyWeavers.xsd
 # Roslyn MCP graph database (generated per-solution)
 .roslyn-mcp/
 /nul
+/.mcp.json
