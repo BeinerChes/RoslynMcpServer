@@ -138,9 +138,10 @@ The server includes hooks that enforce Claude to read instructions before perfor
 
 | Operation | Behavior | Token |
 |-----------|----------|-------|
-| `git commit`, `git push` | BLOCKED - requires valid token | 1 minute |
-| `gh issue create/close/edit` | BLOCKED - requires valid token | 1 minute |
-| `gh pr create/merge` | BLOCKED - requires valid token | 1 minute |
+| `git commit` | BLOCKED - requires `issues/*` branch name | N/A |
+| `git commit`, `git push` | BLOCKED - requires valid git token | 1 minute |
+| `gh issue create/close/edit` | BLOCKED - requires valid plan token | 1 minute |
+| `gh pr create/merge` | BLOCKED - requires valid plan token | 1 minute |
 | `Read` on `.cs` files | Soft suggestion - logged to `~/.claude/roslyn-suggestions.log` | 1 minute |
 | `Edit`/`Write` on `.cs` files | Soft suggestion - logged to `~/.claude/roslyn-suggestions.log` | 1 minute |
 
