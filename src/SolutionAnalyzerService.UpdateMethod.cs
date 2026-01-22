@@ -2,6 +2,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.FindSymbols;
+using Microsoft.CodeAnalysis.Formatting;
 using Microsoft.CodeAnalysis.MSBuild;
 
 namespace RoslynMcpServer;
@@ -207,9 +208,12 @@ public partial class SolutionAnalyzerService
 
             var newRootNode = root.ReplaceNode(methodNode, newMethodWithTrivia);
 
+            // Format the code
+            var formattedRoot = Formatter.Format(newRootNode, workspace);
+
             // Write the updated file - use syntaxTree.FilePath to avoid null dereference
             var filePath = syntaxTree.FilePath;
-            var newText = newRootNode.ToFullString();
+            var newText = formattedRoot.ToFullString();
 
             await File.WriteAllTextAsync(filePath, newText);
 
