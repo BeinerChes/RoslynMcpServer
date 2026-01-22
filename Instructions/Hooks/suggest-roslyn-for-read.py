@@ -1,19 +1,26 @@
 #!/usr/bin/env python3
 """
-Hook: Suggest Roslyn MCP tools for reading C# files.
+Hook: Enforce calling roslyn_get_instructions("tools") before Read on C# files.
 
-This hook shows a SUGGESTION when Read is used on .cs files,
-recommending Roslyn tools for semantic code understanding.
-Uses exit code 0 (allow) with a message to avoid "hook error" presentation.
+This hook BLOCKS Read operations on .cs files unless a valid tools token exists.
+Forces Claude to use Roslyn MCP tools (roslyn_get_method_body, etc.) for C# code.
 
-The suggestion is skipped if roslyn_get_instructions("tools") was called recently
-for the same solution. Tokens are per-solution and valid for 1 minute.
+Tokens are per-solution (based on solution file hash) and valid for 1 minute.
+
+Flow:
+1. roslyn_get_instructions("tools") generates a token and writes to ~/.claude/roslyn-tools-token-{hash}
+2. This hook reads the token and validates it (file age < 1 min)
+3. If valid, Read is allowed
+4. If invalid/missing, Read is BLOCKED with helpful message
 """
 import sys
 import json
 import os
 import time
 import hashlib
+import urllib.request
+import urllib.error
+import urllib.parse
 
 
 def find_solution_file(file_path):
@@ -26,10 +33,13 @@ def find_solution_file(file_path):
             break
 
         # Check for solution files
-        for ext in ['.slnx', '.sln']:
-            for item in os.listdir(current):
-                if item.endswith(ext):
-                    return os.path.join(current, item)
+        try:
+            for ext in ['.slnx', '.sln']:
+                for item in os.listdir(current):
+                    if item.endswith(ext):
+                        return os.path.join(current, item)
+        except:
+            pass
 
         current = os.path.dirname(current)
 
@@ -51,25 +61,59 @@ def get_token_file_path(solution_path):
     return os.path.join(home, ".claude", f"roslyn-tools-token-{solution_hash}")
 
 
-def get_log_file_path():
-    """Get path to the suggestions log file."""
-    home = os.path.expanduser("~")
-    return os.path.join(home, ".claude", "roslyn-suggestions.log")
-
-
-def is_token_valid(solution_path):
-    """Check if a valid (non-expired) tools token exists for this solution."""
-    token_file = get_token_file_path(solution_path)
-
-    if not os.path.exists(token_file):
-        return False
-
+def get_hook_port():
+    """Read the port number from the port file."""
+    port_file = os.path.join(os.path.expanduser('~'), '.claude', 'roslyn-hook-port')
     try:
-        file_age = time.time() - os.path.getmtime(token_file)
-        max_age = 1 * 60  # 1 minute
-        return file_age <= max_age
+        with open(port_file, 'r') as f:
+            return int(f.read().strip())
     except:
-        return False
+        return None
+
+
+def get_tools_token(solution_path):
+    """Read the tools token from the per-solution token file."""
+    token_file = get_token_file_path(solution_path)
+    try:
+        with open(token_file, 'r') as f:
+            return f.read().strip()
+    except:
+        return None
+
+
+def validate_token_http(token, port):
+    """Validate token via HTTP endpoint."""
+    try:
+        encoded_token = urllib.parse.quote(token, safe='')
+        url = f'http://localhost:{port}/validate?token={encoded_token}&topic=tools'
+        with urllib.request.urlopen(url, timeout=5) as response:
+            data = json.loads(response.read().decode('utf-8'))
+            return data.get('valid', False), data.get('message', 'Unknown error')
+    except urllib.error.URLError as e:
+        return False, f'Cannot connect to validation server: {e.reason}'
+    except Exception as e:
+        return False, f'Validation error: {e}'
+
+
+def validate_token_local(token):
+    """Fallback: validate token locally by checking timestamp."""
+    try:
+        parts = token.split('.')
+        if len(parts) != 4:
+            return False, 'Invalid token format'
+
+        timestamp = int(parts[1])
+        age_seconds = time.time() - timestamp
+
+        if age_seconds > 60:  # 1 minute
+            return False, f'Token expired ({age_seconds/60:.1f} minutes old, max 1 minute)'
+
+        if age_seconds < 0:
+            return False, 'Token timestamp is in the future'
+
+        return True, f'Valid ({age_seconds:.0f}s old)'
+    except Exception as e:
+        return False, f'Local validation error: {e}'
 
 
 def main():
@@ -81,31 +125,37 @@ def main():
     tool_input = data.get('tool_input', {})
     file_path = tool_input.get('file_path', '')
 
-    # Only suggest for .cs files
+    # Only enforce for .cs files
     if not file_path.lower().endswith('.cs'):
         sys.exit(0)  # Not a C# file, allow silently
 
     # Find solution file for this C# file
     solution_path = find_solution_file(file_path)
 
-    # If they already called roslyn_get_instructions("tools") for this solution, allow
-    if is_token_valid(solution_path):
-        sys.exit(0)  # Already aware of Roslyn tools
+    # Get the token
+    token = get_tools_token(solution_path)
+    if not token:
+        solution_info = f' for {os.path.basename(solution_path)}' if solution_path else ''
+        print(f'BLOCKED: No tools token found{solution_info}.', file=sys.stderr)
+        print('Run: roslyn_get_instructions(topic: "tools") before reading C# files.', file=sys.stderr)
+        print('Alternative: Use roslyn_get_method_body or roslyn_get_type_members instead of Read.', file=sys.stderr)
+        sys.exit(2)
 
-    # Write suggestion to log file (Claude Code doesn't display stdout for exit 0)
-    from datetime import datetime
-    log_file = get_log_file_path()
-    try:
-        with open(log_file, 'a') as f:
-            f.write(f'\n[{datetime.now().strftime("%H:%M:%S")}] Read: {file_path}\n')
-            if solution_path:
-                f.write(f'  Solution: {os.path.basename(solution_path)}\n')
-            f.write('  Suggestion: Use Roslyn tools for C# files (roslyn_get_type_members, roslyn_get_method_body, etc.)\n')
-    except:
-        pass  # Don't fail if logging fails
+    # Try HTTP validation first
+    port = get_hook_port()
+    if port:
+        valid, message = validate_token_http(token, port)
+    else:
+        # Fallback to local validation
+        valid, message = validate_token_local(token)
 
-    # Exit 0 - allow the Read (suggestion logged to ~/.claude/roslyn-suggestions.log)
-    sys.exit(0)
+    if valid:
+        sys.exit(0)  # Allow
+    else:
+        print(f'BLOCKED: {message}', file=sys.stderr)
+        print('Run: roslyn_get_instructions(topic: "tools") before reading C# files.', file=sys.stderr)
+        print('Alternative: Use roslyn_get_method_body or roslyn_get_type_members instead of Read.', file=sys.stderr)
+        sys.exit(2)
 
 
 if __name__ == '__main__':
