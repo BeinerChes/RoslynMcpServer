@@ -25,6 +25,7 @@ You have access to Roslyn MCP tools for C# code analysis. These tools provide se
 | `roslyn_add_member` | Add new method/property/field to a type |
 | `roslyn_delete_member` | Delete a method/property/field from a type |
 | `roslyn_rename_symbol` | Rename across entire solution |
+| `roslyn_extract_method` | Extract code block into new method with data flow analysis |
 
 ### Diagnostics & Fixes
 
@@ -106,6 +107,7 @@ Knowledge entries support:
 | Fix warning | `roslyn_apply_code_fix` | Manual edit may introduce errors |
 | Fix many warnings | `roslyn_batch_apply_code_fixes` | One-by-one is slow |
 | Rename | `roslyn_rename_symbol` | Find/replace misses some references |
+| Extract method | `roslyn_extract_method` | Manual extraction misses params/returns |
 | Document a gotcha | `roslyn_knowledge_add` | Comments get lost, knowledge persists |
 | Find past learnings | `roslyn_knowledge_search` | Semantic search finds related concepts |
 
@@ -123,6 +125,12 @@ Use native tools (Read, Edit, Grep, Glob) only for:
 1. `roslyn_get_type_members(typeName)` → see all members
 2. `roslyn_get_method_body(typeName, methodName)` → read specific method
 3. `roslyn_update_method(...)` → make targeted change
+
+### Extracting a method (refactoring)
+1. `roslyn_get_method_body(typeName, methodName)` → read the method to identify lines
+2. `roslyn_extract_method(filePath, startLine, endLine, methodName)` → extract code
+3. Roslyn analyzes data flow: parameters (variables used) and returns (variables assigned)
+4. Creates new method and replaces original code with call site
 
 ### Impact analysis before refactoring
 1. `roslyn_find_symbol(pattern)` → locate the symbol

@@ -221,6 +221,7 @@ Uses Haiku model (~20x cheaper than Opus) for straightforward documentation upda
 | `roslyn_apply_code_fix` | Apply Roslyn's suggested fix for a single diagnostic |
 | `roslyn_batch_apply_code_fixes` | Batch apply fixes for all diagnostics of a specific type |
 | `roslyn_rename_symbol` | Rename a symbol across the entire solution with all references |
+| `roslyn_extract_method` | Extract code block into new method with automatic parameter/return detection |
 | `roslyn_get_projects_in_build_order` | Get solution structure and dependencies |
 | `roslyn_graph_status` | Check if a call graph database exists for a solution |
 | `roslyn_graph_analyze` | Build or update the call graph database |
@@ -435,7 +436,6 @@ The server uses:
 
 | Tool | Description | Use Case |
 |------|-------------|----------|
-| `roslyn_extract_method` | Extract code block into new method | Refactoring large methods |
 | `roslyn_change_signature` | Add/remove/reorder parameters | API changes with auto-fix callers |
 | `roslyn_get_document_symbols` | All symbols in a specific file | Quick file overview |
 | `roslyn_organize_usings` | Sort + remove unused usings | Code cleanup |

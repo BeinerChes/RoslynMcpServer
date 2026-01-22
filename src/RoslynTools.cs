@@ -39,6 +39,7 @@ public static partial class RoslynTools
         RegisterApplyCodeFixTool(server);
         RegisterBatchApplyCodeFix(server);
         RegisterRenameSymbolTool(server);
+        RegisterExtractMethodTool(server);
         RegisterGraphStatusTool(server);
         RegisterGraphAnalyzeTool(server);
         RegisterQueryGraphTool(server);
