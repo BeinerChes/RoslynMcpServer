@@ -136,13 +136,15 @@ The server includes hooks that enforce Claude to read instructions before perfor
 
 ### What Hooks Enforce
 
-| Operation | Required First |
-|-----------|----------------|
-| `git commit`, `git push` | `roslyn_get_instructions("git")` |
-| `gh issue create/close/edit` | `roslyn_get_instructions("plan")` |
-| `gh pr create/merge` | `roslyn_get_instructions("plan")` |
-| `Read` on `.cs` files | `roslyn_get_instructions("tools")` |
-| `Edit`/`Write` on `.cs` files | `roslyn_get_instructions("tools")` (soft reminder) |
+| Operation | Behavior | Token |
+|-----------|----------|-------|
+| `git commit`, `git push` | BLOCKED - requires valid token | 1 minute |
+| `gh issue create/close/edit` | BLOCKED - requires valid token | 1 minute |
+| `gh pr create/merge` | BLOCKED - requires valid token | 1 minute |
+| `Read` on `.cs` files | Soft suggestion - logged to `~/.claude/roslyn-suggestions.log` | 1 minute |
+| `Edit`/`Write` on `.cs` files | Soft suggestion - logged to `~/.claude/roslyn-suggestions.log` | 1 minute |
+
+Tokens are **per-solution** (hash-based filenames) and expire after **1 minute**.
 
 ### Plan Files
 
@@ -150,6 +152,8 @@ Plans are stored **per-solution** in `.claude/plans/`:
 - Tracks work across sessions
 - Links to GitHub issues
 - Prevents context loss during long sessions
+
+**Note:** Hook tokens are also per-solution. Each solution gets its own token files (e.g., `~/.claude/roslyn-git-token-{hash}`), expiring after 1 minute.
 
 ## Skills
 
