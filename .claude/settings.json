@@ -11,10 +11,6 @@
           {
             "type": "command",
             "command": "python .claude/hooks/enforce-plan-instructions.py"
-          },
-          {
-            "type": "command",
-            "command": "python .claude/hooks/enforce-branch-naming.py"
           }
         ]
       },
