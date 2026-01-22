@@ -85,14 +85,16 @@ public sealed partial class GraphDatabase
             // Fall through to normal search if constructor search found nothing
         }
 
-        // 3. Try partial matching - search for symbols ending with the search term
-        // This handles: "MethodName", "Type.MethodName", "Namespace.Type.MethodName"
+        // 3. Try partial matching with multiple strategies (Issue #68)
+        // - Prefix match: "Namespace.Type.Method" matches "Namespace.Type.Method(params)"
+        // - Suffix match: "Type.Method" or "Method" matches "...Type.Method(params)"
         var candidates = await _connection.QueryAsync<SymbolRecord>(
             """
             SELECT Id, SolutionId, Kind, Name, QualifiedName, FilePath, Line, Column, BodyHash, ContainingTypeId, Status, LastAnalyzed
             FROM Symbols
             WHERE SolutionId = @SolutionId
-              AND (QualifiedName LIKE '%.' || @SearchName || '(%'
+              AND (QualifiedName LIKE @SearchName || '(%'
+                   OR QualifiedName LIKE '%.' || @SearchName || '(%'
                    OR QualifiedName LIKE '%.' || @SearchName
                    OR Name = @SearchName)
             """,
