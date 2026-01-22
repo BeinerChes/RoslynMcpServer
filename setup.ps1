@@ -13,9 +13,12 @@ Write-Host "=========================" -ForegroundColor Cyan
 Write-Host ""
 
 # Verify we're in a solution directory
-$slnFiles = Get-ChildItem -Path "." -Filter "*.sln" -File
+$slnFiles = Get-ChildItem -Path "." -File | Where-Object {
+    $_.Extension -in ".sln", ".slnx"
+}
+
 if ($slnFiles.Count -eq 0) {
-    Write-Host "ERROR: No .sln file found in current directory." -ForegroundColor Red
+    Write-Host "ERROR: No .sln or .slnx file found in current directory." -ForegroundColor Red
     Write-Host "Please run this script from your C# solution directory." -ForegroundColor Yellow
     exit 1
 }
