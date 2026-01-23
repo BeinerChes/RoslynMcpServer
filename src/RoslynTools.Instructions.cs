@@ -97,7 +97,7 @@ public static partial class RoslynTools
                         solutionPath = new
                         {
                             type = "string",
-                            description = "Optional: Absolute path to the .sln or .slnx solution file. Required for 'tools' topic to generate per-solution token."
+                            description = "Absolute path to the .sln or .slnx solution file. REQUIRED for 'git', 'plan', and 'tools' topics to generate the correct per-solution token. Without this, a 'global' token is generated which won't match per-solution hook validation. Find the solution file first with glob pattern '*.sln*' before calling this tool."
                         }
                     },
                     required = new[] { "topic" }
