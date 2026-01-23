@@ -47,9 +47,13 @@ def find_solution_file(file_path):
 
 
 def get_solution_hash(solution_path):
-    """Get a short hash of the solution path for unique token filename."""
+    """Get a short hash of the solution path for unique token filename.
+
+    Returns None if no solution path provided - caller must handle this case.
+    Global tokens are not supported.
+    """
     if not solution_path:
-        return "global"
+        return None
     # Use first 8 chars of MD5 hash
     return hashlib.md5(solution_path.lower().encode()).hexdigest()[:8]
 
@@ -132,13 +136,17 @@ def main():
 
     # Find solution file for this C# file
     solution_path = find_solution_file(file_path)
+    if not solution_path:
+        print('BLOCKED: No solution file (.sln or .slnx) found.', file=sys.stderr)
+        print('Run: roslyn_get_instructions(topic: "tools", solutionPath: "<path>") with the correct solution path.', file=sys.stderr)
+        print('Find the solution file first with: glob pattern "*.sln*"', file=sys.stderr)
+        sys.exit(2)
 
     # Get the token
     token = get_tools_token(solution_path)
     if not token:
-        solution_info = f' for {os.path.basename(solution_path)}' if solution_path else ''
-        print(f'BLOCKED: No tools token found{solution_info}.', file=sys.stderr)
-        print('Run: roslyn_get_instructions(topic: "tools") before editing C# files.', file=sys.stderr)
+        print(f'BLOCKED: No tools token found for {os.path.basename(solution_path)}.', file=sys.stderr)
+        print(f'Run: roslyn_get_instructions(topic: "tools", solutionPath: "{solution_path}")', file=sys.stderr)
         print('Alternative: Use roslyn_update_method or roslyn_add_member instead of Edit/Write.', file=sys.stderr)
         sys.exit(2)
 

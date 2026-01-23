@@ -107,14 +107,16 @@ If Claude uses `roslyn_find_symbol`, everything is working.
 
 The template tells Claude to fetch topic-specific instructions via `roslyn_get_instructions`:
 
-| Topic | Description |
-|-------|-------------|
-| `plan` | Session planning, issue tracking, plan file management |
-| `tools` | Roslyn tool preferences and usage |
-| `git` | Git workflow, branches, commits, **unit testing** |
-| `code` | C# best practices |
-| `tdd` | Test-driven development |
-| `pre-pr` | Checklist before creating pull request |
+| Topic | Description | solutionPath |
+|-------|-------------|--------------|
+| `plan` | Session planning, issue tracking, plan file management | **Required** |
+| `tools` | Roslyn tool preferences and usage | **Required** |
+| `git` | Git workflow, branches, commits, **unit testing** | **Required** |
+| `code` | C# best practices | Optional |
+| `tdd` | Test-driven development | Optional |
+| `pre-pr` | Checklist before creating pull request | Optional |
+
+**Important:** The `solutionPath` parameter is **required** for `plan`, `git`, and `tools` topics to generate per-solution tokens for hook validation. Find the solution file first with `glob pattern "*.sln*"`.
 
 ## Why CLAUDE.md Matters
 
@@ -145,7 +147,7 @@ The server includes hooks that enforce Claude to read instructions before perfor
 | `Read` on `.cs` files | BLOCKED - requires valid tools token | 1 minute |
 | `Edit`/`Write` on `.cs` files | BLOCKED - requires valid tools token | 1 minute |
 
-Tokens are **per-solution** (hash-based filenames) and expire after **1 minute**.
+Tokens are **per-solution** (hash-based filenames) and expire after **1 minute**. Global tokens are not supported - Claude must always provide the `solutionPath` parameter when calling `roslyn_get_instructions` for plan/git/tools topics.
 
 ### Plan Files
 
