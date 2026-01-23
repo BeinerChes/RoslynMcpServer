@@ -99,6 +99,7 @@ public static partial class RoslynTools
         var roslynSuggestHookFile = Path.Combine(hooksDir, "suggest-roslyn-for-csharp.py");
         var roslynReadHookFile = Path.Combine(hooksDir, "suggest-roslyn-for-read.py");
         var claudeMdFile = Path.Combine(projectPath, "CLAUDE.md");
+        var gitignoreFile = Path.Combine(projectPath, ".gitignore");
 
         // Create directories
         Directory.CreateDirectory(hooksDir);
@@ -109,6 +110,9 @@ public static partial class RoslynTools
         File.WriteAllText(planHookFile, GetHookContent("enforce-plan-instructions.py"));
         File.WriteAllText(roslynSuggestHookFile, GetHookContent("suggest-roslyn-for-csharp.py"));
         File.WriteAllText(roslynReadHookFile, GetHookContent("suggest-roslyn-for-read.py"));
+
+        // Handle .gitignore - add .claude/ and .roslyn-mcp/ entries
+        var gitignoreAction = UpdateGitignore(gitignoreFile);
 
         // Handle CLAUDE.md
         var templateContent = Instructions.Templates.Get(templateName);
@@ -226,6 +230,10 @@ public static partial class RoslynTools
         {
             filesCreated.Add(claudeMdFile);
         }
+        if (gitignoreAction == "created" || gitignoreAction == "updated")
+        {
+            filesCreated.Add(gitignoreFile);
+        }
 
         return new
         {
@@ -237,6 +245,11 @@ public static partial class RoslynTools
             {
                 action = claudeMdAction,
                 path = claudeMdFile
+            },
+            gitignore = new
+            {
+                action = gitignoreAction,
+                path = gitignoreFile
             },
             instructions = new[]
             {
