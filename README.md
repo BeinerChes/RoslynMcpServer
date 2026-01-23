@@ -22,11 +22,11 @@ When you use **Claude Code** (Anthropic's AI coding assistant for the terminal),
 **For Quick Install (pre-built release):**
 1. **Windows x64**
 2. **Python 3.x** - for workflow hooks
-3. **Claude Code CLI** - Install with:
-   ```bash
-   npm install -g @anthropic-ai/claude-code
+3. **Claude Code CLI** - Install in PowerShell with:
+   ```powershell
+   irm https://claude.ai/install.ps1 | iex
    ```
-   Then authenticate: `claude` and follow the prompts.
+   Then authenticate by running `claude` and follow the prompts.
 
 **Additional requirements for building from source:**
 4. **.NET 10.0 SDK** - [Download from Microsoft](https://dotnet.microsoft.com/download)
@@ -374,7 +374,7 @@ Ensure you're using an absolute path to the `.sln` or `.slnx` file.
 
 The server may be locked during rebuild. Kill it and reconnect:
 
-```bash
+```powershell
 # Find the process
 tasklist | findstr RoslynMcpServer
 
