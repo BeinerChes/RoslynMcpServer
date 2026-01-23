@@ -127,4 +127,50 @@ public static partial class RoslynTools
             Console.Error.WriteLine($"Warning: Could not write token file {fileName}: {ex.Message}");
         }
     }
+
+
+    private static string UpdateGitignore(string gitignorePath)
+    {
+        var entriesToAdd = new List<string>();
+        var existingContent = "";
+
+        if (File.Exists(gitignorePath))
+        {
+            existingContent = File.ReadAllText(gitignorePath);
+            var lines = existingContent.Split('\n').Select(l => l.Trim()).ToHashSet();
+
+            // Check if entries already exist (with or without trailing slash)
+            if (!lines.Contains(".claude") && !lines.Contains(".claude/"))
+            {
+                entriesToAdd.Add(".claude/");
+            }
+            if (!lines.Contains(".roslyn-mcp") && !lines.Contains(".roslyn-mcp/"))
+            {
+                entriesToAdd.Add(".roslyn-mcp/");
+            }
+
+            if (entriesToAdd.Count == 0)
+            {
+                return "skipped (entries already present)";
+            }
+
+            // Append new entries
+            var newContent = existingContent.TrimEnd();
+            if (!newContent.EndsWith("\n"))
+            {
+                newContent += "\n";
+            }
+            newContent += "\n# Claude Code and Roslyn MCP (local configuration)\n";
+            newContent += string.Join("\n", entriesToAdd) + "\n";
+            File.WriteAllText(gitignorePath, newContent);
+            return "updated";
+        }
+        else
+        {
+            // Create new .gitignore with entries
+            var content = "# Claude Code and Roslyn MCP (local configuration)\n.claude/\n.roslyn-mcp/\n";
+            File.WriteAllText(gitignorePath, content);
+            return "created";
+        }
+    }
 }
