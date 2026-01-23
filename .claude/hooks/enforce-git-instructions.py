@@ -49,9 +49,13 @@ def find_solution_file(start_dir=None):
 
 
 def get_solution_hash(solution_path):
-    """Get a short hash of the solution path for unique token filename."""
+    """Get a short hash of the solution path for unique token filename.
+
+    Returns None if no solution path provided - caller must handle this case.
+    Global tokens are not supported.
+    """
     if not solution_path:
-        return "global"
+        return None
     # Use first 8 chars of MD5 hash
     return hashlib.md5(solution_path.lower().encode()).hexdigest()[:8]
 
@@ -127,13 +131,17 @@ def main():
 
     # Find solution file from current working directory
     solution_path = find_solution_file()
+    if not solution_path:
+        print('BLOCKED: No solution file (.sln or .slnx) found.', file=sys.stderr)
+        print('Run: roslyn_get_instructions(topic: "git", solutionPath: "<path>") with the correct solution path.', file=sys.stderr)
+        print('Find the solution file first with: glob pattern "*.sln*"', file=sys.stderr)
+        sys.exit(2)
 
     # Get the token
     token = get_git_token(solution_path)
     if not token:
-        solution_info = f' for {os.path.basename(solution_path)}' if solution_path else ''
-        print(f'BLOCKED: No git token found{solution_info}.', file=sys.stderr)
-        print('Run: roslyn_get_instructions(topic: "git") before committing.', file=sys.stderr)
+        print(f'BLOCKED: No git token found for {os.path.basename(solution_path)}.', file=sys.stderr)
+        print(f'Run: roslyn_get_instructions(topic: "git", solutionPath: "{solution_path}")', file=sys.stderr)
         sys.exit(2)
 
     # Try HTTP validation first
