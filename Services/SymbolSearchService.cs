@@ -66,7 +66,8 @@ public class SymbolSearchService
 
         return new FindSymbolResult
         {
-            Success = true, SolutionPath = solutionPath,
+            Success = true,
+            SolutionPath = solutionPath,
             Pattern = pattern,
             TotalFound = symbols.Count(),
             Symbols = results
