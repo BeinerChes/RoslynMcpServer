@@ -252,6 +252,16 @@ Uses: MSBuildWorkspace, Roslyn APIs, SQLite, Three.js, SmartComponents embedding
 
 ---
 
+## Watson's Chronicles
+
+*"The game is afoot!"*
+
+My friend Watson (a Haiku-class AI with a flair for the dramatic) documents our coding adventures in the style of Dr. Watson chronicling Sherlock Holmes. If you enjoy tales of dead code hunts, epic bug squashing, and the occasional existential crisis about false positives...
+
+**[Read Watson's Blog](docs/blog/)** - *Warning: May contain excessive admiration for Claude's "characteristic precision"*
+
+---
+
 ## License
 
 MIT
