@@ -69,9 +69,10 @@ xychart-beta
 pie showData
     title "Step Outcomes (11 total)"
     "MCP Better" : 6
-    "Native Better" : 1
-    "Tie" : 4
+    "Tie" : 5
 ```
+
+> **Note:** No steps showed native as genuinely better. Step 2's "0 calls" came from paying 127K upfront in Step 1. Step 5's lower tokens came from searching fewer files (not a capability advantage).
 
 ---
 
@@ -120,14 +121,18 @@ quadrantChart
 | Step | Task | MCP | Native |
 |------|------|-----|--------|
 | 1 | Class structure (155 members) | 1 call, 45K | 14 calls, 127K |
-| 2 | Find Save() method | 1 call, 4K | 0 calls (cached) |
+| 2 | Find Save() method | 1 call, 4K | 0 calls (cached)* |
 | 3 | Find callers | 1 call, 3K → 18 results | 1 call, 15K → 155 results |
 | 4 | Impact analysis | 1 call, 10K → 44 symbols | Failed |
-| 5 | Related methods | 1 call, 29K | 1 call, 2K |
+| 5 | Related methods | 1 call, 29K → 309 results** | 1 call, 2K → 7 results** |
+
+**Step 2 note (*):** Native "0 calls" is misleading - the 127K cost in Step 1 included reading this file. Not a win, just amortized cost.
 
 **Step 3 detail:** Native grep found 155 `.Save()` matches. MCP found 18 actual `FeatureSet.Save()` callers. The difference: semantic analysis vs text matching.
 
 **Step 4 detail:** Native tools cannot trace call graphs. MCP traversed pre-built graph in one call.
+
+**Step 5 note (**):** Different scope - MCP searched entire solution (309 "Save" members), native searched only FeatureSet files (7 methods). Not a fair comparison.
 
 ### Phase 2: Code Modification
 
@@ -177,11 +182,12 @@ Both approaches performed similarly. Native Edit worked well with files already 
 - Step 4: Call graph traversal (native cannot do this)
 - Step 11: Dead code detection (native cannot do this)
 
-**Steps where it didn't matter much (7):**
-- Steps 1, 2, 5-10: Both approaches succeeded, token differences were moderate
+**Steps where it didn't matter much (8):**
+- Steps 1, 2, 5-10: Both approaches succeeded
 
-**Step where native was better (1):**
-- Step 5: Simple text search was more efficient (2K vs 29K tokens)
+**Misleading comparisons:**
+- Step 2: Native showed "0 calls" only because Step 1 read all 13 files (127K tokens upfront)
+- Step 5: Native used 2K vs MCP's 29K, but MCP searched entire solution (309 results) while native searched only FeatureSet files (7 results) - different scope, not comparable
 
 ---
 
