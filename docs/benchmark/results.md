@@ -19,82 +19,80 @@
 
 ## Visual Comparison
 
+### Overall Efficiency
+
+```mermaid
+xychart-beta
+    title "MCP vs Native: Key Metrics"
+    x-axis ["Tool Calls", "Context (K tokens)", "Accuracy %"]
+    y-axis "Value" 0 --> 250
+    bar [11, 123, 100]
+    bar [38, 233, 80]
+```
+
+### Context Tokens by Phase
+
+```mermaid
+xychart-beta
+    title "Context Token Usage (thousands)"
+    x-axis ["Navigation", "Modification", "Diagnostics", "TOTAL"]
+    y-axis "Tokens (K)" 0 --> 250
+    bar "MCP" [91, 4, 28, 123]
+    bar "Native" [149, 6, 50, 233]
+```
+
 ### Tool Calls by Step
 
-```
-Step  Description                MCP                          Native
-─────────────────────────────────────────────────────────────────────────────
-  1   Class structure            █ 1                          ██████████████ 14
-  2   Find method                █ 1                          ░ 0 (cached)
-  3   Find callers               █ 1                          █ 1
-  4   Impact analysis            █ 1                          ███ 3
-  5   Related methods            █ 1                          █ 1
-  6   Add method                 █ 1                          █ 1
-  7   Update method              █ 1                          █ 1
-  8   Rename symbol              █ 1                          ██ 2
-  9   Delete method              █ 1                          █ 1
- 10   Build diagnostics          █ 1                          █ 1
- 11   Dead code                  █ 1                          ░ 0 (skipped)
-─────────────────────────────────────────────────────────────────────────────
-      TOTAL                      11                           26 (+12 Bash)
+```mermaid
+xychart-beta
+    title "Tool Calls per Step"
+    x-axis ["1: Structure", "2: Method", "3: Callers", "4: Impact", "5: Related", "6: Add", "7: Update", "8: Rename", "9: Delete", "10: Diag", "11: Dead"]
+    y-axis "Calls" 0 --> 15
+    bar "MCP" [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+    bar "Native" [14, 0, 1, 3, 1, 1, 1, 2, 1, 1, 0]
 ```
 
-### Context Tokens (in thousands)
+### Accuracy Comparison
 
-```
-                    0K    25K    50K    75K   100K   125K   150K
-                    ├──────┼──────┼──────┼──────┼──────┼──────┤
-MCP Total           ████████████████████████████░░░░░░░░░░░░░░░  123K
-Native Total        █████████████████████████████████████████████████  233K
-
-By Category:
-─────────────────────────────────────────────────────────────────
-Navigation (1-5)
-  MCP               ███████████████████████████░░░░░░░░░░░░░░░░░  91K
-  Native            ██████████████████████████████████████████░░  149K
-
-Modification (6-9)
-  MCP               █░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  4K
-  Native            ██░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  6K
-
-Diagnostics (10-11)
-  MCP               █████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  28K
-  Native            ████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░  50K
-```
-
-### Accuracy by Step
-
-```
-Step    MCP    Native    Task
-────────────────────────────────────────────────────────
-  1     ●●●●●  ●●●●●     Class structure
-  2     ●●●●●  ●●●●●     Find method
-  3     ●●●●●  ●●●○○     Find callers (false positives)
-  4     ●●●●●  ●○○○○     Impact analysis (failed)
-  5     ●●●●●  ●●●●●     Related methods
-  6     ●●●●●  ●●●●●     Add method
-  7     ●●●●●  ●●●●●     Update method
-  8     ●●●●●  ●●●●●     Rename symbol
-  9     ●●●●●  ●●●●●     Delete method
- 10     ●●●●●  ●●●●●     Build diagnostics
- 11     ●●●●●  ○○○○○     Dead code (not feasible)
-────────────────────────────────────────────────────────
-Total   55/55  44/55
-        100%   80%
-
-Legend: ● = correct  ○ = incorrect/missing
+```mermaid
+xychart-beta
+    title "Accuracy Score by Step (out of 5)"
+    x-axis ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"]
+    y-axis "Score" 0 --> 5
+    bar "MCP" [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
+    bar "Native" [5, 5, 3, 1, 5, 5, 5, 5, 5, 5, 0]
 ```
 
 ### Where Each Approach Won
 
+```mermaid
+pie showData
+    title "Step Outcomes (11 total)"
+    "MCP Better" : 6
+    "Native Better" : 1
+    "Tie" : 4
 ```
-                        MCP Better    Native Better    Tie
-                        ──────────    ─────────────    ───
-Navigation (5 steps)        3              1            1
-Modification (4 steps)      1              0            3
-Diagnostics (2 steps)       2              0            0
-                        ──────────    ─────────────    ───
-TOTAL                       6              1            4
+
+---
+
+## The Key Insight
+
+```mermaid
+quadrantChart
+    title Task Complexity vs Tool Effectiveness
+    x-axis "Text Search Works" --> "Semantic Analysis Required"
+    y-axis "Native Adequate" --> "MCP Required"
+    quadrant-1 "MCP Essential"
+    quadrant-2 "MCP Helpful"
+    quadrant-3 "Either Works"
+    quadrant-4 "Native Sufficient"
+    "Find callers": [0.85, 0.9]
+    "Impact analysis": [0.95, 0.95]
+    "Dead code": [0.9, 0.95]
+    "Class structure": [0.6, 0.5]
+    "Simple edits": [0.2, 0.2]
+    "Text search": [0.1, 0.1]
+    "Rename symbol": [0.7, 0.6]
 ```
 
 ---
