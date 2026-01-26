@@ -1,51 +1,57 @@
-# Roslyn MCP Server vs Native Claude Code - Benchmark
+# Roslyn MCP vs Native Tools Benchmark
 
-## Purpose
+A fair comparison of Roslyn MCP tools vs Claude Code's native tools (Grep/Glob/Read/Edit) for C# development tasks.
 
-A fair, skeptical comparison to determine if Roslyn MCP tools actually improve Claude Code's ability to work with C# codebases.
+## Quick Results
 
-## Methodology
+| Metric | MCP Tools | Native Tools |
+|--------|-----------|--------------|
+| Cost | $9.52 | $7.42 |
+| Context | 89.3K | 98.3K |
+| Task Complete | Yes | Partial |
 
-### Test Subject
-- **Solution:** `D:\repos\Atlas3_EDEV\Atlas3.sln`
-- **Target Class:** `FeatureSet` (large, complex class)
+**Key finding:** Native tools cannot replicate semantic analysis (dead code detection, impact analysis, accurate caller finding). Cost is similar, but capabilities differ significantly.
 
-### Test Task
-A realistic development task that requires:
-1. Understanding class structure
-2. Finding references/callers
-3. Making code modifications
-4. Impact analysis
+See [results.md](results.md) for full analysis.
 
-### Metrics Captured
+## The Task
 
-| Metric | Description |
-|--------|-------------|
-| **Token Usage** | Input + output tokens for each operation |
-| **Time** | Wall clock time for each operation |
-| **Accuracy** | Did it find the correct results? |
-| **Completeness** | Did it find ALL relevant results? |
-| **Tool Calls** | Number of tool invocations required |
-| **Context Overhead** | Tokens spent on re-reading instructions (hooks) |
+"Add validation to `FeatureSet.Save()` in Atlas3.sln"
 
-### Phases
+11 steps covering:
+- Understanding class structure (155 members)
+- Finding callers (18 call sites)
+- Impact analysis (44 affected symbols)
+- Code modification
+- Dead code detection
+- Cleanup
 
-1. **Phase 1: MCP Tools** - Complete task using Roslyn MCP tools
-2. **Phase 2: Native Tools** - Complete same task using only Read/Edit/Grep/Glob
-3. **Phase 3: Analysis** - Compare metrics and draw conclusions
+See [test_task.md](test_task.md) for details.
 
-## Tool Documentation
+## Running the Benchmark
 
-See individual tool files in this directory:
-- [roslyn_find_symbol.md](tools/roslyn_find_symbol.md)
-- [roslyn_get_type_members.md](tools/roslyn_get_type_members.md)
-- [roslyn_get_method_body.md](tools/roslyn_get_method_body.md)
-- etc.
+### Prerequisites
+- Claude Code with Opus 4
+- Access to test solution (Atlas3.sln)
+- Token tracker: `python token_tracker.py`
 
-## Test Task
+### MCP Session
+1. Ensure MCP is enabled
+2. Start fresh session
+3. Follow [benchmark_prompt_mcp.md](benchmark_prompt_mcp.md)
 
-See [test_task.md](test_task.md) for the specific task definition.
+### Native Session
+1. Disable MCP: rename `.mcp.json` to `.mcp.json.disabled`
+2. Start fresh session
+3. Follow [benchmark_prompt_native.md](benchmark_prompt_native.md)
 
-## Results
+## Files
 
-See [results.md](results.md) for final comparison.
+| File | Purpose |
+|------|---------|
+| results.md | Main comparison and analysis |
+| results_mcp.md | Detailed MCP benchmark data |
+| results_native.md | Detailed native benchmark data |
+| test_task.md | Task definition |
+| token_tracker.py | Token usage measurement |
+| benchmark_prompt_*.md | Session prompts |
