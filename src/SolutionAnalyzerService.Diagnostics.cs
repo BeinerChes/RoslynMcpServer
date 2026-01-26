@@ -6,7 +6,7 @@ public partial class SolutionAnalyzerService
     /// Gets diagnostics from solution compilation.
     /// Delegates to DiagnosticsService.
     /// </summary>
-    public async Task<GetDiagnosticsResult> GetDiagnosticsAsync(
+    public static async Task<GetDiagnosticsResult> GetDiagnosticsAsync(
         string solutionPath,
         string? diagnosticId = null,
         string? severityFilter = null,
@@ -34,7 +34,7 @@ public partial class SolutionAnalyzerService
 
             // Delegate to DiagnosticsService
             var diagnosticsService = new Services.DiagnosticsService();
-            return await diagnosticsService.GetDiagnosticsAsync(solution, diagnosticId, severityFilter, projectFilter, maxResults, offset);
+            return await Services.DiagnosticsService.GetDiagnosticsAsync(solution, diagnosticId, severityFilter, projectFilter, maxResults, offset);
         }
         catch (Exception ex)
         {

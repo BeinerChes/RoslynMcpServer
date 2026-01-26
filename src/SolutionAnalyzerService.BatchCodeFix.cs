@@ -6,7 +6,7 @@ public partial class SolutionAnalyzerService
     /// Batch applies code fixes for all diagnostics matching the specified criteria.
     /// Delegates to CodeFixService.
     /// </summary>
-    public async Task<BatchApplyCodeFixResult> BatchApplyCodeFixAsync(
+    public static async Task<BatchApplyCodeFixResult> BatchApplyCodeFixAsync(
         string solutionPath,
         string diagnosticId,
         string? projectFilter = null,

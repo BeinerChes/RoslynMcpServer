@@ -17,7 +17,7 @@ public class GetCallersTests
         var fakePath = @"C:\nonexistent\fake.sln";
 
         // Act
-        var result = await service.GetCallersAsync(
+        var result = await SolutionAnalyzerService.GetCallersAsync(
             fakePath,
             @"C:\some\file.cs",
             line: 10,
@@ -41,7 +41,7 @@ public class GetCallersTests
             Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "RoslynMcpServer.slnx"));
 
         // Act
-        var result = await service.GetCallersAsync(
+        var result = await SolutionAnalyzerService.GetCallersAsync(
             solutionPath,
             @"C:\nonexistent\file.cs",
             line: 10,

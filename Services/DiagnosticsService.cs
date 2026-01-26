@@ -8,7 +8,7 @@ public class DiagnosticsService
 {
 
 
-    public async Task<GetDiagnosticsResult> GetDiagnosticsAsync(
+    public static async Task<GetDiagnosticsResult> GetDiagnosticsAsync(
         Solution solution,
         string? diagnosticId = null,
         string? severityFilter = null,

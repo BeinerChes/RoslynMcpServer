@@ -4,6 +4,8 @@ namespace RoslynMcpServer;
 
 public static partial class RoslynTools
 {
+    private static readonly string[] definitionArray9 = new[] { "solutionPath", "diagnosticId" };
+
     private static void RegisterBatchApplyCodeFix(McpServer server)
     {
         server.RegisterTool(
@@ -51,7 +53,7 @@ public static partial class RoslynTools
                             description = "If true, returns what would change without actually applying fixes. Default: false"
                         }
                     },
-                    required = new[] { "solutionPath", "diagnosticId" }
+                    required = definitionArray9
                 },
                 Annotations = new ToolAnnotations
                 {
@@ -93,7 +95,7 @@ public static partial class RoslynTools
                 }
 
                 var service = new SolutionAnalyzerService();
-                var result = await service.BatchApplyCodeFixAsync(
+                var result = await SolutionAnalyzerService.BatchApplyCodeFixAsync(
                     solutionPath, diagnosticId, projectFilter, fileFilter, maxFixes, preview);
 
                 return new

@@ -29,7 +29,7 @@ public static partial class RoslynTools
                             description = "Absolute path to the .sln or .slnx solution file"
                         }
                     },
-                    required = new[] { "solutionPath" }
+                    required = definitionArray22
                 },
                 Annotations = new ToolAnnotations
                 {
@@ -87,7 +87,7 @@ public static partial class RoslynTools
                             description = "Optional: filter by project name (partial match)"
                         }
                     },
-                    required = new[] { "solutionPath" }
+                    required = definitionArray23
                 },
                 Annotations = new ToolAnnotations
                 {
@@ -145,7 +145,7 @@ public static partial class RoslynTools
                         {
                             type = "string",
                             description = "Query direction: 'callers', 'callees', or 'both'. Default: 'both'",
-                            @enum = new[] { "callers", "callees", "both" }
+                            @enum = definitionArray24
                         },
                         maxDepth = new
                         {
@@ -155,7 +155,7 @@ public static partial class RoslynTools
                             maximum = 100
                         }
                     },
-                    required = new[] { "solutionPath", "symbolName" }
+                    required = definitionArray25
                 },
                 Annotations = new ToolAnnotations
                 {
@@ -238,7 +238,7 @@ public static partial class RoslynTools
         var analyzer = new GraphAnalyzer(db);
 
         // Load the Roslyn solution
-        var roslynSolution = await _analyzerService!.LoadSolutionAsync(solutionPath);
+        var roslynSolution = await SolutionAnalyzerService.LoadSolutionAsync(solutionPath);
         if (roslynSolution == null)
         {
             return new GraphAnalyzeResult
@@ -286,6 +286,11 @@ public static partial class RoslynTools
             EdgeStats = edgeStats
         };
     }
+
+    private static readonly string[] definitionArray25 = new[] { "solutionPath", "symbolName" };
+    private static readonly string[] definitionArray24 = new[] { "callers", "callees", "both" };
+    private static readonly string[] definitionArray23 = new[] { "solutionPath" };
+    private static readonly string[] definitionArray22 = new[] { "solutionPath" };
 
     private static async Task<GraphQueryResult> QueryGraphAsync(
         string solutionPath, string symbolName, string direction, int maxDepth)
@@ -368,7 +373,7 @@ public static partial class RoslynTools
 
         if (staleFiles.Count > 0 && _analyzerService != null)
         {
-            var roslynSolution = await _analyzerService.LoadSolutionAsync(solutionPath);
+            var roslynSolution = await SolutionAnalyzerService.LoadSolutionAsync(solutionPath);
             if (roslynSolution != null)
             {
                 var analyzer = new GraphAnalyzer(db);
@@ -523,7 +528,7 @@ public static partial class RoslynTools
             if (needsAnalysis.Count == 0) return refreshedFiles;
 
             // Load solution and analyze needed files
-            var roslynSolution = await _analyzerService.LoadSolutionAsync(solutionPath);
+            var roslynSolution = await SolutionAnalyzerService.LoadSolutionAsync(solutionPath);
             if (roslynSolution == null) return refreshedFiles;
 
             var analyzer = new GraphAnalyzer(db);

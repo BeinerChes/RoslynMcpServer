@@ -6,6 +6,10 @@ namespace RoslynMcpServer;
 
 public static partial class RoslynTools
 {
+    private static readonly string[] definitionArray19 = new[] { "all", "type", "member", "namespace", "typeAndMember" };
+    private static readonly string[] definitionArray20 = new[] { "exact", "exactIgnoreCase", "contains", "prefix", "suffix" };
+    private static readonly string[] definitionArray21 = new[] { "solutionPath", "pattern" };
+
     /// <summary>
     /// Finds symbols in a solution by name pattern.
     /// </summary>
@@ -35,13 +39,13 @@ public static partial class RoslynTools
                         {
                             type = "string",
                             description = "Kind of symbols to find: 'all', 'type', 'member', 'namespace', 'typeAndMember'. Default: 'all'",
-                            @enum = new[] { "all", "type", "member", "namespace", "typeAndMember" }
+                            @enum = definitionArray19
                         },
                         matchType = new
                         {
                             type = "string",
                             description = "How to match the pattern: 'exact', 'exactIgnoreCase', 'contains', 'prefix', 'suffix'. Default: 'contains'",
-                            @enum = new[] { "exact", "exactIgnoreCase", "contains", "prefix", "suffix" }
+                            @enum = definitionArray20
                         },
                         maxResults = new
                         {
@@ -56,7 +60,7 @@ public static partial class RoslynTools
                             description = "Return minimal fields only (name, qualifiedName, kind, file, line). Default: true. Set to false for detailed info (column, containingType, accessibility, isStatic, signature)"
                         }
                     },
-                    required = new[] { "solutionPath", "pattern" }
+                    required = definitionArray21
                 },
                 Annotations = new ToolAnnotations
                 {

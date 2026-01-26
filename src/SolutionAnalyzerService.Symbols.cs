@@ -52,7 +52,7 @@ public partial class SolutionAnalyzerService
     /// Gets the qualified name of a symbol at the given file position.
     /// Delegates to SymbolSearchService.
     /// </summary>
-    public async Task<string?> GetSymbolQualifiedNameAsync(
+    public static async Task<string?> GetSymbolQualifiedNameAsync(
         string solutionPath,
         string filePath,
         int line,
@@ -71,7 +71,7 @@ public partial class SolutionAnalyzerService
 
             // Delegate to SymbolSearchService
             var symbolSearchService = new Services.SymbolSearchService();
-            return await symbolSearchService.GetSymbolQualifiedNameAsync(solution, workspace, filePath, line, column);
+            return await Services.SymbolSearchService.GetSymbolQualifiedNameAsync(solution, workspace, filePath, line, column);
         }
         catch
         {

@@ -4,6 +4,9 @@ namespace RoslynMcpServer;
 
 public static partial class RoslynTools
 {
+    private static readonly string[] definitionArray13 = new[] { "method", "property", "field" };
+    private static readonly string[] definitionArray14 = new[] { "solutionPath", "typeName", "memberName" };
+
     /// <summary>
     /// Deletes a member (method, property, field) from a type.
     /// Issue: #39
@@ -39,7 +42,7 @@ public static partial class RoslynTools
                         {
                             type = "string",
                             description = "Kind of member: 'method', 'property', 'field'. Optional - used to disambiguate when multiple members have the same name.",
-                            @enum = new[] { "method", "property", "field" }
+                            @enum = definitionArray13
                         },
                         parameterTypes = new
                         {
@@ -47,7 +50,7 @@ public static partial class RoslynTools
                             description = "Parameter types for method overloads, e.g. 'string, int'. Required if multiple method overloads exist."
                         }
                     },
-                    required = new[] { "solutionPath", "typeName", "memberName" }
+                    required = definitionArray14
                 },
                 Annotations = new ToolAnnotations
                 {
@@ -99,7 +102,7 @@ public static partial class RoslynTools
                     };
                 }
 
-                var result = await _analyzerService!.DeleteMemberAsync(
+                var result = await SolutionAnalyzerService.DeleteMemberAsync(
                     solutionPath,
                     typeName,
                     memberName,

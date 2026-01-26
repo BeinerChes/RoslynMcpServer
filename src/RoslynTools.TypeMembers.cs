@@ -5,6 +5,9 @@ namespace RoslynMcpServer;
 
 public static partial class RoslynTools
 {
+    private static readonly string[] definitionArray32 = new[] { "all", "methods", "properties", "fields", "events", "constructors" };
+    private static readonly string[] definitionArray33 = new[] { "solutionPath", "typeName" };
+
     /// <summary>
     /// Gets all members of a type (methods, properties, fields, events, constructors).
     /// </summary>
@@ -34,7 +37,7 @@ public static partial class RoslynTools
                         {
                             type = "string",
                             description = "Filter by member kind: 'all', 'methods', 'properties', 'fields', 'events', 'constructors'. Default: 'all'",
-                            @enum = new[] { "all", "methods", "properties", "fields", "events", "constructors" }
+                            @enum = definitionArray32
                         },
                         includeInherited = new
                         {
@@ -47,7 +50,7 @@ public static partial class RoslynTools
                             description = "Return minimal fields only (name, kind, signature). Default: true. Set to false for detailed info (filePath, line, accessibility, isStatic, etc.)"
                         }
                     },
-                    required = new[] { "solutionPath", "typeName" }
+                    required = definitionArray33
                 },
                 Annotations = new ToolAnnotations
                 {
@@ -99,7 +102,7 @@ public static partial class RoslynTools
                     _ => MemberKindFilter.All
                 };
 
-                var result = await _analyzerService!.GetTypeMembersAsync(
+                var result = await SolutionAnalyzerService.GetTypeMembersAsync(
                     solutionPath,
                     typeName,
                     memberKind,

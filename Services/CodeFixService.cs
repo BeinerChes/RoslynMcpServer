@@ -15,7 +15,7 @@ public class CodeFixService
     private static ImmutableArray<CodeFixProvider>? _codeFixProviders;
 
 
-    public async Task<ApplyCodeFixResult> ApplyCodeFixAsync(
+    public static async Task<ApplyCodeFixResult> ApplyCodeFixAsync(
         Solution solution,
         string filePath,
         int line,

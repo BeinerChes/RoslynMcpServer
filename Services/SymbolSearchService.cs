@@ -74,7 +74,7 @@ public class SymbolSearchService
     }
 
 
-    public async Task<string?> GetSymbolQualifiedNameAsync(
+    public static async Task<string?> GetSymbolQualifiedNameAsync(
         Solution solution, Workspace workspace,
         string filePath,
         int line,

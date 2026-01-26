@@ -5,6 +5,8 @@ namespace RoslynMcpServer;
 
 public static partial class RoslynTools
 {
+    private static readonly string[] definitionArray27 = new[] { "solutionPath", "typeName", "methodName" };
+
     /// <summary>
     /// Gets the full source code of a method including its body.
     /// </summary>
@@ -41,7 +43,7 @@ public static partial class RoslynTools
                             description = "Parameter types to identify a specific overload, e.g. 'string, int' or 'CancellationToken, bool'. Required if multiple overloads exist."
                         }
                     },
-                    required = new[] { "solutionPath", "typeName", "methodName" }
+                    required = definitionArray27
                 },
                 Annotations = new ToolAnnotations
                 {
@@ -92,7 +94,7 @@ public static partial class RoslynTools
                     };
                 }
 
-                var result = await _analyzerService!.GetMethodBodyAsync(
+                var result = await SolutionAnalyzerService.GetMethodBodyAsync(
                     solutionPath,
                     typeName,
                     methodName,

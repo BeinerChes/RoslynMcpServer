@@ -6,7 +6,7 @@ public partial class SolutionAnalyzerService
     /// Applies a code fix for a diagnostic at a specific location.
     /// Delegates to CodeFixService.
     /// </summary>
-    public async Task<ApplyCodeFixResult> ApplyCodeFixAsync(
+    public static async Task<ApplyCodeFixResult> ApplyCodeFixAsync(
         string solutionPath,
         string filePath,
         int line,
@@ -41,7 +41,7 @@ public partial class SolutionAnalyzerService
 
             // Delegate to CodeFixService
             var codeFixService = new Services.CodeFixService();
-            return await codeFixService.ApplyCodeFixAsync(solution, filePath, line, column, diagnosticId, fixIndex, preview);
+            return await Services.CodeFixService.ApplyCodeFixAsync(solution, filePath, line, column, diagnosticId, fixIndex, preview);
         }
         catch (Exception ex)
         {

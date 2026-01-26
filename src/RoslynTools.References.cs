@@ -5,6 +5,8 @@ namespace RoslynMcpServer;
 
 public static partial class RoslynTools
 {
+    private static readonly string[] definitionArray28 = new[] { "solutionPath", "filePath", "line", "column" };
+
     /// <summary>
     /// Finds all references to a symbol at a given position.
     /// </summary>
@@ -60,7 +62,7 @@ public static partial class RoslynTools
                             description = "Filter by file path. Supports wildcards (*). Example: '*Controller.cs' or 'Services'"
                         }
                     },
-                    required = new[] { "solutionPath", "filePath", "line", "column" }
+                    required = definitionArray28
                 },
                 Annotations = new ToolAnnotations
                 {
@@ -128,7 +130,7 @@ public static partial class RoslynTools
                 var projectFilter = args?["projectFilter"]?.GetValue<string>();
                 var fileFilter = args?["fileFilter"]?.GetValue<string>();
 
-                var result = await _analyzerService!.FindReferencesAsync(
+                var result = await SolutionAnalyzerService.FindReferencesAsync(
                     solutionPath,
                     filePath,
                     line,

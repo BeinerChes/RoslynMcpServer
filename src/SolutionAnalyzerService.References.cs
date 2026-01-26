@@ -30,7 +30,7 @@ public partial class SolutionAnalyzerService
     /// <summary>
     /// Finds all references to a symbol at the given position.
     /// </summary>
-    public async Task<FindReferencesResult> FindReferencesAsync(
+    public static async Task<FindReferencesResult> FindReferencesAsync(
         string solutionPath,
         string filePath,
         int line,

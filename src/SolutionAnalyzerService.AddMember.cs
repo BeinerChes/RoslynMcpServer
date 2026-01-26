@@ -20,7 +20,7 @@ public partial class SolutionAnalyzerService
     }     /// <summary>
           /// Adds a new member (method, property, field, etc.) to a type.
           /// </summary>
-    public async Task<AddMemberResult> AddMemberAsync(
+    public static async Task<AddMemberResult> AddMemberAsync(
         string solutionPath,
         string typeName,
         string memberCode,
