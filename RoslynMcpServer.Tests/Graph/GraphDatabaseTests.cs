@@ -260,13 +260,23 @@ public class GraphDatabaseSymbolTests : IAsyncLifetime
         // Arrange
         await _db.InsertSymbolAsync(new SymbolRecord
         {
-            SolutionId = _solution.Id, Kind = SymbolKind.Method,
-            Name = "Method1", QualifiedName = "A.Method1", FilePath = "A.cs", Line = 1, Column = 1
+            SolutionId = _solution.Id,
+            Kind = SymbolKind.Method,
+            Name = "Method1",
+            QualifiedName = "A.Method1",
+            FilePath = "A.cs",
+            Line = 1,
+            Column = 1
         });
         await _db.InsertSymbolAsync(new SymbolRecord
         {
-            SolutionId = _solution.Id, Kind = SymbolKind.Property,
-            Name = "Prop1", QualifiedName = "A.Prop1", FilePath = "A.cs", Line = 2, Column = 1
+            SolutionId = _solution.Id,
+            Kind = SymbolKind.Property,
+            Name = "Prop1",
+            QualifiedName = "A.Prop1",
+            FilePath = "A.cs",
+            Line = 2,
+            Column = 1
         });
 
         // Act
@@ -288,8 +298,13 @@ public class GraphDatabaseSymbolTests : IAsyncLifetime
         // Arrange
         var symbol = new SymbolRecord
         {
-            SolutionId = _solution.Id, Kind = SymbolKind.Method,
-            Name = "DoWork", QualifiedName = "A.DoWork", FilePath = "A.cs", Line = 1, Column = 1
+            SolutionId = _solution.Id,
+            Kind = SymbolKind.Method,
+            Name = "DoWork",
+            QualifiedName = "A.DoWork",
+            FilePath = "A.cs",
+            Line = 1,
+            Column = 1
         };
         await _db.InsertSymbolAsync(symbol);
 
@@ -314,8 +329,13 @@ public class GraphDatabaseSymbolTests : IAsyncLifetime
         {
             await _db.InsertSymbolAsync(new SymbolRecord
             {
-                SolutionId = _solution.Id, Kind = SymbolKind.Method,
-                Name = $"Method{i}", QualifiedName = $"A.Method{i}", FilePath = "A.cs", Line = i, Column = 1,
+                SolutionId = _solution.Id,
+                Kind = SymbolKind.Method,
+                Name = $"Method{i}",
+                QualifiedName = $"A.Method{i}",
+                FilePath = "A.cs",
+                Line = i,
+                Column = 1,
                 Status = SymbolStatus.Pending
             });
         }
@@ -557,6 +577,8 @@ public class GraphDatabaseFileTests : IAsyncLifetime, IDisposable
     {
         try { Directory.Delete(_tempDir, recursive: true); }
         catch { /* ignore cleanup errors */ }
+
+        GC.SuppressFinalize(this);
     }
 
     private string CreateTestFile(string content, string fileName = "test.cs")
