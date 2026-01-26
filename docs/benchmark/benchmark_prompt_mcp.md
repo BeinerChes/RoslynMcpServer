@@ -15,6 +15,17 @@ python "C:/Users/cbein/source/repos/RoslynMcpServer/docs/benchmark/token_tracker
 ```
 Save this MARK number for all subsequent `since` calls.
 
+## Step 0: Load Instructions (simulates normal MCP workflow)
+
+Before starting the task, call these instructions (as hooks would normally trigger):
+
+```
+roslyn_get_instructions(topic: "tools", solutionPath: "D:\\repos\\Atlas3_EDEV\\Atlas3.sln")
+roslyn_get_instructions(topic: "code", solutionPath: "D:\\repos\\Atlas3_EDEV\\Atlas3.sln")
+```
+
+Track this as Step 0 in results.
+
 ## The Task
 
 Read and complete all steps in: `C:\Users\cbein\source\repos\RoslynMcpServer\docs\benchmark\test_task.md`
@@ -31,6 +42,7 @@ After each tool call, append to results_mcp.md:
 
 Example:
 ```
+| 0 | roslyn_get_instructions x2 | 2 | 12K | $0.22 | Loaded tools + code instructions |
 | 1 | roslyn_get_type_members | 1 | 45K | $0.85 | 155 members found |
 ```
 
