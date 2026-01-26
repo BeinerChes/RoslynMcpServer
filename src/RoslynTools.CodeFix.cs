@@ -4,6 +4,8 @@ namespace RoslynMcpServer;
 
 public static partial class RoslynTools
 {
+    private static readonly string[] definitionArray10 = new[] { "solutionPath", "filePath", "line", "column" };
+
     /// <summary>
     /// Registers the roslyn_apply_code_fix tool.
     /// </summary>
@@ -63,7 +65,7 @@ public static partial class RoslynTools
                             description = "If true, returns what would change without actually applying the fix. Default: false"
                         }
                     },
-                    required = new[] { "solutionPath", "filePath", "line", "column" }
+                    required = definitionArray10
                 },
                 Annotations = new ToolAnnotations
                 {
@@ -129,7 +131,7 @@ public static partial class RoslynTools
                     };
                 }
 
-                var result = await _analyzerService!.ApplyCodeFixAsync(
+                var result = await SolutionAnalyzerService.ApplyCodeFixAsync(
                     solutionPath,
                     filePath,
                     line,

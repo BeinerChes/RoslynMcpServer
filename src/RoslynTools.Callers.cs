@@ -153,7 +153,7 @@ public static partial class RoslynTools
                 }
 
                 // Fall back to live analysis
-                var result = await _analyzerService!.GetCallersAsync(
+                var result = await SolutionAnalyzerService.GetCallersAsync(
                     solutionPath,
                     filePath,
                     line,
@@ -208,10 +208,10 @@ public static partial class RoslynTools
         if (solution == null) return null;
 
         // Get the symbol's qualified name from Roslyn
-        var roslynSolution = await _analyzerService!.LoadSolutionAsync(solutionPath);
+        var roslynSolution = await SolutionAnalyzerService.LoadSolutionAsync(solutionPath);
         if (roslynSolution == null) return null;
 
-        var qualifiedName = await _analyzerService.GetSymbolQualifiedNameAsync(solutionPath, filePath, line, column);
+        var qualifiedName = await SolutionAnalyzerService.GetSymbolQualifiedNameAsync(solutionPath, filePath, line, column);
         if (string.IsNullOrEmpty(qualifiedName)) return null;
 
         // Look up symbol in graph

@@ -5,6 +5,8 @@ namespace RoslynMcpServer;
 
 public static partial class RoslynTools
 {
+    private static readonly string[] definitionArray26 = new[] { "solutionPath", "typeName" };
+
     /// <summary>
     /// Finds all implementations of an interface or derived classes.
     /// </summary>
@@ -43,7 +45,7 @@ public static partial class RoslynTools
                             maximum = 1000
                         }
                     },
-                    required = new[] { "solutionPath", "typeName" }
+                    required = definitionArray26
                 },
                 Annotations = new ToolAnnotations
                 {
@@ -83,7 +85,7 @@ public static partial class RoslynTools
                 var includeBaseType = args?["includeBaseType"]?.GetValue<bool>() ?? false;
                 var maxResults = args?["maxResults"]?.GetValue<int>() ?? 100;
 
-                var result = await _analyzerService!.FindImplementationsAsync(
+                var result = await SolutionAnalyzerService.FindImplementationsAsync(
                     solutionPath,
                     typeName,
                     includeBaseType,

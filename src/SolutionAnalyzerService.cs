@@ -66,7 +66,7 @@ public partial class SolutionAnalyzerService
     /// Loads a solution and returns the Roslyn Solution object.
     /// Caller is responsible for disposing the workspace.
     /// </summary>
-    public async Task<Microsoft.CodeAnalysis.Solution?> LoadSolutionAsync(string solutionPath)
+    public static async Task<Microsoft.CodeAnalysis.Solution?> LoadSolutionAsync(string solutionPath)
     {
         EnsureMSBuildRegistered();
 

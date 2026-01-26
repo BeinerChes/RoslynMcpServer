@@ -4,6 +4,9 @@ namespace RoslynMcpServer;
 
 public static partial class RoslynTools
 {
+    private static readonly string[] definitionArray15 = new[] { "all", "error", "warning", "info" };
+    private static readonly string[] definitionArray16 = new[] { "solutionPath" };
+
     /// <summary>
     /// Gets compilation diagnostics (warnings/errors) from a solution.
     /// </summary>
@@ -33,7 +36,7 @@ public static partial class RoslynTools
                         {
                             type = "string",
                             description = "Filter by severity: 'error', 'warning', 'info', or 'all'. Default: 'all'",
-                            @enum = new[] { "all", "error", "warning", "info" }
+                            @enum = definitionArray15
                         },
                         projectFilter = new
                         {
@@ -54,7 +57,7 @@ public static partial class RoslynTools
                             minimum = 0
                         }
                     },
-                    required = new[] { "solutionPath" }
+                    required = definitionArray16
                 },
                 Annotations = new ToolAnnotations
                 {
@@ -84,7 +87,7 @@ public static partial class RoslynTools
                 var maxResults = args?["maxResults"]?.GetValue<int>() ?? 100;
                 var offset = args?["offset"]?.GetValue<int>() ?? 0;
 
-                var result = await _analyzerService!.GetDiagnosticsAsync(
+                var result = await SolutionAnalyzerService.GetDiagnosticsAsync(
                     solutionPath,
                     diagnosticId,
                     severityFilter,

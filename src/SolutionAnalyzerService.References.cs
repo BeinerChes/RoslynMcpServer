@@ -30,7 +30,7 @@ public partial class SolutionAnalyzerService
     /// <summary>
     /// Finds all references to a symbol at the given position.
     /// </summary>
-    public async Task<FindReferencesResult> FindReferencesAsync(
+    public static async Task<FindReferencesResult> FindReferencesAsync(
         string solutionPath,
         string filePath,
         int line,
@@ -188,14 +188,14 @@ public partial class SolutionAnalyzerService
                 {
                     Name = symbol.Name,
                     FullyQualifiedName = symbol.ToDisplayString(),
-                    Kind = GetSymbolKind(symbol),
+                    Kind = Services.SymbolSearchService.GetSymbolKind(symbol),
                     FilePath = filePath,
                     Line = line,
                     Column = column,
                     ContainingType = symbol.ContainingType?.ToDisplayString(),
                     Accessibility = symbol.DeclaredAccessibility.ToString(),
                     IsStatic = symbol.IsStatic,
-                    Signature = GetSignature(symbol)
+                    Signature = Services.SymbolSearchService.GetSignature(symbol)
                 },
                 TotalFound = totalAfterFilters,
                 ReturnedCount = results.Count,

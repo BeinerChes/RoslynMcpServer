@@ -12,7 +12,7 @@ public partial class SolutionAnalyzerService
     /// <summary>
     /// Updates a method's source code in place.
     /// </summary>
-    public async Task<UpdateMethodResult> UpdateMethodAsync(
+    public static async Task<UpdateMethodResult> UpdateMethodAsync(
         string solutionPath,
         string typeName,
         string methodName,

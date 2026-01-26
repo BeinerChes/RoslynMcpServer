@@ -94,7 +94,7 @@ public class McpServer
         };
     }
 
-    private object HandleInitialize(JsonNode? id, JsonObject? @params)
+    private static object HandleInitialize(JsonNode? id, JsonObject? @params)
     {
         Console.Error.WriteLine("Handling initialize request");
 

@@ -124,7 +124,7 @@ public class WpfGeneratedFilesTests
             Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "RoslynMcpServer.slnx"));
 
         // Act
-        var result = await service.GetDiagnosticsAsync(solutionPath, severityFilter: "error");
+        var result = await SolutionAnalyzerService.GetDiagnosticsAsync(solutionPath, severityFilter: "error");
 
         // Assert - Should complete without throwing
         Assert.True(result.Success);

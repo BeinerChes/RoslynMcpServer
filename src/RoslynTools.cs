@@ -59,6 +59,8 @@ public static partial class RoslynTools
         RegisterKnowledgeForSymbolTool(server);
     }
 
+    private static readonly string[] definitionArray11 = new[] { "message" };
+
     /// <summary>
     /// A simple echo tool for testing the MCP connection.
     /// </summary>
@@ -80,7 +82,7 @@ public static partial class RoslynTools
                             description = "The message to echo back"
                         }
                     },
-                    required = new[] { "message" }
+                    required = definitionArray11
                 },
                 Annotations = new ToolAnnotations
                 {
@@ -108,6 +110,16 @@ public static partial class RoslynTools
                 };
             });
     }
+
+    private static readonly string[] stringArray = new[]
+                    {
+                        "Solution and project analysis",
+                        "Symbol finding with semantic search",
+                        "Reference and implementation tracking",
+                        "Diagnostics with .NET analyzers (CA* rules)",
+                        "Code fixes and batch fixes",
+                        "Refactoring (rename, add member, update method)"
+                    };
 
     /// <summary>
     /// Returns information about the MCP server.
@@ -143,15 +155,7 @@ public static partial class RoslynTools
                     runtime = Environment.Version.ToString(),
                     os = Environment.OSVersion.ToString(),
                     netAnalyzersLoaded = analyzers.Length,
-                    capabilities = new[]
-                    {
-                        "Solution and project analysis",
-                        "Symbol finding with semantic search",
-                        "Reference and implementation tracking",
-                        "Diagnostics with .NET analyzers (CA* rules)",
-                        "Code fixes and batch fixes",
-                        "Refactoring (rename, add member, update method)"
-                    }
+                    capabilities = stringArray
                 };
 
                 return new
@@ -163,6 +167,8 @@ public static partial class RoslynTools
                 };
             });
     }
+
+    private static readonly string[] definitionArray12 = new[] { "solutionPath" };
 
     /// <summary>
     /// Gets all projects in a solution in build order (dependencies first).
@@ -185,7 +191,7 @@ public static partial class RoslynTools
                             description = "Absolute path to the .sln or .slnx solution file"
                         }
                     },
-                    required = new[] { "solutionPath" }
+                    required = definitionArray12
                 },
                 Annotations = new ToolAnnotations
                 {

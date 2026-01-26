@@ -4,6 +4,8 @@ namespace RoslynMcpServer;
 
 public static partial class RoslynTools
 {
+    private static readonly string[] definitionArray29 = new[] { "solutionPath", "filePath", "line", "column", "newName" };
+
     private static void RegisterRenameSymbolTool(McpServer server)
     {
         server.RegisterTool(
@@ -45,7 +47,7 @@ public static partial class RoslynTools
                             description = "The new name for the symbol"
                         }
                     },
-                    required = new[] { "solutionPath", "filePath", "line", "column", "newName" }
+                    required = definitionArray29
                 },
                 Annotations = new ToolAnnotations
                 {
@@ -121,7 +123,7 @@ public static partial class RoslynTools
                     };
                 }
 
-                var result = await _analyzerService!.RenameSymbolAsync(
+                var result = await SolutionAnalyzerService.RenameSymbolAsync(
                     solutionPath, filePath, line, column, newName);
 
                 return new

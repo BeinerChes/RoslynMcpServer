@@ -156,7 +156,7 @@ def main():
         sys.exit(0)  # Allow
     else:
         print(f'BLOCKED: {message}', file=sys.stderr)
-        print('Run: roslyn_get_instructions(topic: "git") before committing.', file=sys.stderr)
+        print(f'Run: roslyn_get_instructions(topic: "git", solutionPath: "{solution_path}")', file=sys.stderr)
         sys.exit(2)
 
 if __name__ == '__main__':

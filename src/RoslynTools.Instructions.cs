@@ -8,6 +8,9 @@ namespace RoslynMcpServer;
 /// </summary>
 public static partial class RoslynTools
 {
+    private static readonly string[] definitionArray2 = new[] { "minimal", "standard", "tdd", "team" };
+    private static readonly string[] definitionArray3 = new[] { "template" };
+
     /// <summary>
     /// Returns a CLAUDE.md template for users to copy to their project.
     /// </summary>
@@ -27,10 +30,10 @@ public static partial class RoslynTools
                         {
                             type = "string",
                             description = "Template type: 'minimal' (basic MCP pointers), 'standard' (code + git), 'tdd' (test-driven), 'team' (full workflow with issues)",
-                            @enum = new[] { "minimal", "standard", "tdd", "team" }
+                            @enum = definitionArray2
                         }
                     },
-                    required = new[] { "template" }
+                    required = definitionArray3
                 },
                 Annotations = new ToolAnnotations
                 {
@@ -73,6 +76,9 @@ public static partial class RoslynTools
             });
     }
 
+    private static readonly string[] definitionArray4 = new[] { "code", "git", "plan", "tdd", "pre-pr", "tools" };
+    private static readonly string[] definitionArray5 = new[] { "topic" };
+
     /// <summary>
     /// Returns specific development instructions on-demand.
     /// </summary>
@@ -92,7 +98,7 @@ public static partial class RoslynTools
                         {
                             type = "string",
                             description = "Topic: 'code' (C# best practices), 'git' (workflow, branches, commits), 'plan' (session planning, issue tracking), 'tdd' (test-driven development), 'pre-pr' (checklist before PR), 'tools' (Roslyn tool preferences)",
-                            @enum = new[] { "code", "git", "plan", "tdd", "pre-pr", "tools" }
+                            @enum = definitionArray4
                         },
                         solutionPath = new
                         {
@@ -100,7 +106,7 @@ public static partial class RoslynTools
                             description = "Absolute path to the .sln or .slnx solution file. REQUIRED for 'git', 'plan', and 'tools' topics to generate the correct per-solution token. Without this, a 'global' token is generated which won't match per-solution hook validation. Find the solution file first with glob pattern '*.sln*' before calling this tool."
                         }
                     },
-                    required = new[] { "topic" }
+                    required = definitionArray5
                 },
                 Annotations = new ToolAnnotations
                 {

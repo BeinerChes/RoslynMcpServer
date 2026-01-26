@@ -4,6 +4,9 @@ namespace RoslynMcpServer;
 
 public static partial class RoslynTools
 {
+    private static readonly string[] definition = new[] { "start", "end", "after-fields", "after-constructors", "after-properties", "before-methods" };
+    private static readonly string[] definitionArray = new[] { "solutionPath", "typeName", "memberCode" };
+
     /// <summary>
     /// Adds a new member (method, property, field) to a type.
     /// </summary>
@@ -38,10 +41,10 @@ public static partial class RoslynTools
                         {
                             type = "string",
                             description = "Where to insert: 'start', 'end', 'after-fields', 'after-constructors', 'after-properties', 'before-methods'. Default: smart placement based on member type.",
-                            @enum = new[] { "start", "end", "after-fields", "after-constructors", "after-properties", "before-methods" }
+                            @enum = definition
                         }
                     },
-                    required = new[] { "solutionPath", "typeName", "memberCode" }
+                    required = definitionArray
                 },
                 Annotations = new ToolAnnotations
                 {
@@ -92,7 +95,7 @@ public static partial class RoslynTools
                     };
                 }
 
-                var result = await _analyzerService!.AddMemberAsync(
+                var result = await SolutionAnalyzerService.AddMemberAsync(
                     solutionPath,
                     typeName,
                     memberCode,

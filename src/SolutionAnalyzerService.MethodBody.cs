@@ -10,7 +10,7 @@ public partial class SolutionAnalyzerService
     /// <summary>
     /// Gets the full source code of a method including its body.
     /// </summary>
-    public async Task<GetMethodBodyResult> GetMethodBodyAsync(
+    public static async Task<GetMethodBodyResult> GetMethodBodyAsync(
         string solutionPath,
         string typeName,
         string methodName,

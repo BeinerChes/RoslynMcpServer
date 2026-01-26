@@ -14,7 +14,7 @@ public partial class SolutionAnalyzerService
     /// <summary>
     /// Deletes a member (method, property, field) from a type.
     /// </summary>
-    public async Task<DeleteMemberResult> DeleteMemberAsync(
+    public static async Task<DeleteMemberResult> DeleteMemberAsync(
         string solutionPath,
         string typeName,
         string memberName,

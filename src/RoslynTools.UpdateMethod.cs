@@ -45,7 +45,7 @@ public static partial class RoslynTools
                             description = "Parameter types to identify a specific overload, e.g. 'string, int'. Required if multiple overloads exist."
                         }
                     },
-                    required = new[] { "solutionPath", "typeName", "methodName", "newSourceCode" }
+                    required = definitionArray34
                 },
                 Annotations = new ToolAnnotations
                 {
@@ -109,7 +109,7 @@ public static partial class RoslynTools
                     };
                 }
 
-                var result = await _analyzerService!.UpdateMethodAsync(
+                var result = await SolutionAnalyzerService.UpdateMethodAsync(
                     solutionPath,
                     typeName,
                     methodName,
@@ -126,4 +126,6 @@ public static partial class RoslynTools
                 };
             });
     }
+
+    private static readonly string[] definitionArray34 = new[] { "solutionPath", "typeName", "methodName", "newSourceCode" };
 }

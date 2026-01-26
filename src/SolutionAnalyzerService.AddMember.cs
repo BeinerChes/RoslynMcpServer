@@ -20,7 +20,7 @@ public partial class SolutionAnalyzerService
     }     /// <summary>
           /// Adds a new member (method, property, field, etc.) to a type.
           /// </summary>
-    public async Task<AddMemberResult> AddMemberAsync(
+    public static async Task<AddMemberResult> AddMemberAsync(
         string solutionPath,
         string typeName,
         string memberCode,
@@ -317,16 +317,7 @@ public partial class SolutionAnalyzerService
 
     public static HashSet<string> GetFixableDiagnosticIds()
     {
-        var providers = GetCodeFixProviders();
-        var fixableIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var provider in providers)
-        {
-            foreach (var id in provider.FixableDiagnosticIds)
-            {
-                fixableIds.Add(id);
-            }
-        }
-        return fixableIds;
+        return Services.CodeFixService.GetFixableDiagnosticIds();
     }
 
 
