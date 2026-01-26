@@ -162,7 +162,7 @@ def main():
         sys.exit(0)  # Allow
     else:
         print(f'BLOCKED: {message}', file=sys.stderr)
-        print('Run: roslyn_get_instructions(topic: "tools") before editing C# files.', file=sys.stderr)
+        print(f'Run: roslyn_get_instructions(topic: "tools", solutionPath: "{solution_path}")', file=sys.stderr)
         print('Alternative: Use roslyn_update_method or roslyn_add_member instead of Edit/Write.', file=sys.stderr)
         sys.exit(2)
 

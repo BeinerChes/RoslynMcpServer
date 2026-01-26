@@ -161,7 +161,7 @@ def main():
         sys.exit(0)  # Allow
     else:
         print(f'BLOCKED: {message}', file=sys.stderr)
-        print('Run: roslyn_get_instructions(topic: "tools") before reading C# files.', file=sys.stderr)
+        print(f'Run: roslyn_get_instructions(topic: "tools", solutionPath: "{solution_path}")', file=sys.stderr)
         print('Alternative: Use roslyn_get_method_body or roslyn_get_type_members instead of Read.', file=sys.stderr)
         sys.exit(2)
 
