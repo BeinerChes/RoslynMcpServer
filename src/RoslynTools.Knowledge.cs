@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using RoslynMcpServer.Graph;
 
 namespace RoslynMcpServer;
@@ -8,6 +9,7 @@ namespace RoslynMcpServer;
 public static partial class RoslynTools
 {
     private static readonly Dictionary<string, (KnowledgeDatabase Db, SmartComponentsEmbeddingProvider Embedder)> _knowledgeDatabases = new();
+    private static readonly string[] definitionArrayKnowledge = ["solutionPath", "category", "title", "content"];
 
     /// <summary>
     /// Gets or creates a KnowledgeDatabase for the specified solution.
@@ -84,7 +86,7 @@ public static partial class RoslynTools
                             maximum = 1.0
                         }
                     },
-                    required = new[] { "solutionPath", "category", "title", "content" }
+                    required = definitionArrayKnowledge
                 },
                 Annotations = new ToolAnnotations
                 {
@@ -92,74 +94,75 @@ public static partial class RoslynTools
                     IdempotentHint = false
                 }
             },
-            async args =>
+            HandleKnowledgeAddAsync);
+    }
+
+    /// <summary>
+    /// Handler for the knowledge_add tool.
+    /// </summary>
+    private static async Task<object> HandleKnowledgeAddAsync(JsonObject? args)
+    {
+        if (!TryGetRequiredString(args, "solutionPath", out var solutionPath, out var error))
+            return error!;
+
+        if (!TryValidateSolutionPath(solutionPath, out error))
+            return error!;
+
+        if (!TryGetRequiredString(args, "category", out var category, out error))
+            return error!;
+
+        if (!TryGetRequiredString(args, "title", out var title, out error))
+            return error!;
+
+        if (!TryGetRequiredString(args, "content", out var content, out error))
+            return error!;
+
+        var symbolLinks = GetOptionalStringArray(args, "symbolLinks");
+        var tags = GetOptionalStringArray(args, "tags");
+        var confidence = GetOptionalDouble(args, "confidence", 1.0);
+
+        try
+        {
+            var db = await GetKnowledgeDatabaseAsync(solutionPath);
+
+            var input = new AddKnowledgeInput
             {
-                var solutionPath = args?["solutionPath"]?.GetValue<string>();
-                var category = args?["category"]?.GetValue<string>();
-                var title = args?["title"]?.GetValue<string>();
-                var content = args?["content"]?.GetValue<string>();
-                var symbolLinks = args?["symbolLinks"]?.AsArray()?.Select(x => x?.GetValue<string>() ?? "").Where(s => !string.IsNullOrEmpty(s)).ToList();
-                var tags = args?["tags"]?.AsArray()?.Select(x => x?.GetValue<string>() ?? "").Where(s => !string.IsNullOrEmpty(s)).ToList();
-                var confidence = args?["confidence"]?.GetValue<double>() ?? 1.0;
+                Category = category,
+                Title = title,
+                Content = content,
+                SymbolLinks = symbolLinks,
+                Tags = tags,
+                Confidence = confidence
+            };
 
-                if (string.IsNullOrWhiteSpace(solutionPath))
-                    return CreateErrorResponse("Error: solutionPath is required");
+            var entry = await db.AddEntryAsync(input);
 
-                if (!File.Exists(solutionPath))
-                    return CreateErrorResponse($"Error: Solution file not found: {solutionPath}");
-
-                if (string.IsNullOrWhiteSpace(category))
-                    return CreateErrorResponse("Error: category is required");
-
-                if (string.IsNullOrWhiteSpace(title))
-                    return CreateErrorResponse("Error: title is required");
-
-                if (string.IsNullOrWhiteSpace(content))
-                    return CreateErrorResponse("Error: content is required");
-
-                try
+            return CreateJsonResponse(new
+            {
+                success = true,
+                id = entry.Id,
+                message = $"Knowledge entry created with ID {entry.Id}",
+                entry = new
                 {
-                    var db = await GetKnowledgeDatabaseAsync(solutionPath);
-
-                    var input = new AddKnowledgeInput
-                    {
-                        Category = category,
-                        Title = title,
-                        Content = content,
-                        SymbolLinks = symbolLinks,
-                        Tags = tags,
-                        Confidence = confidence
-                    };
-
-                    var entry = await db.AddEntryAsync(input);
-
-                    return CreateJsonResponse(new
-                    {
-                        success = true,
-                        id = entry.Id,
-                        message = $"Knowledge entry created with ID {entry.Id}",
-                        entry = new
-                        {
-                            entry.Id,
-                            entry.Category,
-                            entry.Title,
-                            entry.Content,
-                            entry.SymbolLinks,
-                            entry.Tags,
-                            entry.Confidence,
-                            hasEmbedding = entry.Embedding != null
-                        }
-                    });
-                }
-                catch (ArgumentException ex)
-                {
-                    return CreateErrorResponse($"Error: {ex.Message}");
-                }
-                catch (Exception ex)
-                {
-                    return CreateErrorResponse($"Error adding knowledge: {ex.Message}");
+                    entry.Id,
+                    entry.Category,
+                    entry.Title,
+                    entry.Content,
+                    entry.SymbolLinks,
+                    entry.Tags,
+                    entry.Confidence,
+                    hasEmbedding = entry.Embedding != null
                 }
             });
+        }
+        catch (ArgumentException ex)
+        {
+            return CreateErrorResponse($"Error: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            return CreateErrorResponse($"Error adding knowledge: {ex.Message}");
+        }
     }
 
     /// <summary>

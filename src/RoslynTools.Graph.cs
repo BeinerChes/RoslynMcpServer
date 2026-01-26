@@ -369,28 +369,7 @@ public static partial class RoslynTools
 
         // Check for stale files and refresh if needed
         var staleFiles = await db.GetStaleFilesAsync(solution.Id, filesToCheck);
-        var refreshedFiles = new List<string>();
-
-        if (staleFiles.Count > 0 && _analyzerService != null)
-        {
-            var roslynSolution = await SolutionAnalyzerService.LoadSolutionAsync(solutionPath);
-            if (roslynSolution != null)
-            {
-                var analyzer = new GraphAnalyzer(db);
-                foreach (var staleFilePath in staleFiles)
-                {
-                    var document = roslynSolution.Projects
-                        .SelectMany(p => p.Documents)
-                        .FirstOrDefault(d => d.FilePath == staleFilePath);
-
-                    if (document != null)
-                    {
-                        await analyzer.AnalyzeDocumentAsync(document, solution.Id);
-                        refreshedFiles.Add(Path.GetFileName(staleFilePath));
-                    }
-                }
-            }
-        }
+        var refreshedFiles = await RefreshStaleFilesAsync(db, solution.Id, solutionPath, staleFiles);
 
         // Re-query to get fresh results if any files were refreshed
         if (refreshedFiles.Count > 0)
@@ -410,14 +389,7 @@ public static partial class RoslynTools
         var result = new GraphQueryResult
         {
             Success = true,
-            Symbol = new GraphSymbolEntry
-            {
-                Name = symbol.Name,
-                QualifiedName = symbol.QualifiedName,
-                Kind = symbol.Kind.ToString(),
-                FilePath = symbol.FilePath,
-                Line = symbol.Line
-            },
+            Symbol = ToGraphSymbolEntry(symbol),
             StaleFilesRefreshed = refreshedFiles.Count,
             RefreshedFiles = refreshedFiles.Count > 0 ? refreshedFiles : null
         };
@@ -427,14 +399,7 @@ public static partial class RoslynTools
             var callers = refreshedFiles.Count > 0
                 ? await db.GetRecursiveCallersAsync(symbol.Id, maxDepth)
                 : preliminaryCallers;
-            result.Callers = callers.Select(c => new GraphSymbolEntry
-            {
-                Name = c.Name,
-                QualifiedName = c.QualifiedName,
-                Kind = c.Kind.ToString(),
-                FilePath = c.FilePath,
-                Line = c.Line
-            }).ToList();
+            result.Callers = callers.Select(ToGraphSymbolEntry).ToList();
         }
 
         if (direction is "callees" or "both")
@@ -442,17 +407,53 @@ public static partial class RoslynTools
             var callees = refreshedFiles.Count > 0
                 ? await db.GetRecursiveCalleesAsync(symbol.Id, maxDepth)
                 : preliminaryCallees;
-            result.Callees = callees.Select(c => new GraphSymbolEntry
-            {
-                Name = c.Name,
-                QualifiedName = c.QualifiedName,
-                Kind = c.Kind.ToString(),
-                FilePath = c.FilePath,
-                Line = c.Line
-            }).ToList();
+            result.Callees = callees.Select(ToGraphSymbolEntry).ToList();
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Converts a SymbolRecord to a GraphSymbolEntry.
+    /// </summary>
+    private static GraphSymbolEntry ToGraphSymbolEntry(SymbolRecord symbol) => new()
+    {
+        Name = symbol.Name,
+        QualifiedName = symbol.QualifiedName,
+        Kind = symbol.Kind.ToString(),
+        FilePath = symbol.FilePath,
+        Line = symbol.Line
+    };
+
+    /// <summary>
+    /// Refreshes stale files in the graph database.
+    /// </summary>
+    private static async Task<List<string>> RefreshStaleFilesAsync(
+        GraphDatabase db, long solutionId, string solutionPath, IReadOnlyList<string> staleFiles)
+    {
+        var refreshedFiles = new List<string>();
+        if (staleFiles.Count == 0 || _analyzerService == null)
+            return refreshedFiles;
+
+        var roslynSolution = await SolutionAnalyzerService.LoadSolutionAsync(solutionPath);
+        if (roslynSolution == null)
+            return refreshedFiles;
+
+        var analyzer = new GraphAnalyzer(db);
+        foreach (var staleFilePath in staleFiles)
+        {
+            var document = roslynSolution.Projects
+                .SelectMany(p => p.Documents)
+                .FirstOrDefault(d => d.FilePath == staleFilePath);
+
+            if (document != null)
+            {
+                await analyzer.AnalyzeDocumentAsync(document, solutionId);
+                refreshedFiles.Add(Path.GetFileName(staleFilePath));
+            }
+        }
+
+        return refreshedFiles;
     }
 
     private static object CreateJsonResponse(object result, bool isError = false)
