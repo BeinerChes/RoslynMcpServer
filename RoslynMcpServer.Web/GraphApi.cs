@@ -64,6 +64,11 @@ public static class GraphApi
         Path.GetTempPath(),
         "roslyn-mcp-last-symbol.json");
 
+
+    private static readonly System.Text.Json.JsonSerializerOptions JsonDeserializeOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
     public static void MapGraphApi(this WebApplication app)
     {
         var api = app.MapGroup("/api");
@@ -88,11 +93,7 @@ public static class GraphApi
             }
 
             var json = File.ReadAllText(LastSymbolFilePath);
-            var options = new System.Text.Json.JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            };
-            var state = System.Text.Json.JsonSerializer.Deserialize<LastSymbolState>(json, options);
+            var state = System.Text.Json.JsonSerializer.Deserialize<LastSymbolState>(json, JsonDeserializeOptions);
 
             if (state == null)
             {

@@ -220,10 +220,7 @@ public static partial class RoslynTools
             }
         };
 
-        File.WriteAllText(settingsFile, JsonSerializer.Serialize(settings, new JsonSerializerOptions
-        {
-            WriteIndented = true
-        }));
+        File.WriteAllText(settingsFile, JsonSerializer.Serialize(settings, JsonOptions));
 
         var filesCreated = new List<string> { gitHookFile, planHookFile, roslynSuggestHookFile, roslynReadHookFile, settingsFile };
         if (claudeMdAction == "created" || claudeMdAction == "updated")
