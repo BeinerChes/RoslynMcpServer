@@ -22,13 +22,17 @@ PRICING (Claude Sonnet 4):
 - Cache read:   $0.30 / 1M tokens
 
 Usage:
-    python token_tracker.py                    # Show session summary
+    python token_tracker.py                    # Show session info
     python token_tracker.py mark               # Get current line number (use before each step)
     python token_tracker.py since <line>       # Show usage since line number
     python token_tracker.py tool <line>        # Show per-tool breakdown since line
     python token_tracker.py cost <line>        # Show cost breakdown since line
     python token_tracker.py summary            # Full session summary
+    python token_tracker.py clear              # Delete session files to start fresh
     python token_tracker.py --model sonnet ... # Use Sonnet pricing instead of Opus
+    python token_tracker.py --project <name>   # Use different project folder
+
+Default project: D--repos-Atlas3-EDEV (for Atlas benchmark)
 """
 import json
 import sys
@@ -37,7 +41,13 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import Optional
 
-JSONL_PATH = Path.home() / ".claude/projects/C--Users-cbein-source-repos-RoslynMcpServer"
+# Default project - can be overridden with --project flag
+DEFAULT_PROJECT = "D--repos-Atlas3-EDEV"
+
+def get_jsonl_path(project_name: str = None) -> Path:
+    """Get the JSONL path for a project."""
+    name = project_name or DEFAULT_PROJECT
+    return Path.home() / ".claude/projects" / name
 
 # Pricing per 1M tokens
 @dataclass
@@ -111,18 +121,19 @@ class TokenUsage:
         }
 
 
-def get_latest_session():
+def get_latest_session(project: str = None):
     """Find the most recent session file."""
-    files = list(JSONL_PATH.glob("*.jsonl"))
+    jsonl_path = get_jsonl_path(project)
+    files = list(jsonl_path.glob("*.jsonl"))
     if not files:
         return None
     return max(files, key=lambda f: f.stat().st_mtime)
 
 
-def parse_session(session_file=None, start_line=0):
+def parse_session(session_file=None, start_line=0, project: str = None):
     """Parse session and extract per-message metrics."""
     if session_file is None:
-        session_file = get_latest_session()
+        session_file = get_latest_session(project)
 
     if not session_file or not session_file.exists():
         return []
@@ -215,10 +226,10 @@ def analyze_tool_usage(messages):
     return dict(tools), dict(tool_call_counts)
 
 
-def get_line_count(session_file=None):
+def get_line_count(session_file=None, project: str = None):
     """Get current line count of session file."""
     if session_file is None:
-        session_file = get_latest_session()
+        session_file = get_latest_session(project)
     if not session_file or not session_file.exists():
         return 0
     with open(session_file, 'r', encoding='utf-8') as f:
@@ -264,9 +275,12 @@ def print_usage_summary(usage: TokenUsage, pricing: Pricing, label=""):
 
 
 def main():
-    # Check for --model flag
+    # Parse flags
     pricing = OPUS_PRICING
+    project = None
     args = sys.argv[1:]
+
+    # Check for --model flag
     if "--model" in args:
         idx = args.index("--model")
         if idx + 1 < len(args):
@@ -275,10 +289,18 @@ def main():
                 pricing = SONNET_PRICING
             args = args[:idx] + args[idx+2:]
 
+    # Check for --project flag
+    if "--project" in args:
+        idx = args.index("--project")
+        if idx + 1 < len(args):
+            project = args[idx + 1]
+            args = args[:idx] + args[idx+2:]
+
     if len(args) < 1:
         # Default: show current position
-        count = get_line_count()
-        session = get_latest_session()
+        count = get_line_count(project=project)
+        session = get_latest_session(project)
+        print(f"Project: {project or DEFAULT_PROJECT}")
         print(f"Session: {session.name if session else 'None'}")
         print(f"Current line: {count}")
         print(f"\nUsage: python token_tracker.py [mark|since|tool|cost|summary] [line]")
@@ -287,13 +309,13 @@ def main():
     cmd = args[0]
 
     if cmd == "mark":
-        count = get_line_count()
+        count = get_line_count(project=project)
         print(f"MARK:{count}")
         print(f"(Use this number with 'since', 'tool', or 'cost' commands)")
 
     elif cmd == "since":
         start = int(args[1]) if len(args) > 1 else 0
-        messages = parse_session(start_line=start)
+        messages = parse_session(start_line=start, project=project)
 
         total = TokenUsage()
         tool_calls = 0
@@ -310,7 +332,7 @@ def main():
 
     elif cmd == "tool":
         start = int(args[1]) if len(args) > 1 else 0
-        messages = parse_session(start_line=start)
+        messages = parse_session(start_line=start, project=project)
         tools, counts = analyze_tool_usage(messages)
 
         print(f"=== Per-Tool Usage Since Line {start} ===")
@@ -338,7 +360,7 @@ def main():
 
     elif cmd == "cost":
         start = int(args[1]) if len(args) > 1 else 0
-        messages = parse_session(start_line=start)
+        messages = parse_session(start_line=start, project=project)
 
         total = TokenUsage()
         for msg in messages:
@@ -348,7 +370,7 @@ def main():
         print_usage_summary(total, pricing, f"Cost Breakdown Since Line {start}")
 
     elif cmd == "summary":
-        messages = parse_session()
+        messages = parse_session(project=project)
         tools, counts = analyze_tool_usage(messages)
 
         total = TokenUsage()
@@ -366,6 +388,18 @@ def main():
                 print(f"{name:<45} {counts[name]:>6} {format_tokens(usage.cache_write_tokens):>12}")
 
         print_usage_summary(total, pricing, "Session Totals")
+
+    elif cmd == "clear":
+        # Delete session files to start fresh
+        jsonl_path = get_jsonl_path(project)
+        files = list(jsonl_path.glob("*.jsonl"))
+        if not files:
+            print("No session files to clear.")
+            return
+        for f in files:
+            print(f"Deleting: {f.name}")
+            f.unlink()
+        print(f"Cleared {len(files)} session file(s).")
 
     else:
         print(f"Unknown command: {cmd}")
