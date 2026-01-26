@@ -46,12 +46,18 @@ Write-Host "Installing hooks..." -ForegroundColor White
 $sourceHooksDir = Join-Path $RoslynMcpPath "Instructions\Hooks"
 
 if (Test-Path $sourceHooksDir) {
+    # Git workflow hooks
     Copy-Item -Path (Join-Path $sourceHooksDir "enforce-git-instructions.py") -Destination $hooksDir -Force
     Copy-Item -Path (Join-Path $sourceHooksDir "enforce-plan-instructions.py") -Destination $hooksDir -Force
     Copy-Item -Path (Join-Path $sourceHooksDir "enforce-branch-naming.py") -Destination $hooksDir -Force
+    # Roslyn tool suggestion hooks
+    Copy-Item -Path (Join-Path $sourceHooksDir "suggest-roslyn-for-csharp.py") -Destination $hooksDir -Force
+    Copy-Item -Path (Join-Path $sourceHooksDir "suggest-roslyn-for-read.py") -Destination $hooksDir -Force
     Write-Host "  Installed: enforce-git-instructions.py" -ForegroundColor Gray
     Write-Host "  Installed: enforce-plan-instructions.py" -ForegroundColor Gray
     Write-Host "  Installed: enforce-branch-naming.py" -ForegroundColor Gray
+    Write-Host "  Installed: suggest-roslyn-for-csharp.py" -ForegroundColor Gray
+    Write-Host "  Installed: suggest-roslyn-for-read.py" -ForegroundColor Gray
 } else {
     Write-Host "  ERROR: Hook source files not found at $sourceHooksDir" -ForegroundColor Red
     exit 1
@@ -68,7 +74,16 @@ if (Test-Path $sourceSkillsDir) {
         $destSkillDir = Join-Path $skillsDir $skill.Name
         New-Item -ItemType Directory -Path $destSkillDir -Force | Out-Null
         Copy-Item -Path (Join-Path $skill.FullName "*") -Destination $destSkillDir -Recurse -Force
-        Write-Host "  Installed: $($skill.Name) (uses Haiku model)" -ForegroundColor Gray
+        # Check if skill uses Haiku model
+        $skillFile = Join-Path $skill.FullName "SKILL.md"
+        $modelInfo = ""
+        if (Test-Path $skillFile) {
+            $content = Get-Content $skillFile -Raw
+            if ($content -match "model:\s*claude-haiku") {
+                $modelInfo = " (Haiku model - cost optimized)"
+            }
+        }
+        Write-Host "  Installed: $($skill.Name)$modelInfo" -ForegroundColor Gray
     }
 } else {
     Write-Host "  No skills found at $sourceSkillsDir - skipping" -ForegroundColor Yellow
@@ -95,6 +110,33 @@ $settings = @{
                     @{
                         type = "command"
                         command = "python .claude/hooks/enforce-branch-naming.py"
+                    }
+                )
+            },
+            @{
+                matcher = "Read"
+                hooks = @(
+                    @{
+                        type = "command"
+                        command = "python .claude/hooks/suggest-roslyn-for-read.py"
+                    }
+                )
+            },
+            @{
+                matcher = "Edit"
+                hooks = @(
+                    @{
+                        type = "command"
+                        command = "python .claude/hooks/suggest-roslyn-for-csharp.py"
+                    }
+                )
+            },
+            @{
+                matcher = "Write"
+                hooks = @(
+                    @{
+                        type = "command"
+                        command = "python .claude/hooks/suggest-roslyn-for-csharp.py"
                     }
                 )
             }
@@ -174,7 +216,9 @@ Write-Host "Files created:" -ForegroundColor White
 Write-Host "  .claude/hooks/enforce-git-instructions.py" -ForegroundColor Gray
 Write-Host "  .claude/hooks/enforce-plan-instructions.py" -ForegroundColor Gray
 Write-Host "  .claude/hooks/enforce-branch-naming.py" -ForegroundColor Gray
-Write-Host "  .claude/skills/update-docs/ (Haiku model)" -ForegroundColor Gray
+Write-Host "  .claude/hooks/suggest-roslyn-for-csharp.py" -ForegroundColor Gray
+Write-Host "  .claude/hooks/suggest-roslyn-for-read.py" -ForegroundColor Gray
+Write-Host "  .claude/skills/ (architect, blog, update-docs)" -ForegroundColor Gray
 Write-Host "  .claude/settings.json" -ForegroundColor Gray
 Write-Host "  .claude/plans/ (directory)" -ForegroundColor Gray
 if (-not (Test-Path $claudeMdFile -PathType Leaf)) {
