@@ -192,5 +192,7 @@ public class HookValidationServer : IDisposable
                 File.Delete(portFile);
         }
         catch { }
+
+        GC.SuppressFinalize(this);
     }
 }
