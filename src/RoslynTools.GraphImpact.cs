@@ -88,7 +88,7 @@ public static partial class RoslynTools
             "roslyn_find_dead_code",
             new ToolDefinition
             {
-                Description = "Finds potentially dead code - methods and properties with no callers. Excludes common entry points, properties with attributes, and (by default) properties on pure model/DTO classes (detected by structure: only auto-properties, no methods). Use roslyn_graph_analyze first to build the graph.",
+                Description = "Finds potentially dead code - methods and properties with no callers. Excludes common entry points, properties with attributes, and properties on pure model/DTO classes (detected by structure: only auto-properties, no methods). Use roslyn_graph_analyze first to build the graph.",
                 InputSchema = new
                 {
                     type = "object",
@@ -115,11 +115,6 @@ public static partial class RoslynTools
                             description = "Maximum number of results to return. Default: 100",
                             minimum = 1,
                             maximum = 1000
-                        },
-                        excludePureModelClasses = new
-                        {
-                            type = "boolean",
-                            description = "Exclude properties on pure model/DTO classes (classes with only auto-properties and no methods). Default: true. Set to false to include DTO properties in results."
                         },
                         excludeTypePatterns = new
                         {
@@ -148,7 +143,6 @@ public static partial class RoslynTools
                 var includePrivate = args?["includePrivate"]?.GetValue<bool>() ?? false;
                 var includeTests = args?["includeTests"]?.GetValue<bool>() ?? false;
                 var maxResults = args?["maxResults"]?.GetValue<int>() ?? 100;
-                var excludePureModelClasses = args?["excludePureModelClasses"]?.GetValue<bool>() ?? true;
 
                 // Parse array parameters with defaults
                 var excludeTypePatterns = args?["excludeTypePatterns"]?.AsArray()?
@@ -169,7 +163,7 @@ public static partial class RoslynTools
 
                 var result = await FindDeadCodeAsync(
                     solutionPath, includePrivate, includeTests, maxResults,
-                    excludePureModelClasses, excludeTypePatterns, excludeFilePatterns);
+                    excludeTypePatterns, excludeFilePatterns);
                 return CreateToolResponse(result, !result.Success);
             });
     }
@@ -279,7 +273,7 @@ public static partial class RoslynTools
 
     private static async Task<DeadCodeResult> FindDeadCodeAsync(
         string solutionPath, bool includePrivate, bool includeTests, int maxResults,
-        bool excludePureModelClasses, string[] excludeTypePatterns, string[] excludeFilePatterns)
+        string[] excludeTypePatterns, string[] excludeFilePatterns)
     {
         using var db = new GraphDatabase(solutionPath);
 
@@ -365,18 +359,15 @@ public static partial class RoslynTools
                     }
 
                     // Issue #106: Skip properties on pure model/DTO classes (structural detection)
-                    if (excludePureModelClasses)
+                    var containingType = GetContainingTypeName(symbol.QualifiedName);
+                    if (!pureModelCache.TryGetValue(containingType, out var isPureModel))
                     {
-                        var containingType = GetContainingTypeName(symbol.QualifiedName);
-                        if (!pureModelCache.TryGetValue(containingType, out var isPureModel))
-                        {
-                            isPureModel = await IsPureModelClassAsync(roslynSolution, symbol.FilePath, containingType);
-                            pureModelCache[containingType] = isPureModel;
-                        }
-                        if (isPureModel)
-                        {
-                            continue;
-                        }
+                        isPureModel = await IsPureModelClassAsync(roslynSolution, symbol.FilePath, containingType);
+                        pureModelCache[containingType] = isPureModel;
+                    }
+                    if (isPureModel)
+                    {
+                        continue;
                     }
                 }
 

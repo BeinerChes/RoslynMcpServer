@@ -172,10 +172,9 @@ Creates `MyApp.Core/Services/UserService.cs` with namespace `MyApp.Core.Services
    - Properties with attributes (likely serialization)
    - Properties on pure model/DTO classes (structural detection)
    - External/BCL symbols
-4. Optional parameters for additional filtering:
-   - `excludePureModelClasses: false` to include DTO properties
-   - `excludeTypePatterns: ["Result", "Response"]` for name-based exclusion
-   - `excludeFilePatterns: ["Models/"]` for path-based exclusion
+4. Optional parameters for edge cases:
+   - `excludeTypePatterns: ["Result", "Response"]` for additional name-based exclusion
+   - `excludeFilePatterns: ["Models/"]` for additional path-based exclusion
 
 ### Cleaning up dead code
 1. `roslyn_find_dead_code(solutionPath)` → identify unused members
