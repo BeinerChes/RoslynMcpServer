@@ -9,6 +9,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="RoslynMcpServer.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\RoslynMcpServer.Graph\RoslynMcpServer.Graph.csproj" />
   </ItemGroup>
 
