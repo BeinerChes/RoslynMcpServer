@@ -23,6 +23,7 @@ You have access to Roslyn MCP tools for C# code analysis. These tools provide se
 |------|---------|
 | `roslyn_update_method` | Replace a method's implementation |
 | `roslyn_add_member` | Add new method/property/field to a type |
+| `roslyn_add_type` | Create new class/interface/struct/record/enum in a project |
 | `roslyn_delete_member` | Delete a method/property/field from a type |
 | `roslyn_rename_symbol` | Rename across entire solution |
 | `roslyn_extract_method` | Extract code block into new method with data flow analysis |
@@ -98,6 +99,7 @@ Knowledge entries support:
 | Read a method | `roslyn_get_method_body` | Read requires knowing line numbers |
 | Edit a method | `roslyn_update_method` | Edit can break code with text patterns |
 | Add new member | `roslyn_add_member` | Edit doesn't format or place correctly |
+| Create new type | `roslyn_add_type` | Write doesn't know project namespace/folder conventions |
 | Delete member | `roslyn_delete_member` | Edit may miss attributes, XML docs, trivia |
 | Find usages (any symbol) | `roslyn_get_references` | Grep finds text matches, not usages |
 | Find callers (methods/props) | `roslyn_get_callers` | References includes non-calls |
@@ -117,11 +119,22 @@ Knowledge entries support:
 
 Use native tools (Read, Edit, Grep, Glob) only for:
 - Non-C# files: JSON, XML, YAML, markdown, .csproj
-- New files: Use Write to create, then `roslyn_add_member` to populate
 - Very small files: < 100 lines where Read/Edit is simpler
 - When MCP server is not connected
 
+**Note:** For new C# files, prefer `roslyn_add_type` which handles namespace inference and proper file placement.
+
 ## Common Workflows
+
+### Creating a new type
+1. `roslyn_add_type(projectName, typeName, typeKind, folder)` → creates file with proper namespace
+2. `roslyn_add_member(typeName, memberCode)` → add methods/properties as needed
+
+Example: Create a new service class
+```
+roslyn_add_type(projectName: "MyApp.Core", typeName: "UserService", folder: "Services", baseTypes: "IUserService")
+```
+Creates `MyApp.Core/Services/UserService.cs` with namespace `MyApp.Core.Services`.
 
 ### Understanding a large class
 1. `roslyn_get_type_members(typeName)` → see all members
