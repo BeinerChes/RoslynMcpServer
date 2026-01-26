@@ -1,4 +1,3 @@
-using System.Text.Json;
 using RoslynMcpServer.Graph;
 
 namespace RoslynMcpServer;

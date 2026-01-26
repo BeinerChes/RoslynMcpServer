@@ -223,6 +223,7 @@ Uses Haiku model (~20x cheaper than Opus) for straightforward documentation upda
 | `roslyn_get_diagnostics` | Compile and get warnings/errors (CS* and CA* rules) |
 | `roslyn_apply_code_fix` | Apply Roslyn's suggested fix for a single diagnostic |
 | `roslyn_batch_apply_code_fixes` | Batch apply fixes for all diagnostics of a specific type |
+| `roslyn_remove_unnecessary_usings` | Remove unnecessary using directives (CS8019) from files |
 | `roslyn_rename_symbol` | Rename a symbol across the entire solution with all references |
 | `roslyn_extract_method` | Extract code block into new method with automatic parameter/return detection |
 | `roslyn_get_projects_in_build_order` | Get solution structure and dependencies |

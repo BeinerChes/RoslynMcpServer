@@ -35,6 +35,7 @@ You have access to Roslyn MCP tools for C# code analysis. These tools provide se
 | `roslyn_get_diagnostics` | Get compiler errors and warnings |
 | `roslyn_apply_code_fix` | Apply Roslyn's suggested fix for one diagnostic |
 | `roslyn_batch_apply_code_fixes` | Fix all diagnostics of a specific type |
+| `roslyn_remove_unnecessary_usings` | Remove CS8019 (unnecessary using) directives from files |
 
 ### Call Graph (Cached Analysis)
 
@@ -110,6 +111,7 @@ Knowledge entries support:
 | Check errors | `roslyn_get_diagnostics` | dotnet build output is harder to parse |
 | Fix warning | `roslyn_apply_code_fix` | Manual edit may introduce errors |
 | Fix many warnings | `roslyn_batch_apply_code_fixes` | One-by-one is slow |
+| Remove unused usings | `roslyn_remove_unnecessary_usings` | CS8019 has no batch code fix provider |
 | Rename | `roslyn_rename_symbol` | Find/replace misses some references |
 | Extract method | `roslyn_extract_method` | Manual extraction misses params/returns |
 | Document a gotcha | `roslyn_knowledge_add` | Comments get lost, knowledge persists |
@@ -181,6 +183,13 @@ Creates `MyApp.Core/Services/UserService.cs` with namespace `MyApp.Core.Services
 1. `roslyn_get_diagnostics(severityFilter: "warning")` → see all warnings
 2. `roslyn_get_diagnostics(diagnosticId: "CS8618")` → get details
 3. `roslyn_batch_apply_code_fixes(diagnosticId: "CS8618")` → auto-fix
+
+### Removing unnecessary usings (CS8019)
+1. `roslyn_remove_unnecessary_usings(solutionPath, preview: true)` → preview what will be removed
+2. `roslyn_remove_unnecessary_usings(solutionPath)` → remove all unnecessary usings
+3. Automatically skips generated files in obj/ folders
+
+**Note:** CS8019 (unnecessary using) requires this dedicated tool because Roslyn's code fix provider for it needs IDE services not available in batch mode.
 
 ### Documenting code learnings
 1. After fixing a tricky bug or discovering a gotcha:

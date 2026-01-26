@@ -1,5 +1,4 @@
 using System.Text.Json;
-using System.Text.Json.Nodes;
 
 namespace RoslynMcpServer;
 
@@ -39,6 +38,7 @@ public static partial class RoslynTools
         RegisterDeleteMemberTool(server);
         RegisterApplyCodeFixTool(server);
         RegisterBatchApplyCodeFix(server);
+        RegisterRemoveUnnecessaryUsingsTool(server);
         RegisterRenameSymbolTool(server);
         RegisterExtractMethodTool(server);
         RegisterGraphStatusTool(server);
