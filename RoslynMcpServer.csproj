@@ -6,7 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <RootNamespace>RoslynMcpServer</RootNamespace>
-    <Version>1.0.0-rc</Version>
+    <Version>1.0.4</Version>
     <!-- Exclude sub-projects from compilation -->
     <DefaultItemExcludes>$(DefaultItemExcludes);RoslynMcpServer.Tests\**;RoslynMcpServer.Graph\**;RoslynMcpServer.Web\**</DefaultItemExcludes>
   </PropertyGroup>
