@@ -37,7 +37,7 @@ When you use **Claude Code** (Anthropic's AI coding assistant for the terminal),
 ### Option 1: Quick Install (Recommended)
 
 1. **Download** the latest release from [GitHub Releases](https://github.com/BeinerChes/RoslynMcpServer/releases)
-2. **Extract** `RoslynMcpServer-v1.0.2-win-x64.zip` to a temporary folder
+2. **Extract** the zip file to a temporary folder
 3. **Run the installer:**
    ```powershell
    powershell -ExecutionPolicy Bypass -File install.ps1
@@ -85,12 +85,15 @@ YourSolution/
 ├── CLAUDE.md                          # Instructions for Claude
 └── .claude/
     ├── hooks/                         # Workflow enforcement hooks
-    │   ├── enforce-git-instructions.py
-    │   ├── enforce-plan-instructions.py
-    │   ├── suggest-roslyn-for-csharp.py
-    │   └── suggest-roslyn-for-read.py
-    ├── skills/                        # Custom skills (cost-optimized)
-    │   └── update-docs/SKILL.md       # Uses Haiku model (~20x cheaper)
+    │   ├── enforce-git-instructions.py   # Requires git token before commits
+    │   ├── enforce-plan-instructions.py  # Requires plan token before GitHub ops
+    │   ├── enforce-branch-naming.py      # Enforces issues/* branch naming
+    │   ├── suggest-roslyn-for-csharp.py  # Suggests Roslyn for .cs edits
+    │   └── suggest-roslyn-for-read.py    # Suggests Roslyn for .cs reads
+    ├── skills/                        # Custom skills
+    │   ├── architect/SKILL.md         # Deep solution analysis (default model)
+    │   ├── blog/SKILL.md              # Session retrospectives (Haiku - cheap)
+    │   └── update-docs/SKILL.md       # Documentation updates (Haiku - cheap)
     ├── plans/                         # Plan files (per-solution)
     └── settings.json                  # Hook configuration
 ```
@@ -138,14 +141,13 @@ The server includes hooks that enforce Claude to read instructions before perfor
 
 ### What Hooks Enforce
 
-| Operation | Behavior | Token |
-|-----------|----------|-------|
-| `git commit` | BLOCKED - requires `issues/*` branch name | N/A |
-| `git commit`, `git push` | BLOCKED - requires valid git token | 1 minute |
-| `gh issue create/close/edit` | BLOCKED - requires valid plan token | 1 minute |
-| `gh pr create/merge` | BLOCKED - requires valid plan token | 1 minute |
-| `Read` on `.cs` files | BLOCKED - requires valid tools token | 1 minute |
-| `Edit`/`Write` on `.cs` files | BLOCKED - requires valid tools token | 1 minute |
+| Hook | Operation | Behavior |
+|------|-----------|----------|
+| `enforce-branch-naming.py` | `git commit` | BLOCKED unless on `issues/*` branch |
+| `enforce-git-instructions.py` | `git commit`, `git push` | BLOCKED without valid git token (1 min) |
+| `enforce-plan-instructions.py` | `gh issue/pr` commands | BLOCKED without valid plan token (1 min) |
+| `suggest-roslyn-for-read.py` | `Read` on `.cs` files | BLOCKED without valid tools token (1 min) |
+| `suggest-roslyn-for-csharp.py` | `Edit`/`Write` on `.cs` files | BLOCKED without valid tools token (1 min) |
 
 Tokens are **per-solution** (hash-based filenames) and expire after **1 minute**. Global tokens are not supported - Claude must always provide the `solutionPath` parameter when calling `roslyn_get_instructions` for plan/git/tools topics.
 
@@ -162,10 +164,11 @@ Plans are stored **per-solution** in `.claude/plans/`:
 
 The setup includes custom skills for specialized tasks:
 
-| Skill | Description |
-|-------|-------------|
-| `/architect` | Deep solution analysis with detailed task generation |
-| `/update-docs` | Update documentation after code changes (uses Haiku - 20x cheaper) |
+| Skill | Model | Description |
+|-------|-------|-------------|
+| `/architect` | Default (Opus) | Deep solution analysis with detailed task generation |
+| `/blog` | Haiku (~20x cheaper) | Watson-style session retrospectives documenting work done |
+| `/update-docs` | Haiku (~20x cheaper) | Update documentation after code changes |
 
 ### Architect Skill
 
@@ -196,6 +199,15 @@ Options:
 - Best practices to follow
 - Unit tests required (checkboxes)
 - Acceptance criteria (measurable outcomes)
+
+### Blog Skill
+
+Create a detective-style retrospective of your session:
+```
+/blog
+```
+
+Watson (Haiku) chronicles Detective Claude's (Opus) adventures - documenting commits, closed issues, and lessons learned in third-person narrative style. Great for team updates or personal learning logs.
 
 ### Update-Docs Skill
 
@@ -242,19 +254,22 @@ Uses Haiku model (~20x cheaper than Opus) for straightforward documentation upda
 | `roslyn_knowledge_delete` | Delete a knowledge entry by ID |
 | `roslyn_knowledge_for_symbol` | Get all knowledge linked to a specific symbol (full content) |
 
-### Dead Code Detection Limitations
+### Dead Code Detection
 
-`roslyn_find_dead_code` uses static analysis and may produce **false positives** for:
-- **DTO properties** used via JSON serialization (reflection-based access cannot be tracked)
-- **Properties without attributes** in model classes
+`roslyn_find_dead_code` uses static analysis with **structural DTO detection** to minimize false positives.
 
 The tool automatically excludes:
 - Entry points (`Main`, `RunAsync`, event handlers)
 - Properties with any attributes (likely used for serialization)
+- **Properties on pure model/DTO classes** (detected by structure: only auto-properties, no methods)
 - External/BCL symbols
 - Test files (optional)
 
-Review results carefully - some flagged code may be used via reflection.
+Optional parameters for edge cases:
+- `excludeTypePatterns: ["Result", "Response"]` - additional type suffix patterns to exclude
+- `excludeFilePatterns: ["Models/"]` - additional path patterns to exclude
+
+**Note:** Some false positives may remain for code used via reflection (API endpoints, interface implementations).
 
 ## Usage Examples
 
