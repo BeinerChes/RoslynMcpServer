@@ -343,7 +343,7 @@ public static partial class RoslynTools
         };
     }
 
-    private static readonly string[] definitionArray1 = new[] { "solutionPath" };
+    private static readonly string[] definitionArray100 = new[] { "solutionPath" };
     private static readonly string[] definitionArray0 = new[] { "solutionPath", "symbolName" };
 
     private static bool IsTestFile(string filePath)

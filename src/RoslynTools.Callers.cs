@@ -1,10 +1,13 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using RoslynMcpServer.Graph;
 
 namespace RoslynMcpServer;
 
 public static partial class RoslynTools
 {
+    private static readonly string[] definitionArray1 = ["solutionPath", "filePath", "line", "column"];
+
     /// <summary>
     /// Finds all callers of a method at a given position.
     /// Uses graph cache when available, with automatic staleness detection and refresh.
@@ -67,7 +70,7 @@ public static partial class RoslynTools
                             description = "Filter by file path. Supports wildcards (*). Example: '*Service.cs'"
                         }
                     },
-                    required = new[] { "solutionPath", "filePath", "line", "column" }
+                    required = definitionArray100
                 },
                 Annotations = new ToolAnnotations
                 {
@@ -75,115 +78,57 @@ public static partial class RoslynTools
                     IdempotentHint = true
                 }
             },
-            async args =>
-            {
-                var solutionPath = args?["solutionPath"]?.GetValue<string>();
-                var filePath = args?["filePath"]?.GetValue<string>();
-                var line = args?["line"]?.GetValue<int>() ?? 0;
-                var column = args?["column"]?.GetValue<int>() ?? 0;
+            HandleGetCallersAsync);
+    }
 
-                if (string.IsNullOrWhiteSpace(solutionPath))
-                {
-                    return new
-                    {
-                        content = new[]
-                        {
-                            new { type = "text", text = "Error: solutionPath is required" }
-                        },
-                        isError = true
-                    };
-                }
+    /// <summary>
+    /// Handler for the get_callers tool.
+    /// </summary>
+    private static async Task<object> HandleGetCallersAsync(JsonObject? args)
+    {
+        if (!TryGetRequiredString(args, "solutionPath", out var solutionPath, out var error))
+            return error!;
 
-                if (string.IsNullOrWhiteSpace(filePath))
-                {
-                    return new
-                    {
-                        content = new[]
-                        {
-                            new { type = "text", text = "Error: filePath is required" }
-                        },
-                        isError = true
-                    };
-                }
+        if (!TryGetRequiredString(args, "filePath", out var filePath, out error))
+            return error!;
 
-                if (line < 1)
-                {
-                    return new
-                    {
-                        content = new[]
-                        {
-                            new { type = "text", text = "Error: line must be >= 1" }
-                        },
-                        isError = true
-                    };
-                }
+        if (!TryGetRequiredInt(args, "line", 1, out var line, out error))
+            return error!;
 
-                if (column < 1)
-                {
-                    return new
-                    {
-                        content = new[]
-                        {
-                            new { type = "text", text = "Error: column must be >= 1" }
-                        },
-                        isError = true
-                    };
-                }
+        if (!TryGetRequiredInt(args, "column", 1, out var column, out error))
+            return error!;
 
-                // Parse optional parameters
-                var maxResults = args?["maxResults"]?.GetValue<int>() ?? 100;
-                var offset = args?["offset"]?.GetValue<int>() ?? 0;
-                var projectFilter = args?["projectFilter"]?.GetValue<string>();
-                var fileFilter = args?["fileFilter"]?.GetValue<string>();
+        var maxResults = GetOptionalInt(args, "maxResults", 100);
+        var offset = GetOptionalInt(args, "offset", 0);
+        var projectFilter = args?["projectFilter"]?.GetValue<string>();
+        var fileFilter = args?["fileFilter"]?.GetValue<string>();
 
-                // Try graph cache first
-                var graphResult = await TryGetCallersFromGraphAsync(
-                    solutionPath, filePath, line, column, maxResults, offset, projectFilter, fileFilter);
+        // Try graph cache first
+        var graphResult = await TryGetCallersFromGraphAsync(
+            solutionPath, filePath, line, column, maxResults, offset, projectFilter, fileFilter);
 
-                if (graphResult != null)
-                {
-                    return new
-                    {
-                        content = new[]
-                        {
-                            new { type = "text", text = JsonSerializer.Serialize(graphResult, JsonOptions) }
-                        },
-                        isError = !graphResult.Success
-                    };
-                }
+        if (graphResult != null)
+        {
+            return CreateSuccessResponse(graphResult, !graphResult.Success);
+        }
 
-                // Fall back to live analysis
-                var result = await SolutionAnalyzerService.GetCallersAsync(
-                    solutionPath,
-                    filePath,
-                    line,
-                    column,
-                    maxResults,
-                    offset,
-                    projectFilter,
-                    fileFilter);
+        // Fall back to live analysis
+        var result = await SolutionAnalyzerService.GetCallersAsync(
+            solutionPath, filePath, line, column, maxResults, offset, projectFilter, fileFilter);
 
-                // Add source indicator for live analysis
-                var liveResult = new GetCallersResult
-                {
-                    Success = result.Success,
-                    Error = result.Error,
-                    Symbol = result.Symbol,
-                    TotalCallers = result.TotalCallers,
-                    ReturnedCount = result.ReturnedCount,
-                    Source = "live",
-                    Callers = result.Callers
-                };
+        // Add source indicator for live analysis
+        var liveResult = new GetCallersResult
+        {
+            Success = result.Success,
+            Error = result.Error,
+            Symbol = result.Symbol,
+            TotalCallers = result.TotalCallers,
+            ReturnedCount = result.ReturnedCount,
+            Source = "live",
+            Callers = result.Callers
+        };
 
-                return new
-                {
-                    content = new[]
-                    {
-                        new { type = "text", text = JsonSerializer.Serialize(liveResult, JsonOptions) }
-                    },
-                    isError = !liveResult.Success
-                };
-            });
+        return CreateSuccessResponse(liveResult, !liveResult.Success);
     }
 
     /// <summary>

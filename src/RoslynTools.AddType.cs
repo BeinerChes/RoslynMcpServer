@@ -1,12 +1,13 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace RoslynMcpServer;
 
 public static partial class RoslynTools
 {
-    private static readonly string[] definitionArray6 = new[] { "class", "interface", "struct", "record", "enum" };
-    private static readonly string[] definitionArray7 = new[] { "public", "internal", "private", "protected" };
-    private static readonly string[] definitionArray8 = new[] { "solutionPath", "projectName", "typeName" };
+    private static readonly string[] definitionArray6 = ["class", "interface", "struct", "record", "enum"];
+    private static readonly string[] definitionArray7 = ["public", "internal", "private", "protected"];
+    private static readonly string[] definitionArray8 = ["solutionPath", "projectName", "typeName"];
 
     /// <summary>
     /// Creates a new type (class, interface, struct, record, enum) in a project.
@@ -89,77 +90,36 @@ public static partial class RoslynTools
                     IdempotentHint = false
                 }
             },
-            async args =>
-            {
-                var solutionPath = args?["solutionPath"]?.GetValue<string>();
-                var projectName = args?["projectName"]?.GetValue<string>();
-                var typeName = args?["typeName"]?.GetValue<string>();
-                var typeKind = args?["typeKind"]?.GetValue<string>();
-                var ns = args?["namespace"]?.GetValue<string>();
-                var folder = args?["folder"]?.GetValue<string>();
-                var accessibility = args?["accessibility"]?.GetValue<string>();
-                var baseTypes = args?["baseTypes"]?.GetValue<string>();
-                var isPartial = args?["isPartial"]?.GetValue<bool>() ?? false;
-                var isSealed = args?["isSealed"]?.GetValue<bool>() ?? false;
-                var isStatic = args?["isStatic"]?.GetValue<bool>() ?? false;
+            HandleAddTypeAsync);
+    }
 
-                if (string.IsNullOrWhiteSpace(solutionPath))
-                {
-                    return new
-                    {
-                        content = new[]
-                        {
-                            new { type = "text", text = "Error: solutionPath is required" }
-                        },
-                        isError = true
-                    };
-                }
+    /// <summary>
+    /// Handler for the add_type tool.
+    /// </summary>
+    private static async Task<object> HandleAddTypeAsync(JsonObject? args)
+    {
+        if (!TryGetRequiredString(args, "solutionPath", out var solutionPath, out var error))
+            return error!;
 
-                if (string.IsNullOrWhiteSpace(projectName))
-                {
-                    return new
-                    {
-                        content = new[]
-                        {
-                            new { type = "text", text = "Error: projectName is required" }
-                        },
-                        isError = true
-                    };
-                }
+        if (!TryGetRequiredString(args, "projectName", out var projectName, out error))
+            return error!;
 
-                if (string.IsNullOrWhiteSpace(typeName))
-                {
-                    return new
-                    {
-                        content = new[]
-                        {
-                            new { type = "text", text = "Error: typeName is required" }
-                        },
-                        isError = true
-                    };
-                }
+        if (!TryGetRequiredString(args, "typeName", out var typeName, out error))
+            return error!;
 
-                var result = await SolutionAnalyzerService.AddTypeAsync(
-                    solutionPath,
-                    projectName,
-                    typeName,
-                    typeKind,
-                    ns,
-                    folder,
-                    accessibility,
-                    baseTypes,
-                    isPartial,
-                    isSealed,
-                    isStatic);
+        var typeKind = args?["typeKind"]?.GetValue<string>();
+        var ns = args?["namespace"]?.GetValue<string>();
+        var folder = args?["folder"]?.GetValue<string>();
+        var accessibility = args?["accessibility"]?.GetValue<string>();
+        var baseTypes = args?["baseTypes"]?.GetValue<string>();
+        var isPartial = GetOptionalBool(args, "isPartial", false);
+        var isSealed = GetOptionalBool(args, "isSealed", false);
+        var isStatic = GetOptionalBool(args, "isStatic", false);
 
-                return new
-                {
-                    content = new[]
-                    {
-                        new { type = "text", text = JsonSerializer.Serialize(result, JsonOptions) }
-                    },
-                    isError = !result.Success
-                };
-            });
+        var result = await SolutionAnalyzerService.AddTypeAsync(
+            solutionPath, projectName, typeName, typeKind, ns, folder,
+            accessibility, baseTypes, isPartial, isSealed, isStatic);
+
+        return CreateSuccessResponse(result, !result.Success);
     }
 }
