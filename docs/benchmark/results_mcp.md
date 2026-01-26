@@ -1,6 +1,6 @@
 # Benchmark Results: MCP Tools
 
-**Date:**
+**Date:** 2026-01-26
 **Solution:** Atlas3.sln
 **Task:** Add Save Validation
 
@@ -8,8 +8,8 @@
 
 ## Per-Step Results
 
-| Step | Tool | Calls | Context | Result |
-|------|------|-------|---------|--------|
+| Step | Tool | Calls | New Context | Cost | Result |
+|------|------|-------|-------------|------|--------|
 
 ---
 

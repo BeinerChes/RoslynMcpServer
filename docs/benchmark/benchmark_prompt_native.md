@@ -7,8 +7,9 @@ Before starting, rename `.mcp.json` to `.mcp.json.disabled` in the RoslynMcpServ
 ## CRITICAL: After EVERY tool call, you MUST:
 
 1. Run: `python "C:/Users/cbein/source/repos/RoslynMcpServer/docs/benchmark/token_tracker.py" since <MARK>`
-2. Append result to `C:\Users\cbein\source\repos\RoslynMcpServer\docs\benchmark\results_native.md`
-3. Then proceed to next step
+2. Note the **New Context** (cache write) and **Cost** from output
+3. Append result to `C:\Users\cbein\source\repos\RoslynMcpServer\docs\benchmark\results_native.md`
+4. Then proceed to next step
 
 ## Setup
 
@@ -31,7 +32,12 @@ Read and complete all steps in: `C:\Users\cbein\source\repos\RoslynMcpServer\doc
 After each tool call, append to results_native.md:
 
 ```
-| Step | Tool | Calls | Context | Result |
+| Step | Tool | Calls | New Context | Cost | Result |
+```
+
+Example:
+```
+| 1 | Glob, Read | 14 | 127K | $2.38 | Found 13 partial files |
 ```
 
 ## After All Steps
