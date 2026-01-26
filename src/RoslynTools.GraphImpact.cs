@@ -46,7 +46,7 @@ public static partial class RoslynTools
                             description = "Include test files in impact analysis. Default: true"
                         }
                     },
-                    required = new[] { "solutionPath", "symbolName" }
+                    required = definitionArray0
                 },
                 Annotations = new ToolAnnotations
                 {
@@ -113,7 +113,7 @@ public static partial class RoslynTools
                             maximum = 1000
                         }
                     },
-                    required = new[] { "solutionPath" }
+                    required = definitionArray1
                 },
                 Annotations = new ToolAnnotations
                 {
@@ -285,7 +285,7 @@ public static partial class RoslynTools
         Microsoft.CodeAnalysis.Solution? roslynSolution = null;
         if (_analyzerService != null)
         {
-            roslynSolution = await _analyzerService.LoadSolutionAsync(solutionPath);
+            roslynSolution = await SolutionAnalyzerService.LoadSolutionAsync(solutionPath);
         }
 
         foreach (var symbol in candidateSymbols)
@@ -342,6 +342,9 @@ public static partial class RoslynTools
                 : null
         };
     }
+
+    private static readonly string[] definitionArray1 = new[] { "solutionPath" };
+    private static readonly string[] definitionArray0 = new[] { "solutionPath", "symbolName" };
 
     private static bool IsTestFile(string filePath)
     {

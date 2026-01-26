@@ -10,7 +10,7 @@ public partial class SolutionAnalyzerService
     /// <summary>
     /// Renames a symbol at a specific file position across the entire solution.
     /// </summary>
-    public async Task<RenameSymbolResult> RenameSymbolAsync(
+    public static async Task<RenameSymbolResult> RenameSymbolAsync(
         string solutionPath,
         string filePath,
         int line,

@@ -28,10 +28,10 @@ public static partial class RoslynTools
                         {
                             type = "string",
                             description = "Template to use for CLAUDE.md. Default: 'standard'",
-                            @enum = new[] { "standard" }
+                            @enum = definitionArray30
                         }
                     },
-                    required = new[] { "projectPath" }
+                    required = definitionArray31
                 }
             },
             async args =>
@@ -265,6 +265,8 @@ public static partial class RoslynTools
         AppContext.BaseDirectory,
         "Instructions",
         "Hooks");
+    private static readonly string[] definitionArray30 = new[] { "standard" };
+    private static readonly string[] definitionArray31 = new[] { "projectPath" };
 
     private static string GetHookContent(string hookName)
     {

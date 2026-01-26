@@ -12,7 +12,7 @@ public partial class SolutionAnalyzerService
     /// <summary>
     /// Extracts a code block into a new method using data flow analysis.
     /// </summary>
-    public async Task<ExtractMethodResult> ExtractMethodAsync(
+    public static async Task<ExtractMethodResult> ExtractMethodAsync(
         string solutionPath,
         string filePath,
         int startLine,

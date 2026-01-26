@@ -4,6 +4,9 @@ namespace RoslynMcpServer;
 
 public static partial class RoslynTools
 {
+    private static readonly string[] definitionArray17 = new[] { "private", "internal", "protected", "public" };
+    private static readonly string[] definitionArray18 = new[] { "solutionPath", "filePath", "startLine", "endLine", "methodName" };
+
     /// <summary>
     /// Extracts a code block into a new method using Roslyn data flow analysis.
     /// </summary>
@@ -50,10 +53,10 @@ public static partial class RoslynTools
                         {
                             type = "string",
                             description = "Access modifier for the new method. Default: 'private'",
-                            @enum = new[] { "private", "internal", "protected", "public" }
+                            @enum = definitionArray17
                         }
                     },
-                    required = new[] { "solutionPath", "filePath", "startLine", "endLine", "methodName" }
+                    required = definitionArray18
                 },
                 Annotations = new ToolAnnotations
                 {
@@ -130,7 +133,7 @@ public static partial class RoslynTools
                     };
                 }
 
-                var result = await _analyzerService!.ExtractMethodAsync(
+                var result = await SolutionAnalyzerService.ExtractMethodAsync(
                     solutionPath,
                     filePath,
                     startLine,

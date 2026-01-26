@@ -132,7 +132,7 @@ public class HookValidationServer : IDisposable
         }
     }
 
-    private async Task<object> HandleValidateAsync(HttpListenerRequest request)
+    private static async Task<object> HandleValidateAsync(HttpListenerRequest request)
     {
         string? token = null;
         string? topic = null;

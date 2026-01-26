@@ -9,7 +9,7 @@ public partial class SolutionAnalyzerService
     /// <summary>
     /// Finds all implementations of an interface or derived classes of a base class.
     /// </summary>
-    public async Task<FindImplementationsResult> FindImplementationsAsync(
+    public static async Task<FindImplementationsResult> FindImplementationsAsync(
         string solutionPath,
         string typeName,
         bool includeBaseType = false,

@@ -4,6 +4,10 @@ namespace RoslynMcpServer;
 
 public static partial class RoslynTools
 {
+    private static readonly string[] definitionArray6 = new[] { "class", "interface", "struct", "record", "enum" };
+    private static readonly string[] definitionArray7 = new[] { "public", "internal", "private", "protected" };
+    private static readonly string[] definitionArray8 = new[] { "solutionPath", "projectName", "typeName" };
+
     /// <summary>
     /// Creates a new type (class, interface, struct, record, enum) in a project.
     /// </summary>
@@ -38,7 +42,7 @@ public static partial class RoslynTools
                         {
                             type = "string",
                             description = "Kind of type to create: 'class', 'interface', 'struct', 'record', 'enum'. Default: 'class'",
-                            @enum = new[] { "class", "interface", "struct", "record", "enum" }
+                            @enum = definitionArray6
                         },
                         @namespace = new
                         {
@@ -54,7 +58,7 @@ public static partial class RoslynTools
                         {
                             type = "string",
                             description = "Access modifier: 'public', 'internal', 'private', 'protected'. Default: 'public'",
-                            @enum = new[] { "public", "internal", "private", "protected" }
+                            @enum = definitionArray7
                         },
                         baseTypes = new
                         {
@@ -77,7 +81,7 @@ public static partial class RoslynTools
                             description = "Create as static (classes only). Default: false"
                         }
                     },
-                    required = new[] { "solutionPath", "projectName", "typeName" }
+                    required = definitionArray8
                 },
                 Annotations = new ToolAnnotations
                 {
@@ -135,7 +139,7 @@ public static partial class RoslynTools
                     };
                 }
 
-                var result = await _analyzerService!.AddTypeAsync(
+                var result = await SolutionAnalyzerService.AddTypeAsync(
                     solutionPath,
                     projectName,
                     typeName,

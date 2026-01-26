@@ -79,7 +79,7 @@ public class ExtractMethodTests : IAsyncLifetime
             """);
 
         // Act - extract lines 8-9 (the two middle Console.WriteLine statements)
-        var result = await _service.ExtractMethodAsync(
+        var result = await SolutionAnalyzerService.ExtractMethodAsync(
             _solutionPath,
             _sourceFilePath,
             startLine: 8,
@@ -121,7 +121,7 @@ public class ExtractMethodTests : IAsyncLifetime
             """);
 
         // Act - extract lines 9-10 (sum and product calculations)
-        var result = await _service.ExtractMethodAsync(
+        var result = await SolutionAnalyzerService.ExtractMethodAsync(
             _solutionPath,
             _sourceFilePath,
             startLine: 9,
@@ -158,7 +158,7 @@ public class ExtractMethodTests : IAsyncLifetime
             """);
 
         // Act - extract line 9 (result assignment)
-        var result = await _service.ExtractMethodAsync(
+        var result = await SolutionAnalyzerService.ExtractMethodAsync(
             _solutionPath,
             _sourceFilePath,
             startLine: 9,
@@ -191,7 +191,7 @@ public class ExtractMethodTests : IAsyncLifetime
             """);
 
         // Act - try to extract the field declaration
-        var result = await _service.ExtractMethodAsync(
+        var result = await SolutionAnalyzerService.ExtractMethodAsync(
             _solutionPath,
             _sourceFilePath,
             startLine: 5,
@@ -223,7 +223,7 @@ public class ExtractMethodTests : IAsyncLifetime
             """);
 
         // Act
-        var result = await _service.ExtractMethodAsync(
+        var result = await SolutionAnalyzerService.ExtractMethodAsync(
             _solutionPath,
             _sourceFilePath,
             startLine: 10,
@@ -255,7 +255,7 @@ public class ExtractMethodTests : IAsyncLifetime
             """);
 
         // Act
-        var result = await _service.ExtractMethodAsync(
+        var result = await SolutionAnalyzerService.ExtractMethodAsync(
             _solutionPath,
             _sourceFilePath,
             startLine: 7,
@@ -288,7 +288,7 @@ public class ExtractMethodTests : IAsyncLifetime
             """);
 
         // Act
-        var result = await _service.ExtractMethodAsync(
+        var result = await SolutionAnalyzerService.ExtractMethodAsync(
             _solutionPath,
             _sourceFilePath,
             startLine: 7,
@@ -311,7 +311,7 @@ public class ExtractMethodTests : IAsyncLifetime
     public async Task ExtractMethodAsync_FileNotFound_ReturnsError()
     {
         // Act
-        var result = await _service.ExtractMethodAsync(
+        var result = await SolutionAnalyzerService.ExtractMethodAsync(
             _solutionPath,
             Path.Combine(_tempDir, "NonExistent.cs"),
             startLine: 1,

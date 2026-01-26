@@ -113,7 +113,7 @@ public class DeleteMemberTests : IAsyncLifetime
     public async Task DeleteMemberAsync_DeleteMethod_RemovesMethod()
     {
         // Act
-        var result = await _service.DeleteMemberAsync(
+        var result = await SolutionAnalyzerService.DeleteMemberAsync(
             _solutionPath,
             "TestClass",
             "MethodToDelete");
@@ -136,7 +136,7 @@ public class DeleteMemberTests : IAsyncLifetime
     public async Task DeleteMemberAsync_DeleteProperty_RemovesPropertyAndAttributes()
     {
         // Act
-        var result = await _service.DeleteMemberAsync(
+        var result = await SolutionAnalyzerService.DeleteMemberAsync(
             _solutionPath,
             "TestClass",
             "PropertyToDelete");
@@ -159,7 +159,7 @@ public class DeleteMemberTests : IAsyncLifetime
     public async Task DeleteMemberAsync_DeleteField_RemovesField()
     {
         // Act
-        var result = await _service.DeleteMemberAsync(
+        var result = await SolutionAnalyzerService.DeleteMemberAsync(
             _solutionPath,
             "TestClass",
             "_field2");
@@ -181,7 +181,7 @@ public class DeleteMemberTests : IAsyncLifetime
     public async Task DeleteMemberAsync_DeleteMethodOverload_RemovesCorrectOverload()
     {
         // Act - delete the int overload
-        var result = await _service.DeleteMemberAsync(
+        var result = await SolutionAnalyzerService.DeleteMemberAsync(
             _solutionPath,
             "TestClass",
             "OverloadedMethod",
@@ -203,7 +203,7 @@ public class DeleteMemberTests : IAsyncLifetime
     public async Task DeleteMemberAsync_MemberNotFound_ReturnsError()
     {
         // Act
-        var result = await _service.DeleteMemberAsync(
+        var result = await SolutionAnalyzerService.DeleteMemberAsync(
             _solutionPath,
             "TestClass",
             "NonExistentMethod");
@@ -220,7 +220,7 @@ public class DeleteMemberTests : IAsyncLifetime
     public async Task DeleteMemberAsync_TypeNotFound_ReturnsError()
     {
         // Act
-        var result = await _service.DeleteMemberAsync(
+        var result = await SolutionAnalyzerService.DeleteMemberAsync(
             _solutionPath,
             "NonExistentClass",
             "SomeMethod");

@@ -9,7 +9,7 @@ public partial class SolutionAnalyzerService
     /// <summary>
     /// Gets all members of a type (methods, properties, fields, events, constructors).
     /// </summary>
-    public async Task<GetTypeMembersResult> GetTypeMembersAsync(
+    public static async Task<GetTypeMembersResult> GetTypeMembersAsync(
         string solutionPath,
         string typeName,
         MemberKindFilter memberKind = MemberKindFilter.All,

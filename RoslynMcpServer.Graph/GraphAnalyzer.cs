@@ -346,7 +346,7 @@ public sealed class GraphAnalyzer
         return null;
     }
 
-    private bool IsWriteContext(SyntaxNode node)
+    private static bool IsWriteContext(SyntaxNode node)
     {
         var parent = node.Parent;
         if (parent is AssignmentExpressionSyntax assignment)

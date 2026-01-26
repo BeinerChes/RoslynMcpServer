@@ -10,7 +10,7 @@ public partial class SolutionAnalyzerService
     /// Finds all callers of a method at the given position.
     /// Unlike FindReferences, this returns only actual call sites, not declarations or other references.
     /// </summary>
-    public async Task<GetCallersResult> GetCallersAsync(
+    public static async Task<GetCallersResult> GetCallersAsync(
         string solutionPath,
         string filePath,
         int line,

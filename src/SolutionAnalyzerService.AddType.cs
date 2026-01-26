@@ -10,7 +10,7 @@ public partial class SolutionAnalyzerService
     /// <summary>
     /// Creates a new type (class, interface, struct, record, enum) in a project.
     /// </summary>
-    public async Task<AddTypeResult> AddTypeAsync(
+    public static async Task<AddTypeResult> AddTypeAsync(
         string solutionPath,
         string projectName,
         string typeName,
@@ -98,7 +98,7 @@ public partial class SolutionAnalyzerService
                 targetNamespace = project.Name;
                 if (!string.IsNullOrEmpty(folder))
                 {
-                    var folderParts = folder.Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
+                    var folderParts = folder.Split(separator, StringSplitOptions.RemoveEmptyEntries);
                     targetNamespace = string.Join(".", new[] { project.Name }.Concat(folderParts));
                 }
             }
@@ -180,6 +180,8 @@ public partial class SolutionAnalyzerService
             };
         }
     }
+
+    private static readonly char[] separator = new[] { '/', '\\' };
 
     private static BaseTypeDeclarationSyntax? GenerateTypeDeclaration(
         string typeName,
