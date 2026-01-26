@@ -367,3 +367,4 @@ FodyWeavers.xsd
 /nul
 /.mcp.json
 /.claude/settings.local.json
+*.zip
