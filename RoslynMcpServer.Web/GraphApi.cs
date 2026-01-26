@@ -129,24 +129,21 @@ public static class GraphApi
     {
         var solutionPath = context.Request.Query["solutionPath"].FirstOrDefault();
 
-        if (string.IsNullOrEmpty(solutionPath))
+        if (!IsValidSolutionPath(solutionPath, out var validatedPath, out var errorMessage))
         {
-            return Results.BadRequest(new { error = "solutionPath query parameter is required" });
+            return errorMessage!.Contains("not found")
+                ? Results.NotFound(new { error = errorMessage })
+                : Results.BadRequest(new { error = errorMessage });
         }
 
-        if (!File.Exists(solutionPath))
-        {
-            return Results.NotFound(new { error = "Solution file not found" });
-        }
-
-        using var db = new GraphDatabase(solutionPath);
+        using var db = new GraphDatabase(validatedPath!);
         if (!db.Exists())
         {
             return Results.Ok(new { exists = false, message = "No graph database exists. Run roslyn_graph_analyze first." });
         }
 
         await db.OpenAsync();
-        var solution = await db.GetSolutionAsync(solutionPath);
+        var solution = await db.GetSolutionAsync(validatedPath!);
 
         if (solution == null)
         {
@@ -176,19 +173,21 @@ public static class GraphApi
     {
         var solutionPath = context.Request.Query["solutionPath"].FirstOrDefault();
 
-        if (string.IsNullOrEmpty(solutionPath))
+        if (!IsValidSolutionPath(solutionPath, out var validatedPath, out var errorMessage))
         {
-            return Results.BadRequest(new { error = "solutionPath query parameter is required" });
+            return errorMessage!.Contains("not found")
+                ? Results.NotFound(new { error = errorMessage })
+                : Results.BadRequest(new { error = errorMessage });
         }
 
-        using var db = new GraphDatabase(solutionPath);
+        using var db = new GraphDatabase(validatedPath!);
         if (!db.Exists())
         {
             return Results.NotFound(new { error = "No graph database exists." });
         }
 
         await db.OpenAsync();
-        var solution = await db.GetSolutionAsync(solutionPath);
+        var solution = await db.GetSolutionAsync(validatedPath!);
 
         if (solution == null)
         {
@@ -207,24 +206,21 @@ public static class GraphApi
         var solutionPath = context.Request.Query["solutionPath"].FirstOrDefault();
         var projectFilter = context.Request.Query["project"].FirstOrDefault();
 
-        if (string.IsNullOrEmpty(solutionPath))
+        if (!IsValidSolutionPath(solutionPath, out var validatedPath, out var errorMessage))
         {
-            return Results.BadRequest(new { error = "solutionPath query parameter is required" });
+            return errorMessage!.Contains("not found")
+                ? Results.NotFound(new { error = errorMessage })
+                : Results.BadRequest(new { error = errorMessage });
         }
 
-        if (!File.Exists(solutionPath))
-        {
-            return Results.NotFound(new { error = "Solution file not found" });
-        }
-
-        using var db = new GraphDatabase(solutionPath);
+        using var db = new GraphDatabase(validatedPath!);
         if (!db.Exists())
         {
             return Results.NotFound(new { error = "No graph database exists. Run roslyn_graph_analyze first." });
         }
 
         await db.OpenAsync();
-        var solution = await db.GetSolutionAsync(solutionPath);
+        var solution = await db.GetSolutionAsync(validatedPath!);
 
         if (solution == null)
         {
@@ -315,12 +311,14 @@ public static class GraphApi
     {
         var solutionPath = context.Request.Query["solutionPath"].FirstOrDefault();
 
-        if (string.IsNullOrEmpty(solutionPath))
+        if (!IsValidSolutionPath(solutionPath, out var validatedPath, out var errorMessage))
         {
-            return Results.BadRequest(new { error = "solutionPath query parameter is required" });
+            return errorMessage!.Contains("not found")
+                ? Results.NotFound(new { error = errorMessage })
+                : Results.BadRequest(new { error = errorMessage });
         }
 
-        using var db = new GraphDatabase(solutionPath);
+        using var db = new GraphDatabase(validatedPath!);
         if (!db.Exists())
         {
             return Results.NotFound(new { error = "No graph database exists." });
@@ -353,5 +351,48 @@ public static class GraphApi
             callers = callers.Select(c => new { c.Id, c.Name, c.QualifiedName }),
             callees = callees.Select(c => new { c.Id, c.Name, c.QualifiedName })
         });
+    }
+
+
+    internal static bool IsValidSolutionPath(string? userPath, out string? normalizedPath, out string? errorMessage)
+    {
+        normalizedPath = null;
+        errorMessage = null;
+
+        if (string.IsNullOrWhiteSpace(userPath))
+        {
+            errorMessage = "solutionPath query parameter is required";
+            return false;
+        }
+
+        try
+        {
+            // Normalize the path to resolve any ../ sequences
+            var fullPath = Path.GetFullPath(userPath);
+
+            // Validate file extension - only allow solution files
+            var extension = Path.GetExtension(fullPath);
+            if (!extension.Equals(".sln", StringComparison.OrdinalIgnoreCase) &&
+                !extension.Equals(".slnx", StringComparison.OrdinalIgnoreCase))
+            {
+                errorMessage = "Only .sln and .slnx files are allowed";
+                return false;
+            }
+
+            // Check if file exists
+            if (!File.Exists(fullPath))
+            {
+                errorMessage = "Solution file not found";
+                return false;
+            }
+
+            normalizedPath = fullPath;
+            return true;
+        }
+        catch (Exception ex) when (ex is ArgumentException or PathTooLongException or NotSupportedException)
+        {
+            errorMessage = "Invalid path format";
+            return false;
+        }
     }
 }
