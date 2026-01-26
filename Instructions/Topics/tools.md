@@ -47,7 +47,7 @@ You have access to Roslyn MCP tools for C# code analysis. These tools provide se
 | `roslyn_graph_impact` | Analyze blast radius if a symbol changes (auto-refreshes stale files) |
 | `roslyn_find_dead_code` | Find methods/properties with no callers (may have false positives*) |
 
-*Dead code detection limitations: DTO properties used via JSON serialization (reflection-based) may be flagged as dead code since the call graph cannot track reflection. Properties with attributes are automatically excluded.
+*Dead code detection: By default, excludes properties on pure model/DTO classes (detected by structure: only auto-properties, no methods). Optional `excludeTypePatterns` and `excludeFilePatterns` parameters available for additional filtering.
 
 ### Solution & Project
 
@@ -167,11 +167,15 @@ Creates `MyApp.Core/Services/UserService.cs` with namespace `MyApp.Core.Services
 ### Finding dead code
 1. `roslyn_graph_analyze(solutionPath)` → build call graph
 2. `roslyn_find_dead_code(solutionPath)` → find unused methods/properties
-3. Review results - excludes:
+3. Review results - automatically excludes:
    - Entry points (Main, RunAsync, event handlers)
    - Properties with attributes (likely serialization)
+   - Properties on pure model/DTO classes (structural detection)
    - External/BCL symbols
-4. **Note**: May produce false positives for DTO properties used via JSON serialization (reflection-based access not tracked)
+4. Optional parameters for additional filtering:
+   - `excludePureModelClasses: false` to include DTO properties
+   - `excludeTypePatterns: ["Result", "Response"]` for name-based exclusion
+   - `excludeFilePatterns: ["Models/"]` for path-based exclusion
 
 ### Cleaning up dead code
 1. `roslyn_find_dead_code(solutionPath)` → identify unused members

@@ -75,6 +75,10 @@ public static partial class RoslynTools
             });
     }
 
+    // Empty default patterns - structural detection is preferred over name patterns
+    private static readonly string[] DefaultExcludeTypePatterns = [];
+    private static readonly string[] DefaultExcludeFilePatterns = [];
+
     /// <summary>
     /// Registers the roslyn_find_dead_code tool.
     /// </summary>
@@ -84,7 +88,7 @@ public static partial class RoslynTools
             "roslyn_find_dead_code",
             new ToolDefinition
             {
-                Description = "Finds potentially dead code - methods and properties with no callers. Excludes common entry points (Main, event handlers, interface implementations). Use roslyn_graph_analyze first to build the graph.",
+                Description = "Finds potentially dead code - methods and properties with no callers. Excludes common entry points, properties with attributes, and (by default) properties on pure model/DTO classes (detected by structure: only auto-properties, no methods). Use roslyn_graph_analyze first to build the graph.",
                 InputSchema = new
                 {
                     type = "object",
@@ -111,9 +115,26 @@ public static partial class RoslynTools
                             description = "Maximum number of results to return. Default: 100",
                             minimum = 1,
                             maximum = 1000
+                        },
+                        excludePureModelClasses = new
+                        {
+                            type = "boolean",
+                            description = "Exclude properties on pure model/DTO classes (classes with only auto-properties and no methods). Default: true. Set to false to include DTO properties in results."
+                        },
+                        excludeTypePatterns = new
+                        {
+                            type = "array",
+                            items = new { type = "string" },
+                            description = "Additional type name patterns to exclude (suffix match). Example: ['Result', 'Response', 'Dto']. Empty by default - relies on structural detection instead."
+                        },
+                        excludeFilePatterns = new
+                        {
+                            type = "array",
+                            items = new { type = "string" },
+                            description = "Additional file path patterns to exclude (contains match). Example: ['Models/', 'Dto/']. Empty by default - relies on structural detection instead."
                         }
                     },
-                    required = definitionArray1
+                    required = definitionArray100
                 },
                 Annotations = new ToolAnnotations
                 {
@@ -127,6 +148,18 @@ public static partial class RoslynTools
                 var includePrivate = args?["includePrivate"]?.GetValue<bool>() ?? false;
                 var includeTests = args?["includeTests"]?.GetValue<bool>() ?? false;
                 var maxResults = args?["maxResults"]?.GetValue<int>() ?? 100;
+                var excludePureModelClasses = args?["excludePureModelClasses"]?.GetValue<bool>() ?? true;
+
+                // Parse array parameters with defaults
+                var excludeTypePatterns = args?["excludeTypePatterns"]?.AsArray()?
+                    .Select(x => x?.GetValue<string>() ?? "")
+                    .Where(s => !string.IsNullOrEmpty(s))
+                    .ToArray() ?? DefaultExcludeTypePatterns;
+
+                var excludeFilePatterns = args?["excludeFilePatterns"]?.AsArray()?
+                    .Select(x => x?.GetValue<string>() ?? "")
+                    .Where(s => !string.IsNullOrEmpty(s))
+                    .ToArray() ?? DefaultExcludeFilePatterns;
 
                 if (string.IsNullOrWhiteSpace(solutionPath))
                     return CreateToolError("Error: solutionPath is required");
@@ -134,7 +167,9 @@ public static partial class RoslynTools
                 if (!File.Exists(solutionPath))
                     return CreateToolError($"Error: Solution file not found: {solutionPath}");
 
-                var result = await FindDeadCodeAsync(solutionPath, includePrivate, includeTests, maxResults);
+                var result = await FindDeadCodeAsync(
+                    solutionPath, includePrivate, includeTests, maxResults,
+                    excludePureModelClasses, excludeTypePatterns, excludeFilePatterns);
                 return CreateToolResponse(result, !result.Success);
             });
     }
@@ -243,7 +278,8 @@ public static partial class RoslynTools
     }
 
     private static async Task<DeadCodeResult> FindDeadCodeAsync(
-        string solutionPath, bool includePrivate, bool includeTests, int maxResults)
+        string solutionPath, bool includePrivate, bool includeTests, int maxResults,
+        bool excludePureModelClasses, string[] excludeTypePatterns, string[] excludeFilePatterns)
     {
         using var db = new GraphDatabase(solutionPath);
 
@@ -279,18 +315,41 @@ public static partial class RoslynTools
             .Where(s => includeTests || !IsTestFile(s.FilePath))
             .ToList();
 
+        // Apply file pattern exclusions (Issue #106)
+        if (excludeFilePatterns.Length > 0)
+        {
+            candidateSymbols = candidateSymbols
+                .Where(s => !excludeFilePatterns.Any(pattern =>
+                    s.FilePath.Contains(pattern, StringComparison.OrdinalIgnoreCase)))
+                .ToList();
+        }
+
         var deadCode = new List<DeadCodeEntry>();
 
-        // Issue #36: Load Roslyn solution to check for attributes
+        // Issue #36: Load Roslyn solution to check for attributes and pure model detection
         Microsoft.CodeAnalysis.Solution? roslynSolution = null;
         if (_analyzerService != null)
         {
             roslynSolution = await SolutionAnalyzerService.LoadSolutionAsync(solutionPath);
         }
 
+        // Cache for pure model class detection (Issue #106)
+        var pureModelCache = new Dictionary<string, bool>();
+
         foreach (var symbol in candidateSymbols)
         {
             if (deadCode.Count >= maxResults) break;
+
+            // Issue #106: Apply type pattern exclusions
+            if (excludeTypePatterns.Length > 0)
+            {
+                var typeName = GetContainingTypeName(symbol.QualifiedName);
+                if (excludeTypePatterns.Any(pattern =>
+                    typeName.EndsWith(pattern, StringComparison.OrdinalIgnoreCase)))
+                {
+                    continue;
+                }
+            }
 
             // Issue #36: For properties, check Reads/Accesses edges too, not just Calls
             // Use null edgeType to check ALL edge types
@@ -303,6 +362,21 @@ public static partial class RoslynTools
                     if (await HasAttributesAsync(roslynSolution, symbol.FilePath, symbol.Line))
                     {
                         continue;
+                    }
+
+                    // Issue #106: Skip properties on pure model/DTO classes (structural detection)
+                    if (excludePureModelClasses)
+                    {
+                        var containingType = GetContainingTypeName(symbol.QualifiedName);
+                        if (!pureModelCache.TryGetValue(containingType, out var isPureModel))
+                        {
+                            isPureModel = await IsPureModelClassAsync(roslynSolution, symbol.FilePath, containingType);
+                            pureModelCache[containingType] = isPureModel;
+                        }
+                        if (isPureModel)
+                        {
+                            continue;
+                        }
                     }
                 }
 
@@ -341,6 +415,93 @@ public static partial class RoslynTools
                 ? $"Results limited to {maxResults}. Use maxResults parameter to see more."
                 : null
         };
+    }
+
+    /// <summary>
+    /// Extracts the containing type name from a qualified symbol name.
+    /// e.g., "Namespace.ClassName.PropertyName" -> "ClassName"
+    /// </summary>
+    private static string GetContainingTypeName(string qualifiedName)
+    {
+        var parts = qualifiedName.Split('.');
+        return parts.Length >= 2 ? parts[^2] : qualifiedName;
+    }
+
+    /// <summary>
+    /// Detects if a class is a "pure model" class - only auto-properties, no methods with logic.
+    /// Issue #106: Structural detection is more reliable than name-based patterns.
+    /// </summary>
+    private static async Task<bool> IsPureModelClassAsync(
+        Microsoft.CodeAnalysis.Solution solution, string filePath, string typeName)
+    {
+        try
+        {
+            var document = solution.Projects
+                .SelectMany(p => p.Documents)
+                .FirstOrDefault(d => d.FilePath == filePath);
+
+            if (document == null) return false;
+
+            var syntaxRoot = await document.GetSyntaxRootAsync();
+            if (syntaxRoot == null) return false;
+
+            // Find the class declaration
+            var classDecl = syntaxRoot.DescendantNodes()
+                .OfType<Microsoft.CodeAnalysis.CSharp.Syntax.TypeDeclarationSyntax>()
+                .FirstOrDefault(c => c.Identifier.Text == typeName);
+
+            if (classDecl == null) return false;
+
+            // Check members: a pure model class has only auto-properties (no backing logic)
+            var members = classDecl.Members;
+
+            foreach (var member in members)
+            {
+                switch (member)
+                {
+                    case Microsoft.CodeAnalysis.CSharp.Syntax.PropertyDeclarationSyntax prop:
+                        // Auto-properties have no body (just { get; set; })
+                        if (prop.ExpressionBody != null) return false; // => expression body
+                        if (prop.AccessorList != null)
+                        {
+                            foreach (var accessor in prop.AccessorList.Accessors)
+                            {
+                                // Auto-property accessors have no body
+                                if (accessor.Body != null || accessor.ExpressionBody != null)
+                                    return false;
+                            }
+                        }
+                        break;
+
+                    case Microsoft.CodeAnalysis.CSharp.Syntax.MethodDeclarationSyntax:
+                        // Methods (other than property accessors) disqualify pure model
+                        return false;
+
+                    case Microsoft.CodeAnalysis.CSharp.Syntax.ConstructorDeclarationSyntax ctor:
+                        // Allow parameterless constructors with no/empty body
+                        if (ctor.ParameterList.Parameters.Count > 0) return false;
+                        if (ctor.Body != null && ctor.Body.Statements.Count > 0) return false;
+                        if (ctor.ExpressionBody != null) return false;
+                        break;
+
+                    case Microsoft.CodeAnalysis.CSharp.Syntax.FieldDeclarationSyntax:
+                        // Fields are OK (backing fields)
+                        break;
+
+                    case Microsoft.CodeAnalysis.CSharp.Syntax.IndexerDeclarationSyntax:
+                    case Microsoft.CodeAnalysis.CSharp.Syntax.EventDeclarationSyntax:
+                    case Microsoft.CodeAnalysis.CSharp.Syntax.OperatorDeclarationSyntax:
+                        // These disqualify pure model
+                        return false;
+                }
+            }
+
+            return true; // Only auto-properties and allowed members
+        }
+        catch
+        {
+            return false; // If we can't check, assume not a pure model
+        }
     }
 
     private static readonly string[] definitionArray100 = new[] { "solutionPath" };
