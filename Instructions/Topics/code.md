@@ -48,6 +48,7 @@ Choose the right tool for each task:
 | Read a method | `roslyn_get_method_body` |
 | Edit a method | `roslyn_update_method` |
 | Add new member | `roslyn_add_member` |
+| Create new type | `roslyn_add_type` |
 | Find all usages | `roslyn_get_references` |
 | Find who calls this | `roslyn_get_callers` |
 | Find callers recursively | `roslyn_query_graph` (needs `roslyn_graph_analyze` first) |
