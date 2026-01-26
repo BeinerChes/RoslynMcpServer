@@ -218,6 +218,7 @@ Uses Haiku model (~20x cheaper than Opus) for straightforward documentation upda
 | `roslyn_get_method_body` | Get the full source code of a specific method |
 | `roslyn_update_method` | Replace a method's implementation |
 | `roslyn_add_member` | Add a new method/property/field to a type |
+| `roslyn_add_type` | Create a new class/interface/struct/record/enum in a project |
 | `roslyn_delete_member` | Delete a method/property/field from a type (includes attributes, XML docs) |
 | `roslyn_get_diagnostics` | Compile and get warnings/errors (CS* and CA* rules) |
 | `roslyn_apply_code_fix` | Apply Roslyn's suggested fix for a single diagnostic |
@@ -290,6 +291,17 @@ Add a Dispose method to the CacheManager class
 ```
 
 Claude will use `roslyn_add_member` with proper formatting.
+
+### Create a New Class
+
+```
+Create a new UserService class in the MyApp.Core project under the Services folder
+```
+
+Claude will use `roslyn_add_type` to create `MyApp.Core/Services/UserService.cs` with:
+- Proper namespace (`MyApp.Core.Services`)
+- File-scoped namespace declaration
+- Correct file placement
 
 ### Find Code Health Issues
 
