@@ -317,16 +317,7 @@ public partial class SolutionAnalyzerService
 
     public static HashSet<string> GetFixableDiagnosticIds()
     {
-        var providers = GetCodeFixProviders();
-        var fixableIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var provider in providers)
-        {
-            foreach (var id in provider.FixableDiagnosticIds)
-            {
-                fixableIds.Add(id);
-            }
-        }
-        return fixableIds;
+        return Services.CodeFixService.GetFixableDiagnosticIds();
     }
 
 
