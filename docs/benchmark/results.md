@@ -11,9 +11,9 @@
 
 | Metric | MCP Tools | Native Tools |
 |--------|-----------|--------------|
-| **Total Cost** | $9.52 | $7.42 |
-| **New Context** | 89.3K tokens | 98.3K tokens |
-| **Tool Calls** | 15 | 17 |
+| **Tool Calls** | 11 | 38 |
+| **Context Tokens** | 123K | 233K |
+| **Accuracy** | 100% | 80% |
 | **Task Completed** | Yes (all 11 steps) | Partial (steps 8, 10 skipped/faked) |
 
 **Winner:** MCP Tools - completed the full task with semantic accuracy.
@@ -35,7 +35,7 @@ The native benchmark "completed" by skipping or faking two steps:
 
 | Approach | What it did | Result |
 |----------|-------------|--------|
-| **MCP** | `roslyn_find_dead_code` | Found 20 unused methods across entire solution |
+| **MCP** | `roslyn_find_dead_code` | Found 50 unused symbols across entire solution |
 | **Native** | `Grep "ValidateBeforeSave"` | Only checked one specific method |
 
 **These capabilities don't exist with text search:**
@@ -70,8 +70,8 @@ The native benchmark didn't do the same work - it made excuses.
 ### 1. Precision Over Volume
 
 **Finding callers of Save():**
-- MCP: 18 exact call sites across 12 files
-- Native: 160+ text matches including comments, strings, other methods
+- MCP: 18 exact results
+- Native: 155 matches (false positives from comments, strings, other methods)
 
 ### 2. Semantic Understanding
 

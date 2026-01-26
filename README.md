@@ -75,23 +75,19 @@ Rename GetData to FetchDataAsync
 
 Tested on a real enterprise codebase (36 projects, 155-member class across 13 partial files):
 
-```
-                        MCP Tools    Native Tools
-                        ─────────    ────────────
-Tool Calls                   11            38
-Context Tokens            123 K         233 K
-Accuracy                   100%           80%
-```
+|                    | MCP Tools | Native Tools |
+|--------------------|-----------|--------------|
+| Tool Calls         | 11        | 38           |
+| Context Tokens     | 123K      | 233K         |
+| Accuracy           | 100%      | 80%          |
 
 ### Where MCP Makes a Difference
 
-```
-Task                    MCP                         Native
-────────────────────────────────────────────────────────────────
-Find callers            18 exact results            155 matches (false positives)
-Impact analysis         44 symbols traced           Failed (can't build call graph)
-Dead code detection     50 unused symbols           Not feasible
-```
+| Task | MCP | Native |
+|------|-----|--------|
+| Find callers | 18 exact results | 155 matches (false positives) |
+| Impact analysis | 44 symbols traced | Failed (can't build call graph) |
+| Dead code detection | 50 unused symbols | Not feasible |
 
 ### Where It Doesn't Matter
 
@@ -103,9 +99,9 @@ Code modification (add/update/delete methods) performed similarly with both appr
 - **7 steps** were roughly equivalent
 - **1 step** native was more efficient (simple text search)
 
-MCP solves problems native tools cannot solve. For everything else, either works.
+**MCP solves problems native tools cannot solve.** For everything else, either works.
 
-**[Full benchmark with methodology](docs/benchmark/results.md)**
+[Full benchmark with methodology](docs/benchmark/results.md)
 
 ---
 
