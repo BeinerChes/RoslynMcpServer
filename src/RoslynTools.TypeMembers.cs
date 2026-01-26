@@ -112,51 +112,11 @@ public static partial class RoslynTools
                 if (result.Success)
                     LastSymbolTracker.Track(solutionPath, typeName, "type");
 
-                // Fetch related knowledge entries for the type
-                List<object>? knowledge = null;
-                if (result.Success && result.Type?.FullyQualifiedName != null)
-                {
-                    try
-                    {
-                        var db = await GetKnowledgeDatabaseAsync(solutionPath);
-                        // Use fully qualified type name from result
-                        var entries = await db.GetEntriesForSymbolAsync(result.Type.FullyQualifiedName);
-
-                        if (entries.Count > 0)
-                        {
-                            knowledge = entries.Select(e => (object)new
-                            {
-                                e.Id,
-                                e.Category,
-                                e.Title,
-                                e.Content,
-                                e.Confidence
-                            }).ToList();
-                        }
-                    }
-                    catch
-                    {
-                        // Knowledge lookup failure shouldn't break the main functionality
-                    }
-                }
-
-                // Build response with optional knowledge
-                var response = new
-                {
-                    result.Success,
-                    result.Error,
-                    result.SolutionPath,
-                    result.Type,
-                    result.TotalMembers,
-                    result.Members,
-                    Knowledge = knowledge
-                };
-
                 return new
                 {
                     content = new[]
                     {
-                        new { type = "text", text = JsonSerializer.Serialize(response, JsonOptions) }
+                        new { type = "text", text = JsonSerializer.Serialize(result, JsonOptions) }
                     },
                     isError = !result.Success
                 };
