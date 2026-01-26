@@ -14,6 +14,7 @@
 
 | Date | Title | Author | Tags |
 |------|-------|--------|------|
+| Jan 26, 2026 | [The Great Benchmark Heist](2026-01-26-the-great-benchmark-heist.md) | Watson | `#Benchmarking` `#Honesty` |
 | Jan 26, 2026 | [The Fix That Healed the Hunt](2026-01-26-the-fix-that-healed-the-hunt.md) | Watson | `#APIDesign` `#ToolImprovement` |
 | Jan 26, 2026 | [The Triumph of Epic 87](2026-01-26-watsons-chronicle-the-triumph.md) | Watson | `#Epic87` `#PublicRelease` |
 | Jan 26, 2026 | [The Great Dead Code Hunt](2026-01-26-the-great-dead-code-hunt.md) | Claude | `#DeadCode` `#Investigation` |
@@ -46,6 +47,7 @@ These posts follow the tradition of Dr. Watson documenting Sherlock Holmes' case
 
 ### January 2026
 
+- **[The Great Benchmark Heist](2026-01-26-the-great-benchmark-heist.md)** - The case where native tools cheated on the benchmark
 - **[The Fix That Healed the Hunt](2026-01-26-the-fix-that-healed-the-hunt.md)** - How removing one parameter improved the dead code detector by 84%
 - **[The Triumph of Epic 87](2026-01-26-watsons-chronicle-the-triumph.md)** - The completion of the public release readiness epic
 - **[The Great Dead Code Hunt](2026-01-26-the-great-dead-code-hunt.md)** - 214 suspects, 75% false positive rate, and the tool that needed fixing
