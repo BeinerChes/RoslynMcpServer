@@ -55,3 +55,18 @@ public class AddMemberResult
     public int? InsertedAtLine { get; init; }
     public string? Signature { get; init; }
 }
+
+/// <summary>
+/// Result of creating a new type (class, interface, struct, record, enum).
+/// </summary>
+public class AddTypeResult
+{
+    public bool Success { get; init; }
+    public string? Error { get; init; }
+    public string? FilePath { get; init; }
+    public string? TypeName { get; init; }
+    public string? FullyQualifiedName { get; init; }
+    public string? Namespace { get; init; }
+    public string? TypeKind { get; init; }
+    public string? ProjectName { get; init; }
+}

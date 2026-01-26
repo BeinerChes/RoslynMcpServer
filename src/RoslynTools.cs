@@ -35,6 +35,7 @@ public static partial class RoslynTools
         RegisterUpdateMethodTool(server);
         RegisterGetDiagnosticsTool(server);
         RegisterAddMemberTool(server);
+        RegisterAddTypeTool(server);
         RegisterDeleteMemberTool(server);
         RegisterApplyCodeFixTool(server);
         RegisterBatchApplyCodeFix(server);
