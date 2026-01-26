@@ -40,14 +40,6 @@ public sealed partial class KnowledgeDatabase : IDisposable
     }
 
     /// <summary>
-    /// Creates an in-memory database for testing.
-    /// </summary>
-    public static KnowledgeDatabase CreateInMemory()
-    {
-        return new KnowledgeDatabase(":memory:", isExplicitPath: true);
-    }
-
-    /// <summary>
     /// Sets the embedding provider for semantic search.
     /// If not set, only symbol links and FTS5 search will be available.
     /// </summary>

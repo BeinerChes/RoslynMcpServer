@@ -198,17 +198,5 @@ public partial class KnowledgeDatabase
         return string.Join(" OR ", words.Select(w => $"{w}*"));
     }
 
-    /// <summary>
-    /// Gets contextual knowledge for a task description.
-    /// Useful at session start to load relevant knowledge.
-    /// </summary>
-    public async Task<List<KnowledgeSearchResult>> GetContextAsync(
-        string taskDescription,
-        string[]? symbols = null,
-        int limit = 10)
-    {
-        return await SearchAsync(taskDescription, symbols, limit);
-    }
-
     private record ScoredEntry(KnowledgeEntry Entry, double Score, string Source);
 }

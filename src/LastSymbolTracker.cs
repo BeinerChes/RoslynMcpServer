@@ -41,41 +41,6 @@ public static class LastSymbolTracker
             // Silently ignore errors - this is non-critical
         }
     }
-
-    /// <summary>
-    /// Gets the last tracked symbol.
-    /// </summary>
-    public static LastSymbolState? GetLast()
-    {
-        try
-        {
-            if (!File.Exists(StateFilePath))
-                return null;
-
-            var json = File.ReadAllText(StateFilePath);
-            return JsonSerializer.Deserialize<LastSymbolState>(json, JsonOptions);
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    /// <summary>
-    /// Clears the last tracked symbol.
-    /// </summary>
-    public static void Clear()
-    {
-        try
-        {
-            if (File.Exists(StateFilePath))
-                File.Delete(StateFilePath);
-        }
-        catch
-        {
-            // Silently ignore
-        }
-    }
 }
 
 /// <summary>
