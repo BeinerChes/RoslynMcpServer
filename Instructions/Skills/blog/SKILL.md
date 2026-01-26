@@ -118,11 +118,15 @@ docs/blog/YYYY-MM-DD-[slug].md
 
 After writing:
 1. Read it back to verify quality
-2. Stage and commit:
+2. **Update the blog index** (`docs/blog/README.md`):
+   - Add new entry to "Latest Posts" table (newest first)
+   - Add new entry to "Archive" section under current month
+   - Format: `| Date | [Title](filename.md) | Watson | \`#Tag1\` \`#Tag2\` |`
+3. Stage and commit:
    ```bash
    git add docs/blog/*.md
    git commit -m "Docs: Add Watson's chronicle - [title]"
    ```
-3. Tell the user where the file is
+4. Tell the user where the file is
 
 $ARGUMENTS
