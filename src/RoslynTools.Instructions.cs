@@ -99,11 +99,6 @@ public static partial class RoslynTools
                             type = "string",
                             description = "Topic: 'code' (C# best practices), 'git' (workflow, branches, commits), 'plan' (session planning, issue tracking), 'tdd' (test-driven development), 'pre-pr' (checklist before PR), 'tools' (Roslyn tool preferences)",
                             @enum = definitionArray4
-                        },
-                        solutionPath = new
-                        {
-                            type = "string",
-                            description = "Absolute path to the .sln or .slnx solution file. REQUIRED for 'git', 'plan', and 'tools' topics to generate the correct per-solution token. Without this, a 'global' token is generated which won't match per-solution hook validation. Find the solution file first with glob pattern '*.sln*' before calling this tool."
                         }
                     },
                     required = definitionArray5
@@ -117,7 +112,6 @@ public static partial class RoslynTools
             async args =>
             {
                 var topicName = args?["topic"]?.GetValue<string>()?.ToLowerInvariant() ?? "code";
-                var solutionPath = args?["solutionPath"]?.GetValue<string>();
                 var instructions = Instructions.Topics.Get(topicName);
 
                 if (instructions == null)
@@ -132,30 +126,17 @@ public static partial class RoslynTools
                     };
                 }
 
-                // For git, plan, and tools topics, generate a per-solution token for hook validation
+                // For git, plan, and tools topics, generate a token for hook validation
                 string? tokenInfo = null;
-                var solutionInfo = string.IsNullOrEmpty(solutionPath) ? " (global)" : $" for {Path.GetFileName(solutionPath)}";
 
-                if (topicName == "git")
+                if (topicName == "git" || topicName == "plan" || topicName == "tools")
                 {
-                    var token = HookTokenService.Instance.GenerateToken("git");
-                    var tokenFileName = GetTokenFileName("git", solutionPath);
+                    var token = HookTokenService.Instance.GenerateToken(topicName);
+                    var tokenFileName = GetTokenFileName(topicName);
                     WriteToken(tokenFileName, token);
-                    tokenInfo = $"\n\n---\n**Hook Token Generated:** Valid for 1 minute{solutionInfo}. Token written to `~/.claude/{tokenFileName}`";
-                }
-                else if (topicName == "plan")
-                {
-                    var token = HookTokenService.Instance.GenerateToken("plan");
-                    var tokenFileName = GetTokenFileName("plan", solutionPath);
-                    WriteToken(tokenFileName, token);
-                    tokenInfo = $"\n\n---\n**Hook Token Generated:** Valid for 1 minute{solutionInfo}. Token written to `~/.claude/{tokenFileName}`";
-                }
-                else if (topicName == "tools")
-                {
-                    var token = HookTokenService.Instance.GenerateToken("tools");
-                    var tokenFileName = GetTokenFileName("tools", solutionPath);
-                    WriteToken(tokenFileName, token);
-                    tokenInfo = $"\n\n---\n**Hook Token Generated:** Valid for 1 minute{solutionInfo}. Token written to `~/.claude/{tokenFileName}`\nThis token allows Edit/Write operations on .cs files without suggestions.";
+
+                    var extraInfo = topicName == "tools" ? "\nThis token allows Edit/Write operations on .cs files without suggestions." : "";
+                    tokenInfo = $"\n\n---\n**Hook Token Generated:** Valid for 1 minute. Token written to `.roslyn-mcp/{tokenFileName}`{extraInfo}";
                 }
 
                 // Return just the instructions text directly for easy consumption
@@ -169,16 +150,32 @@ public static partial class RoslynTools
             });
     }
 
-    private static string GetTokenFileName(string topic, string? solutionPath)
+    private static string GetTokenFileName(string topic)
     {
-        var solutionHash = "global";
-        if (!string.IsNullOrEmpty(solutionPath))
+        // Simple token file name - stored in .roslyn-mcp/ folder (per-solution)
+        return $"{topic}-token";
+    }
+
+    /// <summary>
+    /// Auto-detect solution file from exe directory.
+    /// The exe is installed in .roslyn-mcp/, so the solution is in the parent directory.
+    /// </summary>
+    private static string? DetectSolutionPath()
+    {
+        var exeDir = AppContext.BaseDirectory;
+        var parentDir = Path.GetDirectoryName(exeDir.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+
+        if (string.IsNullOrEmpty(parentDir) || !Directory.Exists(parentDir))
+            return null;
+
+        // Look for .slnx first (newer format), then .sln
+        foreach (var ext in new[] { "*.slnx", "*.sln" })
         {
-            // Use first 8 chars of MD5 hash (same algorithm as hooks)
-            using var md5 = System.Security.Cryptography.MD5.Create();
-            var hashBytes = md5.ComputeHash(System.Text.Encoding.UTF8.GetBytes(solutionPath.ToLowerInvariant()));
-            solutionHash = Convert.ToHexString(hashBytes)[..8].ToLowerInvariant();
+            var files = Directory.GetFiles(parentDir, ext);
+            if (files.Length > 0)
+                return files[0];
         }
-        return $"roslyn-{topic}-token-{solutionHash}";
+
+        return null;
     }
 }

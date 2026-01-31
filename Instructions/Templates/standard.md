@@ -6,9 +6,7 @@
 
 **Before doing anything else:**
 1. Find the solution file: `glob pattern "*.sln*"`
-2. Call `roslyn_get_instructions(topic: "plan", solutionPath: "<path>")` and follow those instructions.
-
-**Note:** The `solutionPath` parameter is REQUIRED for `plan`, `git`, and `tools` topics to generate per-solution tokens for hook validation.
+2. Call `roslyn_get_instructions(topic: "plan")` and follow those instructions.
 
 ## MANDATORY: Get Instructions Before Operations
 

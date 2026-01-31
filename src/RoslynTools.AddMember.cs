@@ -117,12 +117,8 @@ public static partial class RoslynTools
     {
         try
         {
-            var claudeDir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                ".claude");
-            Directory.CreateDirectory(claudeDir);
-
-            var tokenFile = Path.Combine(claudeDir, fileName);
+            // Write to exe directory (.roslyn-mcp/ folder)
+            var tokenFile = Path.Combine(AppContext.BaseDirectory, fileName);
             File.WriteAllText(tokenFile, token);
         }
         catch (Exception ex)
