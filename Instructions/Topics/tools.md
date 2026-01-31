@@ -64,7 +64,7 @@ You have access to Roslyn MCP tools for C# code analysis. These tools provide se
 | `roslyn_get_template` | Get CLAUDE.md template for projects |
 | `roslyn_get_instructions` | Get topic-specific development instructions (see note below) |
 
-**Important:** When calling `roslyn_get_instructions` with `plan`, `git`, or `tools` topics, the `solutionPath` parameter is **required** to generate per-solution tokens for hook validation. Find the solution file first with glob pattern `*.sln*`.
+**Note:** For `plan`, `git`, and `tools` topics, tokens are written to `.roslyn-mcp/` folder for hook validation.
 
 ### Knowledge Base (Semantic Search)
 
