@@ -4,7 +4,7 @@ namespace RoslynMcpServer;
 
 public static partial class RoslynTools
 {
-    private static readonly string[] definitionArray10 = new[] { "solutionPath", "filePath", "line", "column" };
+    private static readonly string[] definitionArray10 = new[] { "filePath", "line", "column" };
 
     /// <summary>
     /// Registers the roslyn_apply_code_fix tool.
@@ -75,25 +75,15 @@ public static partial class RoslynTools
             },
             async args =>
             {
-                var solutionPath = args?["solutionPath"]?.GetValue<string>();
+                var (solutionPath, solutionError) = GetSolutionPathOrError();
+                if (solutionError != null) return solutionError;
+
                 var filePath = args?["filePath"]?.GetValue<string>();
                 var line = args?["line"]?.GetValue<int>() ?? 0;
                 var column = args?["column"]?.GetValue<int>() ?? 0;
                 var diagnosticId = args?["diagnosticId"]?.GetValue<string>();
                 var fixIndex = args?["fixIndex"]?.GetValue<int?>();
                 var preview = args?["preview"]?.GetValue<bool>() ?? false;
-
-                if (string.IsNullOrWhiteSpace(solutionPath))
-                {
-                    return new
-                    {
-                        content = new[]
-                        {
-                            new { type = "text", text = "Error: solutionPath is required" }
-                        },
-                        isError = true
-                    };
-                }
 
                 if (string.IsNullOrWhiteSpace(filePath))
                 {
@@ -132,7 +122,7 @@ public static partial class RoslynTools
                 }
 
                 var result = await SolutionAnalyzerService.ApplyCodeFixAsync(
-                    solutionPath,
+                    solutionPath!,
                     filePath,
                     line,
                     column,

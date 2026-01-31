@@ -56,21 +56,17 @@ public static partial class RoslynTools
             },
             async args =>
             {
-                var solutionPath = args?["solutionPath"]?.GetValue<string>();
+                var (solutionPath, solutionError) = GetSolutionPathOrError();
+                if (solutionError != null) return solutionError;
+
                 var symbolName = args?["symbolName"]?.GetValue<string>();
                 var maxDepth = args?["maxDepth"]?.GetValue<int>() ?? 10;
                 var includeTests = args?["includeTests"]?.GetValue<bool>() ?? true;
 
-                if (string.IsNullOrWhiteSpace(solutionPath))
-                    return CreateToolError("Error: solutionPath is required");
-
                 if (string.IsNullOrWhiteSpace(symbolName))
                     return CreateToolError("Error: symbolName is required");
 
-                if (!File.Exists(solutionPath))
-                    return CreateToolError($"Error: Solution file not found: {solutionPath}");
-
-                var result = await GetGraphImpactAsync(solutionPath, symbolName, maxDepth, includeTests);
+                var result = await GetGraphImpactAsync(solutionPath!, symbolName, maxDepth, includeTests);
                 return CreateToolResponse(result, !result.Success);
             });
     }
@@ -139,7 +135,9 @@ public static partial class RoslynTools
             },
             async args =>
             {
-                var solutionPath = args?["solutionPath"]?.GetValue<string>();
+                var (solutionPath, solutionError) = GetSolutionPathOrError();
+                if (solutionError != null) return solutionError;
+
                 var includePrivate = args?["includePrivate"]?.GetValue<bool>() ?? false;
                 var includeTests = args?["includeTests"]?.GetValue<bool>() ?? false;
                 var maxResults = args?["maxResults"]?.GetValue<int>() ?? 100;
@@ -155,14 +153,8 @@ public static partial class RoslynTools
                     .Where(s => !string.IsNullOrEmpty(s))
                     .ToArray() ?? DefaultExcludeFilePatterns;
 
-                if (string.IsNullOrWhiteSpace(solutionPath))
-                    return CreateToolError("Error: solutionPath is required");
-
-                if (!File.Exists(solutionPath))
-                    return CreateToolError($"Error: Solution file not found: {solutionPath}");
-
                 var result = await FindDeadCodeAsync(
-                    solutionPath, includePrivate, includeTests, maxResults,
+                    solutionPath!, includePrivate, includeTests, maxResults,
                     excludeTypePatterns, excludeFilePatterns);
                 return CreateToolResponse(result, !result.Success);
             });
@@ -501,8 +493,8 @@ public static partial class RoslynTools
         }
     }
 
-    private static readonly string[] definitionArray100 = new[] { "solutionPath" };
-    private static readonly string[] definitionArray0 = new[] { "solutionPath", "symbolName" };
+    private static readonly string[] definitionArray100 = Array.Empty<string>();
+    private static readonly string[] definitionArray0 = new[] { "symbolName" };
 
     private static bool IsTestFile(string filePath)
     {

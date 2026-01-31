@@ -6,7 +6,7 @@ namespace RoslynMcpServer;
 
 public static partial class RoslynTools
 {
-    private static readonly string[] definitionArray1 = ["solutionPath", "filePath", "line", "column"];
+    private static readonly string[] definitionArray1 = ["filePath", "line", "column"];
 
     /// <summary>
     /// Finds all callers of a method at a given position.
@@ -70,7 +70,7 @@ public static partial class RoslynTools
                             description = "Filter by file path. Supports wildcards (*). Example: '*Service.cs'"
                         }
                     },
-                    required = definitionArray100
+                    required = definitionArray1
                 },
                 Annotations = new ToolAnnotations
                 {
@@ -86,10 +86,10 @@ public static partial class RoslynTools
     /// </summary>
     private static async Task<object> HandleGetCallersAsync(JsonObject? args)
     {
-        if (!TryGetRequiredString(args, "solutionPath", out var solutionPath, out var error))
-            return error!;
+        var (solutionPath, solutionError) = GetSolutionPathOrError();
+        if (solutionError != null) return solutionError;
 
-        if (!TryGetRequiredString(args, "filePath", out var filePath, out error))
+        if (!TryGetRequiredString(args, "filePath", out var filePath, out var error))
             return error!;
 
         if (!TryGetRequiredInt(args, "line", 1, out var line, out error))
@@ -105,7 +105,7 @@ public static partial class RoslynTools
 
         // Try graph cache first
         var graphResult = await TryGetCallersFromGraphAsync(
-            solutionPath, filePath, line, column, maxResults, offset, projectFilter, fileFilter);
+            solutionPath!, filePath, line, column, maxResults, offset, projectFilter, fileFilter);
 
         if (graphResult != null)
         {
@@ -114,7 +114,7 @@ public static partial class RoslynTools
 
         // Fall back to live analysis
         var result = await SolutionAnalyzerService.GetCallersAsync(
-            solutionPath, filePath, line, column, maxResults, offset, projectFilter, fileFilter);
+            solutionPath!, filePath, line, column, maxResults, offset, projectFilter, fileFilter);
 
         // Add source indicator for live analysis
         var liveResult = new GetCallersResult

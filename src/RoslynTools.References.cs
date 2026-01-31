@@ -4,7 +4,7 @@ namespace RoslynMcpServer;
 
 public static partial class RoslynTools
 {
-    private static readonly string[] definitionArray28 = new[] { "solutionPath", "filePath", "line", "column" };
+    private static readonly string[] definitionArray28 = new[] { "filePath", "line", "column" };
 
     /// <summary>
     /// Finds all references to a symbol at a given position.
@@ -71,22 +71,12 @@ public static partial class RoslynTools
             },
             async args =>
             {
-                var solutionPath = args?["solutionPath"]?.GetValue<string>();
+                var (solutionPath, solutionError) = GetSolutionPathOrError();
+                if (solutionError != null) return solutionError;
+
                 var filePath = args?["filePath"]?.GetValue<string>();
                 var line = args?["line"]?.GetValue<int>() ?? 0;
                 var column = args?["column"]?.GetValue<int>() ?? 0;
-
-                if (string.IsNullOrWhiteSpace(solutionPath))
-                {
-                    return new
-                    {
-                        content = new[]
-                        {
-                            new { type = "text", text = "Error: solutionPath is required" }
-                        },
-                        isError = true
-                    };
-                }
 
                 if (string.IsNullOrWhiteSpace(filePath))
                 {
@@ -130,7 +120,7 @@ public static partial class RoslynTools
                 var fileFilter = args?["fileFilter"]?.GetValue<string>();
 
                 var result = await SolutionAnalyzerService.FindReferencesAsync(
-                    solutionPath,
+                    solutionPath!,
                     filePath,
                     line,
                     column,

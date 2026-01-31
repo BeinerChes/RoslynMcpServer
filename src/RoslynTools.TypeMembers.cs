@@ -5,7 +5,7 @@ namespace RoslynMcpServer;
 public static partial class RoslynTools
 {
     private static readonly string[] definitionArray32 = new[] { "all", "methods", "properties", "fields", "events", "constructors" };
-    private static readonly string[] definitionArray33 = new[] { "solutionPath", "typeName" };
+    private static readonly string[] definitionArray33 = new[] { "typeName" };
 
     /// <summary>
     /// Gets all members of a type (methods, properties, fields, events, constructors).
@@ -59,20 +59,10 @@ public static partial class RoslynTools
             },
             async args =>
             {
-                var solutionPath = args?["solutionPath"]?.GetValue<string>();
-                var typeName = args?["typeName"]?.GetValue<string>();
+                var (solutionPath, solutionError) = GetSolutionPathOrError();
+                if (solutionError != null) return solutionError;
 
-                if (string.IsNullOrWhiteSpace(solutionPath))
-                {
-                    return new
-                    {
-                        content = new[]
-                        {
-                            new { type = "text", text = "Error: solutionPath is required" }
-                        },
-                        isError = true
-                    };
-                }
+                var typeName = args?["typeName"]?.GetValue<string>();
 
                 if (string.IsNullOrWhiteSpace(typeName))
                 {
@@ -102,7 +92,7 @@ public static partial class RoslynTools
                 };
 
                 var result = await SolutionAnalyzerService.GetTypeMembersAsync(
-                    solutionPath,
+                    solutionPath!,
                     typeName,
                     memberKind,
                     includeInherited,
@@ -110,7 +100,7 @@ public static partial class RoslynTools
 
                 // Track for visualization sync
                 if (result.Success)
-                    LastSymbolTracker.Track(solutionPath, typeName, "type");
+                    LastSymbolTracker.Track(solutionPath!, typeName, "type");
 
                 return new
                 {

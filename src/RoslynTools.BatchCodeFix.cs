@@ -4,7 +4,7 @@ namespace RoslynMcpServer;
 
 public static partial class RoslynTools
 {
-    private static readonly string[] definitionArray9 = new[] { "solutionPath", "diagnosticId" };
+    private static readonly string[] definitionArray9 = new[] { "diagnosticId" };
 
     private static void RegisterBatchApplyCodeFix(McpServer server)
     {
@@ -63,24 +63,14 @@ public static partial class RoslynTools
             },
             async args =>
             {
-                var solutionPath = args?["solutionPath"]?.GetValue<string>();
+                var (solutionPath, solutionError) = GetSolutionPathOrError();
+                if (solutionError != null) return solutionError;
+
                 var diagnosticId = args?["diagnosticId"]?.GetValue<string>();
                 var projectFilter = args?["projectFilter"]?.GetValue<string>();
                 var fileFilter = args?["fileFilter"]?.GetValue<string>();
                 var maxFixes = args?["maxFixes"]?.GetValue<int>() ?? 100;
                 var preview = args?["preview"]?.GetValue<bool>() ?? false;
-
-                if (string.IsNullOrWhiteSpace(solutionPath))
-                {
-                    return new
-                    {
-                        content = new[]
-                        {
-                            new { type = "text", text = "Error: solutionPath is required" }
-                        },
-                        isError = true
-                    };
-                }
 
                 if (string.IsNullOrWhiteSpace(diagnosticId))
                 {
@@ -94,9 +84,8 @@ public static partial class RoslynTools
                     };
                 }
 
-                var service = new SolutionAnalyzerService();
                 var result = await SolutionAnalyzerService.BatchApplyCodeFixAsync(
-                    solutionPath, diagnosticId, projectFilter, fileFilter, maxFixes, preview);
+                    solutionPath!, diagnosticId, projectFilter, fileFilter, maxFixes, preview);
 
                 return new
                 {

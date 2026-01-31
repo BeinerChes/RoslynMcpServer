@@ -39,19 +39,10 @@ public static partial class RoslynTools
             },
             async args =>
             {
-                var solutionPath = args?["solutionPath"]?.GetValue<string>();
+                var (solutionPath, solutionError) = GetSolutionPathOrError();
+                if (solutionError != null) return solutionError;
 
-                if (string.IsNullOrWhiteSpace(solutionPath))
-                {
-                    return CreateErrorResponse("Error: solutionPath is required");
-                }
-
-                if (!File.Exists(solutionPath))
-                {
-                    return CreateErrorResponse($"Error: Solution file not found: {solutionPath}");
-                }
-
-                var result = await GetGraphStatusAsync(solutionPath);
+                var result = await GetGraphStatusAsync(solutionPath!);
                 return CreateJsonResponse(result);
             });
     }
@@ -97,21 +88,13 @@ public static partial class RoslynTools
             },
             async args =>
             {
-                var solutionPath = args?["solutionPath"]?.GetValue<string>();
+                var (solutionPath, solutionError) = GetSolutionPathOrError();
+                if (solutionError != null) return solutionError;
+
                 var incremental = args?["incremental"]?.GetValue<bool>() ?? true;
                 var projectFilter = args?["projectFilter"]?.GetValue<string>();
 
-                if (string.IsNullOrWhiteSpace(solutionPath))
-                {
-                    return CreateErrorResponse("Error: solutionPath is required");
-                }
-
-                if (!File.Exists(solutionPath))
-                {
-                    return CreateErrorResponse($"Error: Solution file not found: {solutionPath}");
-                }
-
-                var result = await AnalyzeGraphAsync(solutionPath, incremental, projectFilter);
+                var result = await AnalyzeGraphAsync(solutionPath!, incremental, projectFilter);
                 return CreateJsonResponse(result, !result.Success);
             });
     }
@@ -165,22 +148,19 @@ public static partial class RoslynTools
             },
             async args =>
             {
-                var solutionPath = args?["solutionPath"]?.GetValue<string>();
+                var (solutionPath, solutionError) = GetSolutionPathOrError();
+                if (solutionError != null) return solutionError;
+
                 var symbolName = args?["symbolName"]?.GetValue<string>();
                 var direction = args?["direction"]?.GetValue<string>() ?? "both";
                 var maxDepth = args?["maxDepth"]?.GetValue<int>() ?? 3;
-
-                if (string.IsNullOrWhiteSpace(solutionPath))
-                {
-                    return CreateErrorResponse("Error: solutionPath is required");
-                }
 
                 if (string.IsNullOrWhiteSpace(symbolName))
                 {
                     return CreateErrorResponse("Error: symbolName is required");
                 }
 
-                var result = await QueryGraphAsync(solutionPath, symbolName, direction, maxDepth);
+                var result = await QueryGraphAsync(solutionPath!, symbolName, direction, maxDepth);
                 return CreateJsonResponse(result, !result.Success);
             });
     }
@@ -287,10 +267,10 @@ public static partial class RoslynTools
         };
     }
 
-    private static readonly string[] definitionArray25 = new[] { "solutionPath", "symbolName" };
+    private static readonly string[] definitionArray25 = new[] { "symbolName" };
     private static readonly string[] definitionArray24 = new[] { "callers", "callees", "both" };
-    private static readonly string[] definitionArray23 = new[] { "solutionPath" };
-    private static readonly string[] definitionArray22 = new[] { "solutionPath" };
+    private static readonly string[] definitionArray23 = Array.Empty<string>();
+    private static readonly string[] definitionArray22 = Array.Empty<string>();
 
     private static async Task<GraphQueryResult> QueryGraphAsync(
         string solutionPath, string symbolName, string direction, int maxDepth)

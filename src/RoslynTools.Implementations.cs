@@ -4,7 +4,7 @@ namespace RoslynMcpServer;
 
 public static partial class RoslynTools
 {
-    private static readonly string[] definitionArray26 = new[] { "solutionPath", "typeName" };
+    private static readonly string[] definitionArray26 = new[] { "typeName" };
 
     /// <summary>
     /// Finds all implementations of an interface or derived classes.
@@ -54,20 +54,10 @@ public static partial class RoslynTools
             },
             async args =>
             {
-                var solutionPath = args?["solutionPath"]?.GetValue<string>();
-                var typeName = args?["typeName"]?.GetValue<string>();
+                var (solutionPath, solutionError) = GetSolutionPathOrError();
+                if (solutionError != null) return solutionError;
 
-                if (string.IsNullOrWhiteSpace(solutionPath))
-                {
-                    return new
-                    {
-                        content = new[]
-                        {
-                            new { type = "text", text = "Error: solutionPath is required" }
-                        },
-                        isError = true
-                    };
-                }
+                var typeName = args?["typeName"]?.GetValue<string>();
 
                 if (string.IsNullOrWhiteSpace(typeName))
                 {
@@ -85,7 +75,7 @@ public static partial class RoslynTools
                 var maxResults = args?["maxResults"]?.GetValue<int>() ?? 100;
 
                 var result = await SolutionAnalyzerService.FindImplementationsAsync(
-                    solutionPath,
+                    solutionPath!,
                     typeName,
                     includeBaseType,
                     maxResults);

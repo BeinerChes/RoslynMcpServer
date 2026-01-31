@@ -4,7 +4,7 @@ namespace RoslynMcpServer;
 
 public static partial class RoslynTools
 {
-    private static readonly string[] definitionArray29 = new[] { "solutionPath", "filePath", "line", "column", "newName" };
+    private static readonly string[] definitionArray29 = new[] { "filePath", "line", "column", "newName" };
 
     private static void RegisterRenameSymbolTool(McpServer server)
     {
@@ -57,23 +57,13 @@ public static partial class RoslynTools
             },
             async args =>
             {
-                var solutionPath = args?["solutionPath"]?.GetValue<string>();
+                var (solutionPath, solutionError) = GetSolutionPathOrError();
+                if (solutionError != null) return solutionError;
+
                 var filePath = args?["filePath"]?.GetValue<string>();
                 var line = args?["line"]?.GetValue<int>() ?? 0;
                 var column = args?["column"]?.GetValue<int>() ?? 0;
                 var newName = args?["newName"]?.GetValue<string>();
-
-                if (string.IsNullOrWhiteSpace(solutionPath))
-                {
-                    return new
-                    {
-                        content = new[]
-                        {
-                            new { type = "text", text = "Error: solutionPath is required" }
-                        },
-                        isError = true
-                    };
-                }
 
                 if (string.IsNullOrWhiteSpace(filePath))
                 {
@@ -124,7 +114,7 @@ public static partial class RoslynTools
                 }
 
                 var result = await SolutionAnalyzerService.RenameSymbolAsync(
-                    solutionPath, filePath, line, column, newName);
+                    solutionPath!, filePath, line, column, newName);
 
                 return new
                 {

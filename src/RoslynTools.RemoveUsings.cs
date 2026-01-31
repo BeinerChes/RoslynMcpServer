@@ -40,7 +40,7 @@ public static partial class RoslynTools
                             description = "If true, shows what would be removed without making changes. Default: false"
                         }
                     },
-                    required = new[] { "solutionPath" }
+                    required = Array.Empty<string>()
                 },
                 Annotations = new ToolAnnotations
                 {
@@ -50,25 +50,15 @@ public static partial class RoslynTools
             },
             async args =>
             {
-                var solutionPath = args?["solutionPath"]?.GetValue<string>();
+                var (solutionPath, solutionError) = GetSolutionPathOrError();
+                if (solutionError != null) return solutionError;
+
                 var projectFilter = args?["projectFilter"]?.GetValue<string>();
                 var fileFilter = args?["fileFilter"]?.GetValue<string>();
                 var preview = args?["preview"]?.GetValue<bool>() ?? false;
 
-                if (string.IsNullOrWhiteSpace(solutionPath))
-                {
-                    return new
-                    {
-                        content = new[]
-                        {
-                            new { type = "text", text = "Error: solutionPath is required" }
-                        },
-                        isError = true
-                    };
-                }
-
                 var result = await SolutionAnalyzerService.RemoveUnnecessaryUsingsAsync(
-                    solutionPath,
+                    solutionPath!,
                     projectFilter,
                     fileFilter,
                     preview);

@@ -16,11 +16,35 @@ public static partial class RoslynTools
     private static SolutionAnalyzerService? _analyzerService;
 
     /// <summary>
+    /// Auto-detected solution path. Set at startup, used by all tools.
+    /// Issue: #115
+    /// </summary>
+    private static string? _solutionPath;
+
+    /// <summary>
+    /// Solution directory for relative path calculations.
+    /// </summary>
+    private static string _solutionDir = "";
+
+    /// <summary>
     /// Registers all tools with the MCP server.
     /// </summary>
     public static void RegisterAll(McpServer server, SolutionAnalyzerService? analyzerService = null)
     {
         _analyzerService = analyzerService ?? new SolutionAnalyzerService();
+
+        // Auto-detect solution path at startup (Issue #115)
+        _solutionPath = DetectSolutionPath();
+        _solutionDir = _solutionPath != null ? Path.GetDirectoryName(_solutionPath) ?? "" : "";
+
+        if (_solutionPath != null)
+        {
+            Console.Error.WriteLine($"Auto-detected solution: {Path.GetFileName(_solutionPath)}");
+        }
+        else
+        {
+            Console.Error.WriteLine("Warning: No solution file detected. Run from solution directory or use --init.");
+        }
 
         RegisterEchoTool(server);
         RegisterGetServerInfoTool(server);

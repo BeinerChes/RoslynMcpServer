@@ -62,9 +62,7 @@ You have access to Roslyn MCP tools for C# code analysis. These tools provide se
 | Tool | Purpose |
 |------|---------|
 | `roslyn_get_template` | Get CLAUDE.md template for projects |
-| `roslyn_get_instructions` | Get topic-specific development instructions (see note below) |
-
-**Note:** For `plan`, `git`, and `tools` topics, tokens are written to `.roslyn-mcp/` folder for hook validation.
+| `roslyn_get_instructions` | Get topic-specific development instructions |
 
 ### Knowledge Base (Semantic Search)
 
@@ -155,18 +153,18 @@ Creates `MyApp.Core/Services/UserService.cs` with namespace `MyApp.Core.Services
 3. Assess impact before changing signature
 
 ### Impact analysis (large codebase)
-1. `roslyn_graph_analyze(solutionPath)` → build/update call graph (first time)
+1. `roslyn_graph_analyze()` → build/update call graph (first time)
 2. `roslyn_query_graph(symbolName, direction: "callers", maxDepth: 3)` → find all callers recursively
 3. Much faster than `roslyn_get_callers` for repeated queries
 
 ### Impact analysis before refactoring (blast radius)
-1. `roslyn_graph_analyze(solutionPath)` → build call graph if needed
+1. `roslyn_graph_analyze()` → build call graph if needed
 2. `roslyn_graph_impact(symbolName)` → see all affected files and methods
 3. Results grouped by file for easy review
 
 ### Finding dead code
-1. `roslyn_graph_analyze(solutionPath)` → build call graph
-2. `roslyn_find_dead_code(solutionPath)` → find unused methods/properties
+1. `roslyn_graph_analyze()` → build call graph
+2. `roslyn_find_dead_code()` → find unused methods/properties
 3. Review results - automatically excludes:
    - Entry points (Main, RunAsync, event handlers)
    - Properties with attributes (likely serialization)
@@ -177,7 +175,7 @@ Creates `MyApp.Core/Services/UserService.cs` with namespace `MyApp.Core.Services
    - `excludeFilePatterns: ["Models/"]` for additional path-based exclusion
 
 ### Cleaning up dead code
-1. `roslyn_find_dead_code(solutionPath)` → identify unused members
+1. `roslyn_find_dead_code()` → identify unused members
 2. Review each result to confirm it's truly dead (not reflection-based)
 3. `roslyn_delete_member(typeName, memberName)` → remove confirmed dead code
 4. Includes attributes and XML docs in deletion
@@ -188,8 +186,8 @@ Creates `MyApp.Core/Services/UserService.cs` with namespace `MyApp.Core.Services
 3. `roslyn_batch_apply_code_fixes(diagnosticId: "CS8618")` → auto-fix
 
 ### Removing unnecessary usings (CS8019)
-1. `roslyn_remove_unnecessary_usings(solutionPath, preview: true)` → preview what will be removed
-2. `roslyn_remove_unnecessary_usings(solutionPath)` → remove all unnecessary usings
+1. `roslyn_remove_unnecessary_usings(preview: true)` → preview what will be removed
+2. `roslyn_remove_unnecessary_usings()` → remove all unnecessary usings
 3. Automatically skips generated files in obj/ folders
 
 **Note:** CS8019 (unnecessary using) requires this dedicated tool because Roslyn's code fix provider for it needs IDE services not available in batch mode.
