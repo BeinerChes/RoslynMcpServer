@@ -43,7 +43,26 @@ public static partial class RoslynTools
                 if (solutionError != null) return solutionError;
 
                 var result = await GetGraphStatusAsync(solutionPath!);
-                return CreateJsonResponse(result);
+
+                if (!result.Success || !result.GraphExists)
+                {
+                    return CreateJsonResponse(new
+                    {
+                        exists = false,
+                        message = result.Message ?? "No graph database found. Run roslyn_graph_analyze first."
+                    });
+                }
+
+                // Compact format
+                var compactResult = new
+                {
+                    exists = true,
+                    lastAnalyzed = result.LastAnalyzed?.ToString("yyyy-MM-dd HH:mm:ss"),
+                    symbols = result.SymbolStats != null ? $"{result.SymbolStats.Analyzed}/{result.SymbolStats.Total} ({result.SymbolStats.Dirty} dirty)" : null,
+                    edges = result.EdgeStats?.Total
+                };
+
+                return CreateJsonResponse(compactResult);
             });
     }
 
@@ -95,7 +114,21 @@ public static partial class RoslynTools
                 var projectFilter = args?["projectFilter"]?.GetValue<string>();
 
                 var result = await AnalyzeGraphAsync(solutionPath!, incremental, projectFilter);
-                return CreateJsonResponse(result, !result.Success);
+
+                if (!result.Success)
+                {
+                    return CreateJsonResponse(new { error = result.Error }, true);
+                }
+
+                // Compact format
+                var compactResult = new
+                {
+                    documents = result.DocumentsAnalyzed,
+                    symbols = result.SymbolsFound,
+                    edges = result.EdgesFound
+                };
+
+                return CreateJsonResponse(compactResult);
             });
     }
 
@@ -161,7 +194,27 @@ public static partial class RoslynTools
                 }
 
                 var result = await QueryGraphAsync(solutionPath!, symbolName, direction, maxDepth);
-                return CreateJsonResponse(result, !result.Success);
+
+                if (!result.Success)
+                {
+                    return CreateJsonResponse(new { error = result.Error }, true);
+                }
+
+                // Compact format: "QualifiedName file:line"
+                var formatEntry = (GraphSymbolEntry e) => $"{e.QualifiedName} {e.FilePath}:{e.Line}";
+
+                var compactResult = new Dictionary<string, object?>
+                {
+                    ["symbol"] = result.Symbol?.QualifiedName ?? symbolName
+                };
+
+                if (result.Callers != null && result.Callers.Count > 0)
+                    compactResult["callers"] = result.Callers.Select(formatEntry).ToList();
+
+                if (result.Callees != null && result.Callees.Count > 0)
+                    compactResult["callees"] = result.Callees.Select(formatEntry).ToList();
+
+                return CreateJsonResponse(compactResult);
             });
     }
 

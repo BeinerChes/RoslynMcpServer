@@ -80,13 +80,40 @@ public static partial class RoslynTools
                     includeBaseType,
                     maxResults);
 
+                if (!result.Success)
+                {
+                    return new
+                    {
+                        content = new[]
+                        {
+                            new { type = "text", text = result.Error ?? "Failed to find implementations" }
+                        },
+                        isError = true
+                    };
+                }
+
+                // Build compact response: "Namespace.Type (Kind) path:line"
+                var compactImpls = result.Implementations?.Select(i =>
+                {
+                    var relativePath = GetRelativePath(i.FilePath ?? "", solutionPath!);
+                    var abstractFlag = i.IsAbstract ? " [abstract]" : "";
+                    return $"{i.FullyQualifiedName} ({i.Kind}){abstractFlag} {relativePath}:{i.Line}";
+                }).ToList() ?? new List<string>();
+
+                var compactResult = new
+                {
+                    baseType = result.BaseType?.FullyQualifiedName ?? typeName,
+                    count = result.TotalFound,
+                    implementations = compactImpls
+                };
+
                 return new
                 {
                     content = new[]
                     {
-                        new { type = "text", text = JsonSerializer.Serialize(result, JsonOptions) }
+                        new { type = "text", text = JsonSerializer.Serialize(compactResult, JsonOptions) }
                     },
-                    isError = !result.Success
+                    isError = false
                 };
             });
     }

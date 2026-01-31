@@ -64,40 +64,13 @@ public static partial class RoslynTools
                 var parameterTypes = args?["parameterTypes"]?.GetValue<string>();
 
                 if (string.IsNullOrWhiteSpace(typeName))
-                {
-                    return new
-                    {
-                        content = new[]
-                        {
-                            new { type = "text", text = "Error: typeName is required" }
-                        },
-                        isError = true
-                    };
-                }
+                    return CreateToolError("Error: typeName is required");
 
                 if (string.IsNullOrWhiteSpace(methodName))
-                {
-                    return new
-                    {
-                        content = new[]
-                        {
-                            new { type = "text", text = "Error: methodName is required" }
-                        },
-                        isError = true
-                    };
-                }
+                    return CreateToolError("Error: methodName is required");
 
                 if (string.IsNullOrWhiteSpace(newSourceCode))
-                {
-                    return new
-                    {
-                        content = new[]
-                        {
-                            new { type = "text", text = "Error: newSourceCode is required" }
-                        },
-                        isError = true
-                    };
-                }
+                    return CreateToolError("Error: newSourceCode is required");
 
                 var result = await SolutionAnalyzerService.UpdateMethodAsync(
                     solutionPath!,
@@ -106,14 +79,29 @@ public static partial class RoslynTools
                     newSourceCode,
                     parameterTypes);
 
-                return new
+                if (!result.Success)
                 {
-                    content = new[]
+                    var errorResponse = new Dictionary<string, object?>
                     {
-                        new { type = "text", text = JsonSerializer.Serialize(result, JsonOptions) }
-                    },
-                    isError = !result.Success
+                        ["error"] = result.Error
+                    };
+                    if (result.AvailableOverloads != null && result.AvailableOverloads.Count > 0)
+                    {
+                        errorResponse["availableOverloads"] = result.AvailableOverloads;
+                    }
+                    return CreateToolResponse(errorResponse, true);
+                }
+
+                // Compact success response
+                var relativePath = GetRelativePath(result.FilePath ?? "", solutionPath!);
+                var compactResult = new
+                {
+                    file = $"{relativePath}:{result.StartLine}-{result.EndLine}",
+                    oldSignature = result.OldSignature,
+                    newSignature = result.NewSignature
                 };
+
+                return CreateToolResponse(compactResult, false);
             });
     }
 
