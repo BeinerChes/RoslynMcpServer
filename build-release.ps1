@@ -19,7 +19,7 @@ if (Test-Path $OutputDir) {
 }
 New-Item -ItemType Directory -Path $OutputDir | Out-Null
 
-$PackageDir = Join-Path $OutputDir "roslyn-mcp"
+$PackageDir = Join-Path $OutputDir ".roslyn-mcp"
 New-Item -ItemType Directory -Path $PackageDir | Out-Null
 
 # Step 1: Publish
