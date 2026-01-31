@@ -84,13 +84,63 @@ public static partial class RoslynTools
                     maxResults,
                     offset);
 
+                if (!result.Success)
+                {
+                    return new
+                    {
+                        content = new[]
+                        {
+                            new { type = "text", text = result.Error ?? "Failed to get diagnostics" }
+                        },
+                        isError = true
+                    };
+                }
+
+                object compactResult;
+
+                if (result.Summary != null)
+                {
+                    // Summary mode: "CS0618 (warning) [fix]: Description (count)"
+                    var compactSummary = result.Summary.Select(s =>
+                    {
+                        var fixFlag = s.FixAvailable ? " [fix]" : "";
+                        var suppressed = s.SuppressedCount > 0 ? $" ({s.SuppressedCount} suppressed)" : "";
+                        return $"{s.Id} ({s.Severity}){fixFlag}: {s.Title} ({s.Count}){suppressed}";
+                    }).ToList();
+
+                    compactResult = new
+                    {
+                        errors = result.TotalErrors,
+                        warnings = result.TotalWarnings,
+                        summary = compactSummary
+                    };
+                }
+                else
+                {
+                    // Detail mode: "file:line Type.Method - message"
+                    var compactEntries = result.Entries?.Select(e =>
+                    {
+                        var relativePath = GetRelativePath(e.FilePath, solutionPath!);
+                        var location = !string.IsNullOrEmpty(e.ContainingType)
+                            ? $"{e.ContainingType}.{e.ContainingMethod}"
+                            : "";
+                        return $"{relativePath}:{e.Line} {location} - {e.Message}";
+                    }).ToList() ?? new List<string>();
+
+                    compactResult = new
+                    {
+                        total = result.TotalMatchingEntries,
+                        entries = compactEntries
+                    };
+                }
+
                 return new
                 {
                     content = new[]
                     {
-                        new { type = "text", text = JsonSerializer.Serialize(result, JsonOptions) }
+                        new { type = "text", text = JsonSerializer.Serialize(compactResult, JsonOptions) }
                     },
-                    isError = !result.Success
+                    isError = false
                 };
             });
     }

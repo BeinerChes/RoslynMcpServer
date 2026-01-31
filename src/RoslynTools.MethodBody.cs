@@ -89,22 +89,39 @@ public static partial class RoslynTools
                     methodName,
                     parameterTypes);
 
+                if (!result.Success)
+                {
+                    var errorResponse = new Dictionary<string, object?>
+                    {
+                        ["error"] = result.Error
+                    };
+                    if (result.AvailableOverloads != null && result.AvailableOverloads.Count > 0)
+                    {
+                        errorResponse["availableOverloads"] = result.AvailableOverloads;
+                    }
+                    return new
+                    {
+                        content = new[]
+                        {
+                            new { type = "text", text = JsonSerializer.Serialize(errorResponse, JsonOptions) }
+                        },
+                        isError = true
+                    };
+                }
+
                 // Track for visualization sync
-                if (result.Success)
-                    LastSymbolTracker.Track(solutionPath!, $"{typeName}.{methodName}", "method");
+                LastSymbolTracker.Track(solutionPath!, $"{typeName}.{methodName}", "method");
 
                 // Fetch related knowledge entries
                 List<object>? knowledge = null;
-                if (result.Success && result.TypeName != null)
+                if (result.TypeName != null)
                 {
                     try
                     {
                         var db = await GetKnowledgeDatabaseAsync(solutionPath!);
-                        // Use fully qualified type name from result
                         var fullyQualifiedSymbol = $"{result.TypeName}.{methodName}";
                         var entries = await db.GetEntriesForSymbolAsync(fullyQualifiedSymbol);
 
-                        // Also search for type-level knowledge
                         var typeEntries = await db.GetEntriesForSymbolAsync(result.TypeName);
                         entries.AddRange(typeEntries.Where(e => !entries.Any(x => x.Id == e.Id)));
 
@@ -114,9 +131,7 @@ public static partial class RoslynTools
                             {
                                 e.Id,
                                 e.Category,
-                                e.Title,
-                                e.Content,
-                                e.Confidence
+                                e.Title
                             }).ToList();
                         }
                     }
@@ -126,30 +141,25 @@ public static partial class RoslynTools
                     }
                 }
 
-                // Build response with optional knowledge
-                var response = new
+                // Build compact response
+                var relativePath = GetRelativePath(result.FilePath ?? "", solutionPath!);
+                var compactResult = new Dictionary<string, object?>
                 {
-                    result.Success,
-                    result.Error,
-                    result.SolutionPath,
-                    result.TypeName,
-                    result.MethodName,
-                    result.FilePath,
-                    result.StartLine,
-                    result.EndLine,
-                    result.Signature,
-                    result.SourceCode,
-                    result.AvailableOverloads,
-                    Knowledge = knowledge
+                    ["file"] = $"{relativePath}:{result.StartLine}-{result.EndLine}",
+                    ["signature"] = result.Signature,
+                    ["code"] = result.SourceCode
                 };
+
+                if (knowledge != null)
+                    compactResult["knowledge"] = knowledge;
 
                 return new
                 {
                     content = new[]
                     {
-                        new { type = "text", text = JsonSerializer.Serialize(response, JsonOptions) }
+                        new { type = "text", text = JsonSerializer.Serialize(compactResult, JsonOptions) }
                     },
-                    isError = !result.Success
+                    isError = false
                 };
             });
     }

@@ -102,14 +102,81 @@ public static partial class RoslynTools
                 if (result.Success)
                     LastSymbolTracker.Track(solutionPath!, typeName, "type");
 
+                if (!result.Success)
+                {
+                    return new
+                    {
+                        content = new[]
+                        {
+                            new { type = "text", text = JsonSerializer.Serialize(result, JsonOptions) }
+                        },
+                        isError = true
+                    };
+                }
+
+                // Build compact response - group by kind
+                var fields = result.Members
+                    .Where(m => m.Kind == "Field")
+                    .Select(m => FormatMemberCompact(m))
+                    .ToList();
+
+                var properties = result.Members
+                    .Where(m => m.Kind == "Property")
+                    .Select(m => FormatMemberCompact(m))
+                    .ToList();
+
+                var methods = result.Members
+                    .Where(m => m.Kind == "Method")
+                    .Select(m => FormatMemberCompact(m))
+                    .ToList();
+
+                var constructors = result.Members
+                    .Where(m => m.Kind == "Constructor")
+                    .Select(m => FormatMemberCompact(m))
+                    .ToList();
+
+                var events = result.Members
+                    .Where(m => m.Kind == "Event")
+                    .Select(m => FormatMemberCompact(m))
+                    .ToList();
+
+                var compactResult = new Dictionary<string, object>
+                {
+                    ["type"] = result.Type?.FullyQualifiedName ?? typeName,
+                    ["count"] = result.TotalMembers
+                };
+
+                // Only include non-empty groups
+                if (fields.Count > 0) compactResult["fields"] = fields;
+                if (properties.Count > 0) compactResult["properties"] = properties;
+                if (constructors.Count > 0) compactResult["constructors"] = constructors;
+                if (methods.Count > 0) compactResult["methods"] = methods;
+                if (events.Count > 0) compactResult["events"] = events;
+
                 return new
                 {
                     content = new[]
                     {
-                        new { type = "text", text = JsonSerializer.Serialize(result, JsonOptions) }
+                        new { type = "text", text = JsonSerializer.Serialize(compactResult, JsonOptions) }
                     },
-                    isError = !result.Success
+                    isError = false
                 };
             });
     }
+
+    private static string FormatMemberCompact(MemberInfo member)
+    {
+        var sig = member.Signature;
+
+        // For properties, remove the { get; set; } part
+        if (member.Kind == "Property")
+        {
+            var braceIndex = sig.IndexOf('{');
+            if (braceIndex > 0)
+                sig = sig.Substring(0, braceIndex).Trim();
+        }
+
+        return sig;
+    }
+
 }

@@ -99,35 +99,30 @@ public static partial class RoslynTools
     private static async Task<object> BuildFindSymbolResponseAsync(string solutionPath, FindSymbolResult result)
     {
         if (!result.Success || result.Symbols == null || result.Symbols.Count == 0)
-            return result;
+        {
+            return new
+            {
+                count = 0,
+                symbols = Array.Empty<string>()
+            };
+        }
 
         var knowledgeSymbols = await GetKnowledgeSymbolLinksAsync(solutionPath);
-        if (knowledgeSymbols.Count == 0)
-            return result;
+        var solutionDir = Path.GetDirectoryName(solutionPath) ?? "";
 
-        var symbolsWithFlags = result.Symbols.Select(s => new
+        // Format: "Namespace.Type.Member (Kind) path:line [K]"
+        var compactSymbols = result.Symbols.Select(s =>
         {
-            s.Name,
-            s.FullyQualifiedName,
-            s.Kind,
-            s.FilePath,
-            s.Line,
-            s.Column,
-            s.ContainingType,
-            s.Accessibility,
-            s.IsStatic,
-            s.Signature,
-            HasKnowledge = HasKnowledgeEntry(s.FullyQualifiedName, knowledgeSymbols)
+            var relativePath = GetRelativePath(s.FilePath ?? "", solutionPath);
+            var hasKnowledge = HasKnowledgeEntry(s.FullyQualifiedName, knowledgeSymbols);
+            var knowledgeFlag = hasKnowledge ? " [K]" : "";
+            return $"{s.FullyQualifiedName} ({s.Kind}) {relativePath}:{s.Line}{knowledgeFlag}";
         }).ToList();
 
         return new
         {
-            result.Success,
-            result.Error,
-            result.SolutionPath,
-            result.Pattern,
-            result.TotalFound,
-            Symbols = symbolsWithFlags
+            count = result.TotalFound,
+            symbols = compactSymbols
         };
     }
 }

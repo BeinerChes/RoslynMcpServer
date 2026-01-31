@@ -67,7 +67,28 @@ public static partial class RoslynTools
                     return CreateToolError("Error: symbolName is required");
 
                 var result = await GetGraphImpactAsync(solutionPath!, symbolName, maxDepth, includeTests);
-                return CreateToolResponse(result, !result.Success);
+
+                if (!result.Success)
+                {
+                    return CreateToolResponse(new { error = result.Error }, true);
+                }
+
+                // Compact format: group by file, list affected symbols
+                var compactFiles = result.AffectedFiles?.Select(f => new
+                {
+                    file = f.FileName,
+                    symbols = f.AffectedSymbols.Select(s => $"{s.Name}:{s.Line}").ToList()
+                }).ToList();
+
+                var compactResult = new
+                {
+                    symbol = result.Symbol?.QualifiedName ?? symbolName,
+                    affectedFiles = result.TotalAffectedFiles,
+                    affectedSymbols = result.TotalAffectedSymbols,
+                    files = compactFiles
+                };
+
+                return CreateToolResponse(compactResult, false);
             });
     }
 

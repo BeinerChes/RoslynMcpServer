@@ -128,13 +128,39 @@ public static partial class RoslynTools
                     projectFilter,
                     fileFilter);
 
+                if (!result.Success)
+                {
+                    return new
+                    {
+                        content = new[]
+                        {
+                            new { type = "text", text = result.Error ?? "Failed to find references" }
+                        },
+                        isError = true
+                    };
+                }
+
+                // Build compact response
+                var compactRefs = result.References?.Select(r =>
+                {
+                    var relativePath = GetRelativePath(r.FilePath ?? "", solutionPath!);
+                    return $"{relativePath}:{r.Line} - {r.Preview}";
+                }).ToList() ?? new List<string>();
+
+                var compactResult = new
+                {
+                    symbol = result.Symbol?.FullyQualifiedName ?? "unknown",
+                    count = result.TotalFound,
+                    refs = compactRefs
+                };
+
                 return new
                 {
                     content = new[]
                     {
-                        new { type = "text", text = JsonSerializer.Serialize(result, JsonOptions) }
+                        new { type = "text", text = JsonSerializer.Serialize(compactResult, JsonOptions) }
                     },
-                    isError = !result.Success
+                    isError = false
                 };
             });
     }

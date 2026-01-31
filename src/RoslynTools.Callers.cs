@@ -103,32 +103,68 @@ public static partial class RoslynTools
         var projectFilter = args?["projectFilter"]?.GetValue<string>();
         var fileFilter = args?["fileFilter"]?.GetValue<string>();
 
+        GetCallersResult? result = null;
+
         // Try graph cache first
         var graphResult = await TryGetCallersFromGraphAsync(
             solutionPath!, filePath, line, column, maxResults, offset, projectFilter, fileFilter);
 
         if (graphResult != null)
         {
-            return CreateSuccessResponse(graphResult, !graphResult.Success);
+            result = graphResult;
+        }
+        else
+        {
+            // Fall back to live analysis
+            var liveResult = await SolutionAnalyzerService.GetCallersAsync(
+                solutionPath!, filePath, line, column, maxResults, offset, projectFilter, fileFilter);
+
+            result = new GetCallersResult
+            {
+                Success = liveResult.Success,
+                Error = liveResult.Error,
+                Symbol = liveResult.Symbol,
+                TotalCallers = liveResult.TotalCallers,
+                ReturnedCount = liveResult.ReturnedCount,
+                Source = "live",
+                Callers = liveResult.Callers
+            };
         }
 
-        // Fall back to live analysis
-        var result = await SolutionAnalyzerService.GetCallersAsync(
-            solutionPath!, filePath, line, column, maxResults, offset, projectFilter, fileFilter);
-
-        // Add source indicator for live analysis
-        var liveResult = new GetCallersResult
+        if (!result.Success)
         {
-            Success = result.Success,
-            Error = result.Error,
-            Symbol = result.Symbol,
-            TotalCallers = result.TotalCallers,
-            ReturnedCount = result.ReturnedCount,
-            Source = "live",
-            Callers = result.Callers
+            return new
+            {
+                content = new[]
+                {
+                    new { type = "text", text = result.Error ?? "Failed to find callers" }
+                },
+                isError = true
+            };
+        }
+
+        // Build compact response: "Type.Method file:line"
+        var compactCallers = result.Callers?.Select(c =>
+        {
+            var caller = string.IsNullOrEmpty(c.Type) ? c.Method : $"{c.Type}.{c.Method}";
+            return $"{caller} {c.File}:{c.Line}";
+        }).ToList() ?? new List<string>();
+
+        var compactResult = new
+        {
+            symbol = result.Symbol ?? "unknown",
+            count = result.TotalCallers,
+            callers = compactCallers
         };
 
-        return CreateSuccessResponse(liveResult, !liveResult.Success);
+        return new
+        {
+            content = new[]
+            {
+                new { type = "text", text = JsonSerializer.Serialize(compactResult, JsonOptions) }
+            },
+            isError = false
+        };
     }
 
     /// <summary>
