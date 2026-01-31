@@ -318,6 +318,9 @@ public static partial class RoslynTools
             };
         }
 
+        // Get solution directory for relative paths (Issue #115)
+        var solutionDir = Path.GetDirectoryName(solutionPath) ?? "";
+
         // Use FindSymbolAsync for partial name matching (Issue #33)
         var searchResult = await db.FindSymbolAsync(solution.Id, symbolName);
 
@@ -389,7 +392,7 @@ public static partial class RoslynTools
         var result = new GraphQueryResult
         {
             Success = true,
-            Symbol = ToGraphSymbolEntry(symbol),
+            Symbol = ToGraphSymbolEntry(symbol, solutionDir),
             StaleFilesRefreshed = refreshedFiles.Count,
             RefreshedFiles = refreshedFiles.Count > 0 ? refreshedFiles : null
         };
@@ -399,7 +402,7 @@ public static partial class RoslynTools
             var callers = refreshedFiles.Count > 0
                 ? await db.GetRecursiveCallersAsync(symbol.Id, maxDepth)
                 : preliminaryCallers;
-            result.Callers = callers.Select(ToGraphSymbolEntry).ToList();
+            result.Callers = callers.Select(s => ToGraphSymbolEntry(s, solutionDir)).ToList();
         }
 
         if (direction is "callees" or "both")
@@ -407,7 +410,7 @@ public static partial class RoslynTools
             var callees = refreshedFiles.Count > 0
                 ? await db.GetRecursiveCalleesAsync(symbol.Id, maxDepth)
                 : preliminaryCallees;
-            result.Callees = callees.Select(ToGraphSymbolEntry).ToList();
+            result.Callees = callees.Select(s => ToGraphSymbolEntry(s, solutionDir)).ToList();
         }
 
         return result;
@@ -416,12 +419,12 @@ public static partial class RoslynTools
     /// <summary>
     /// Converts a SymbolRecord to a GraphSymbolEntry.
     /// </summary>
-    private static GraphSymbolEntry ToGraphSymbolEntry(SymbolRecord symbol) => new()
+    private static GraphSymbolEntry ToGraphSymbolEntry(SymbolRecord symbol, string solutionDir) => new()
     {
         Name = symbol.Name,
         QualifiedName = symbol.QualifiedName,
         Kind = symbol.Kind.ToString(),
-        FilePath = symbol.FilePath,
+        FilePath = GetRelativePath(symbol.FilePath, solutionDir),
         Line = symbol.Line
     };
 

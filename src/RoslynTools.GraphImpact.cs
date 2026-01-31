@@ -194,6 +194,9 @@ public static partial class RoslynTools
             };
         }
 
+        // Get solution directory for relative paths (Issue #115)
+        var solutionDir = Path.GetDirectoryName(solutionPath) ?? "";
+
         // Use FindSymbolAsync for partial name matching (Issue #33)
         var searchResult = await db.FindSymbolAsync(solution.Id, symbolName);
 
@@ -240,7 +243,7 @@ public static partial class RoslynTools
             .GroupBy(c => c.FilePath)
             .Select(g => new AffectedFile
             {
-                FilePath = g.Key,
+                FilePath = GetRelativePath(g.Key, solutionDir),
                 FileName = Path.GetFileName(g.Key),
                 AffectedSymbols = g.Select(s => new AffectedSymbol
                 {
@@ -261,7 +264,7 @@ public static partial class RoslynTools
                 Name = symbol.Name,
                 QualifiedName = symbol.QualifiedName,
                 Kind = symbol.Kind.ToString(),
-                FilePath = symbol.FilePath,
+                FilePath = GetRelativePath(symbol.FilePath, solutionDir),
                 Line = symbol.Line
             },
             TotalAffectedSymbols = filteredCallers.Count,
@@ -297,6 +300,9 @@ public static partial class RoslynTools
                 Error = "Solution not found in graph database."
             };
         }
+
+        // Get solution directory for relative paths (Issue #115)
+        var solutionDir = Path.GetDirectoryName(solutionPath) ?? "";
 
         // Get all symbols that are methods or properties
         // Issue #36: Filter out external symbols (BCL, framework types)
@@ -376,7 +382,7 @@ public static partial class RoslynTools
                     Name = symbol.Name,
                     QualifiedName = symbol.QualifiedName,
                     Kind = symbol.Kind.ToString(),
-                    FilePath = symbol.FilePath,
+                    FilePath = GetRelativePath(symbol.FilePath, solutionDir),
                     FileName = Path.GetFileName(symbol.FilePath),
                     Line = symbol.Line
                 });
