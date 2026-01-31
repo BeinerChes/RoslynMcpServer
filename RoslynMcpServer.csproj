@@ -6,9 +6,18 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <RootNamespace>RoslynMcpServer</RootNamespace>
-    <Version>1.0.4</Version>
+    <Version>1.0.5</Version>
     <!-- Exclude sub-projects from compilation -->
     <DefaultItemExcludes>$(DefaultItemExcludes);RoslynMcpServer.Tests\**;RoslynMcpServer.Graph\**;RoslynMcpServer.Web\**</DefaultItemExcludes>
+  </PropertyGroup>
+
+  <!-- Single-file publish settings -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>true</SelfContained>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
   </PropertyGroup>
 
   <ItemGroup>

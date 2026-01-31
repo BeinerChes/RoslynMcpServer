@@ -8,7 +8,7 @@ namespace RoslynMcpServer.Graph;
 /// </summary>
 public sealed partial class GraphDatabase : IDisposable
 {
-    private const string DbFolderName = ".roslyn-mcp";
+    // Database stored in exe directory (typically .roslyn-mcp/)
     private const string DbFileName = "graph.db";
 
     private readonly string _dbPath;
@@ -22,11 +22,9 @@ public sealed partial class GraphDatabase : IDisposable
     /// <param name="solutionPath">Path to the .sln file</param>
     public GraphDatabase(string solutionPath)
     {
-        var solutionDir = Path.GetDirectoryName(solutionPath)
-            ?? throw new ArgumentException("Invalid solution path", nameof(solutionPath));
+        var exeDir = AppContext.BaseDirectory;
+        _dbPath = Path.Combine(exeDir, DbFileName);
 
-        var dbFolder = Path.Combine(solutionDir, DbFolderName);
-        _dbPath = Path.Combine(dbFolder, DbFileName);
     }
 
     /// <summary>

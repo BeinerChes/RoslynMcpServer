@@ -31,8 +31,8 @@ This project **uses itself** for development. There are TWO copies of hooks and 
 |----------|---------|--------------|
 | `.claude/hooks/` | **ACTIVE** - Used when developing this project | Edit here FIRST |
 | `.claude/skills/` | **ACTIVE** - Used when developing this project | Edit here FIRST |
-| `Instructions/Hooks/` | **TEMPLATE** - Copied to other projects via setup.ps1 | Sync FROM .claude/ |
-| `Instructions/Skills/` | **TEMPLATE** - Copied to other projects via setup.ps1 | Sync FROM .claude/ |
+| `Instructions/Hooks/` | **TEMPLATE** - Included in release package | Sync FROM .claude/ |
+| `Instructions/Skills/` | **TEMPLATE** - Included in release package | Sync FROM .claude/ |
 
 **Workflow for modifying hooks/skills:**
 1. Edit in `.claude/hooks/` or `.claude/skills/` (these are active)

@@ -10,38 +10,37 @@ Claude (with Roslyn): *finds exactly 3 call sites*
 
 ## Quick Start
 
-### 1. Install
+### 1. Download
 
-**From Release (Recommended):**
-```powershell
-# Download latest from https://github.com/BeinerChes/RoslynMcpServer/releases
-# Extract and run:
-powershell -ExecutionPolicy Bypass -File install.ps1
+Download `roslyn-mcp-win-x64.zip` from [Releases](https://github.com/BeinerChes/RoslynMcpServer/releases)
+
+### 2. Extract to Your Solution
+
+```
+YourSolution/
+├── .roslyn-mcp/          ← Extract here
+│   ├── roslyn-mcp.exe
+│   └── ...
+├── YourProject/
+└── YourSolution.sln
 ```
 
-**From Source:**
+### 3. Initialize
+
 ```bash
-git clone https://github.com/BeinerChes/RoslynMcpServer.git
-cd RoslynMcpServer
-dotnet build
+cd C:\path\to\YourSolution
+.roslyn-mcp\roslyn-mcp.exe --init
 ```
 
-### 2. Set Up Your Project
-
-```powershell
-cd C:\path\to\your\solution
-powershell -ExecutionPolicy Bypass -File "$env:LOCALAPPDATA\RoslynMcpServer\setup.ps1"
-```
-
-### 3. Verify
+### 4. Verify
 
 ```bash
 claude
 # Type: /mcp
-# You should see "roslyn" listed
+# You should see "roslyn" connected
 ```
 
-**That's it.** Claude will now use Roslyn tools automatically.
+**That's it.** Claude will now use Roslyn tools for C# code.
 
 ---
 
@@ -68,6 +67,31 @@ Fix the null reference in BuildCache method
 Rename GetData to FetchDataAsync
 → Uses roslyn_rename_symbol (updates all call sites)
 ```
+
+---
+
+## Optional Features
+
+### Enable Hooks
+
+Hooks suggest using Roslyn tools instead of grep for C# files:
+
+```bash
+.roslyn-mcp\roslyn-mcp.exe --enable-hooks
+```
+
+### Enable Skills
+
+Skills add custom commands like `/architect`:
+
+```bash
+.roslyn-mcp\roslyn-mcp.exe --enable-skills
+```
+
+| Command | What it does |
+|---------|--------------|
+| `/architect` | Deep code analysis with actionable improvement tasks |
+| `/update-docs` | Update documentation after code changes |
 
 ---
 
@@ -102,41 +126,6 @@ Code modification (add/update/delete methods) performed similarly with both appr
 **MCP solves problems native tools cannot solve.** For everything else, either works.
 
 [Full benchmark with methodology](docs/benchmark/results.md)
-
----
-
-## Skills
-
-Custom commands for common tasks:
-
-| Command | What it does |
-|---------|--------------|
-| `/architect` | Deep code analysis with actionable improvement tasks |
-| `/blog` | Generate a session retrospective (Watson-style) |
-| `/update-docs` | Update documentation after code changes |
-
-> `/blog` and `/update-docs` use Haiku model (~20x cheaper than Opus)
-
----
-
-## How It Works
-
-Setup creates these files in your project:
-
-```
-YourSolution/
-├── CLAUDE.md          # Instructions Claude reads automatically
-├── .mcp.json          # MCP server configuration
-└── .claude/
-    ├── hooks/         # Enforce best practices (git workflow, Roslyn usage)
-    ├── skills/        # Custom commands (/architect, /blog, /update-docs)
-    └── plans/         # Track work across sessions
-```
-
-**Hooks** ensure Claude:
-- Uses Roslyn tools instead of grep/cat for C# files
-- Follows git workflow (branches, commits, PRs)
-- Reads instructions before making changes
 
 ---
 
@@ -207,25 +196,19 @@ YourSolution/
 
 ---
 
-## 3D Visualization
+## CLI Reference
 
-Explore your codebase in 3D:
-
-![3D Visualization](docs/visualization-preview.png)
-
-```bash
-# First, build the call graph
-Ask Claude: "Analyze the call graph for this solution"
-
-# Then start the web server
-dotnet run --project RoslynMcpServer.Web
-# Open http://localhost:5000
 ```
+roslyn-mcp.exe [command]
 
-- **Galaxies** = Namespaces
-- **Stars** = Types
-- **Planets** = Methods (sized by caller count)
-- **Meditation Mode** = Auto-follows Claude's activity
+Commands:
+  (none)           Run as MCP server (default)
+  --init           Initialize project (.mcp.json + CLAUDE.md)
+  --enable-hooks   Enable Roslyn tool suggestions
+  --enable-skills  Enable /architect skill
+  --version        Show version
+  --help           Show help
+```
 
 ---
 
@@ -234,10 +217,9 @@ dotnet run --project RoslynMcpServer.Web
 | Requirement | For |
 |-------------|-----|
 | Windows x64 | Required |
-| Python 3.x | Workflow hooks |
 | [Claude Code CLI](https://claude.ai/download) | Required |
-| .NET 10.0 SDK | Building from source only |
-| Visual Studio 2022 | Building from source only |
+| Python 3.x | Only if using hooks (optional) |
+| Visual Studio 2022 or Build Tools | MSBuild discovery |
 
 ---
 
@@ -246,10 +228,9 @@ dotnet run --project RoslynMcpServer.Web
 <details>
 <summary><strong>Server not responding</strong></summary>
 
-The server may be locked during rebuild:
+The server may be locked. Kill and reconnect:
 ```powershell
-tasklist | findstr RoslynMcpServer
-taskkill /F /PID <pid>
+taskkill /F /IM roslyn-mcp.exe
 # In Claude Code: /mcp reconnect roslyn
 ```
 
@@ -271,6 +252,21 @@ Normal - the first operation loads the entire solution into memory. Subsequent o
 
 ---
 
+## Building from Source
+
+```bash
+git clone https://github.com/BeinerChes/RoslynMcpServer.git
+cd RoslynMcpServer
+dotnet build
+
+# Create release package
+powershell -ExecutionPolicy Bypass -File build-release.ps1
+```
+
+Requires .NET 10.0 SDK.
+
+---
+
 ## Architecture
 
 ```
@@ -278,21 +274,11 @@ RoslynMcpServer/
 ├── src/                      # MCP server (JSON-RPC over stdio)
 ├── Instructions/             # Topic instructions, templates, hooks
 ├── RoslynMcpServer.Graph/    # Call graph + knowledge database
-├── RoslynMcpServer.Web/      # 3D visualization
+├── RoslynMcpServer.Web/      # 3D visualization (experimental)
 └── RoslynMcpServer.Tests/    # Unit tests
 ```
 
-Uses: MSBuildWorkspace, Roslyn APIs, SQLite, Three.js, SmartComponents embeddings
-
----
-
-## Watson's Chronicles
-
-*"The game is afoot!"*
-
-My friend Watson (a Haiku-class AI with a flair for the dramatic) documents our coding adventures in the style of Dr. Watson chronicling Sherlock Holmes. If you enjoy tales of dead code hunts, epic bug squashing, and the occasional existential crisis about false positives...
-
-**[Read Watson's Blog](docs/blog/)** - *Warning: May contain excessive admiration for Claude's "characteristic precision"*
+Uses: MSBuildWorkspace, Roslyn APIs, SQLite, SmartComponents embeddings
 
 ---
 

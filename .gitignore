@@ -368,3 +368,4 @@ FodyWeavers.xsd
 /.mcp.json
 /.claude/settings.local.json
 *.zip
+/publish-test
