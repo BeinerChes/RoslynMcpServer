@@ -20,8 +20,7 @@ Save this MARK number for all subsequent `since` calls.
 Before starting the task, call these instructions (as hooks would normally trigger):
 
 ```
-roslyn_get_instructions(topic: "tools", solutionPath: "D:\\repos\\Atlas3_EDEV\\Atlas3.sln")
-roslyn_get_instructions(topic: "code", solutionPath: "D:\\repos\\Atlas3_EDEV\\Atlas3.sln")
+roslyn_get_instructions(topic: "tools")
 ```
 
 Track this as Step 0 in results.

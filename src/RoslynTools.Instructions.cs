@@ -8,14 +8,17 @@ namespace RoslynMcpServer;
 /// </summary>
 public static partial class RoslynTools
 {
-    private static readonly string[] definitionArray2 = new[] { "minimal", "standard", "tdd", "team" };
-    private static readonly string[] definitionArray3 = new[] { "template" };
+    private static readonly string[] RequiredTemplate = ["template"];
+    private static readonly string[] RequiredTopic = ["topic"];
 
     /// <summary>
     /// Returns a CLAUDE.md template for users to copy to their project.
     /// </summary>
     private static void RegisterGetTemplateTool(McpServer server)
     {
+        var availableTemplates = Instructions.Templates.Available;
+        var templateDesc = $"Template name. Available: {string.Join(", ", availableTemplates)}";
+
         server.RegisterTool(
             "roslyn_get_template",
             new ToolDefinition
@@ -29,11 +32,11 @@ public static partial class RoslynTools
                         template = new
                         {
                             type = "string",
-                            description = "Template type: 'minimal' (basic MCP pointers), 'standard' (code + git), 'tdd' (test-driven), 'team' (full workflow with issues)",
-                            @enum = definitionArray2
+                            description = templateDesc,
+                            @enum = availableTemplates
                         }
                     },
-                    required = definitionArray3
+                    required = RequiredTemplate
                 },
                 Annotations = new ToolAnnotations
                 {
@@ -76,14 +79,14 @@ public static partial class RoslynTools
             });
     }
 
-    private static readonly string[] definitionArray4 = new[] { "code", "git", "plan", "tdd", "pre-pr", "tools" };
-    private static readonly string[] definitionArray5 = new[] { "topic" };
-
     /// <summary>
     /// Returns specific development instructions on-demand.
     /// </summary>
     private static void RegisterGetInstructionsTool(McpServer server)
     {
+        var availableTopics = Instructions.Topics.Available;
+        var topicDesc = $"Topic name. Available: {string.Join(", ", availableTopics)}";
+
         server.RegisterTool(
             "roslyn_get_instructions",
             new ToolDefinition
@@ -97,11 +100,11 @@ public static partial class RoslynTools
                         topic = new
                         {
                             type = "string",
-                            description = "Topic: 'code' (C# best practices), 'git' (workflow, branches, commits), 'plan' (session planning, issue tracking), 'tdd' (test-driven development), 'pre-pr' (checklist before PR), 'tools' (Roslyn tool preferences)",
-                            @enum = definitionArray4
+                            description = topicDesc,
+                            @enum = availableTopics
                         }
                     },
-                    required = definitionArray5
+                    required = RequiredTopic
                 },
                 Annotations = new ToolAnnotations
                 {
@@ -111,7 +114,7 @@ public static partial class RoslynTools
             },
             async args =>
             {
-                var topicName = args?["topic"]?.GetValue<string>()?.ToLowerInvariant() ?? "code";
+                var topicName = args?["topic"]?.GetValue<string>()?.ToLowerInvariant() ?? "tools";
                 var instructions = Instructions.Topics.Get(topicName);
 
                 if (instructions == null)

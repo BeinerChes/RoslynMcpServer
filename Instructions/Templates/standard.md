@@ -17,9 +17,6 @@
 | Starting or resuming a task | `"plan"` |
 | Using any Roslyn tool | `"tools"` |
 | Making any code change | `"git"` |
-| Modifying C# code | `"code"` |
-| Writing or running tests | `"tdd"` |
-| Creating a pull request | `"pre-pr"` |
 
 ## Plan Files
 

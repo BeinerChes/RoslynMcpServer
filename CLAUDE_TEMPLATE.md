@@ -8,8 +8,6 @@
 1. Find the solution file: `glob pattern "*.sln*"`
 2. Call `roslyn_get_instructions(topic: "plan")` and follow those instructions.
 
-**Note:** The `solutionPath` parameter is REQUIRED for `plan`, `git`, and `tools` topics to generate per-solution tokens for hook validation.
-
 ## MANDATORY: Get Instructions Before Operations
 
 **Call `roslyn_get_instructions` with the appropriate topic before each operation:**
@@ -19,9 +17,6 @@
 | Starting or resuming a task | `"plan"` |
 | Using any Roslyn tool | `"tools"` |
 | Making any code change | `"git"` |
-| Modifying C# code | `"code"` |
-| Writing or running tests | `"tdd"` |
-| Creating a pull request | `"pre-pr"` |
 
 ## Plan Files
 
