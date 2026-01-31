@@ -49,17 +49,30 @@ if (-not $SkipBuild) {
 Write-Host ""
 Write-Host "Step 2: Copying files..." -ForegroundColor White
 
-# Main exe
-Copy-Item -Path (Join-Path $publishDir "RoslynMcpServer.exe") -Destination (Join-Path $PackageDir "roslyn-mcp.exe")
-Write-Host "  Copied: roslyn-mcp.exe" -ForegroundColor Gray
+# Main exe (keep original name)
+Copy-Item -Path (Join-Path $publishDir "RoslynMcpServer.exe") -Destination $PackageDir
+Write-Host "  Copied: RoslynMcpServer.exe" -ForegroundColor Gray
 
-# Required folders
-$requiredFolders = @("Instructions", "LocalEmbeddingsModel", "BuildHost-net472", "BuildHost-netcore", "analyzers")
-foreach ($folder in $requiredFolders) {
+# Required folders from publish output
+$publishFolders = @("Instructions", "LocalEmbeddingsModel", "analyzers")
+foreach ($folder in $publishFolders) {
     $src = Join-Path $publishDir $folder
     if (Test-Path $src) {
         Copy-Item -Path $src -Destination $PackageDir -Recurse
         Write-Host "  Copied: $folder/" -ForegroundColor Gray
+    }
+}
+
+# BuildHost folders - copy from build output (not included in SingleFile publish)
+$buildOutput = Join-Path $ProjectRoot "bin\Release\net10.0\win-x64"
+$buildHostFolders = @("BuildHost-net472", "BuildHost-netcore")
+foreach ($folder in $buildHostFolders) {
+    $src = Join-Path $buildOutput $folder
+    if (Test-Path $src) {
+        Copy-Item -Path $src -Destination $PackageDir -Recurse
+        Write-Host "  Copied: $folder/ (from build output)" -ForegroundColor Gray
+    } else {
+        Write-Warning "  Missing: $folder/ - Roslyn MSBuild tools may not work"
     }
 }
 
@@ -115,7 +128,7 @@ INSTALLATION
    YourSolution/.roslyn-mcp/
 
 2. Open a terminal in your solution directory and run:
-   .roslyn-mcp/roslyn-mcp.exe --init
+   .roslyn-mcp/RoslynMcpServer.exe --init
 
 3. Start Claude Code and verify:
    claude
@@ -129,7 +142,7 @@ OPTIONAL: ENABLE HOOKS
 
 Hooks suggest using Roslyn tools instead of grep/cat for C# files:
 
-   .roslyn-mcp/roslyn-mcp.exe --enable-hooks
+   .roslyn-mcp/RoslynMcpServer.exe --enable-hooks
 
 
 OPTIONAL: ENABLE SKILLS
@@ -137,7 +150,7 @@ OPTIONAL: ENABLE SKILLS
 
 Skills add custom commands like /architect:
 
-   .roslyn-mcp/roslyn-mcp.exe --enable-skills
+   .roslyn-mcp/RoslynMcpServer.exe --enable-skills
 
 Available skills:
    /architect  - Deep code analysis with improvement plan
@@ -147,8 +160,8 @@ Available skills:
 MORE INFORMATION
 ----------------
 
-   roslyn-mcp.exe --help      Show all commands
-   roslyn-mcp.exe --version   Show version
+   RoslynMcpServer.exe --help      Show all commands
+   RoslynMcpServer.exe --version   Show version
 
 GitHub: https://github.com/BeinerChes/RoslynMcpServer
 "@
@@ -193,4 +206,4 @@ Write-Host ""
 Write-Host "To test, extract and run:" -ForegroundColor Cyan
 Write-Host "  Expand-Archive $zipPath -DestinationPath .\test-release" -ForegroundColor White
 Write-Host "  cd test-release\roslyn-mcp" -ForegroundColor White
-Write-Host "  .\roslyn-mcp.exe --help" -ForegroundColor White
+Write-Host "  .\RoslynMcpServer.exe --help" -ForegroundColor White
