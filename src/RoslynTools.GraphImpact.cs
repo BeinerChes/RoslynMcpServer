@@ -56,21 +56,17 @@ public static partial class RoslynTools
             },
             async args =>
             {
-                var solutionPath = args?["solutionPath"]?.GetValue<string>();
+                var (solutionPath, solutionError) = GetSolutionPathOrError();
+                if (solutionError != null) return solutionError;
+
                 var symbolName = args?["symbolName"]?.GetValue<string>();
                 var maxDepth = args?["maxDepth"]?.GetValue<int>() ?? 10;
                 var includeTests = args?["includeTests"]?.GetValue<bool>() ?? true;
 
-                if (string.IsNullOrWhiteSpace(solutionPath))
-                    return CreateToolError("Error: solutionPath is required");
-
                 if (string.IsNullOrWhiteSpace(symbolName))
                     return CreateToolError("Error: symbolName is required");
 
-                if (!File.Exists(solutionPath))
-                    return CreateToolError($"Error: Solution file not found: {solutionPath}");
-
-                var result = await GetGraphImpactAsync(solutionPath, symbolName, maxDepth, includeTests);
+                var result = await GetGraphImpactAsync(solutionPath!, symbolName, maxDepth, includeTests);
                 return CreateToolResponse(result, !result.Success);
             });
     }
@@ -139,7 +135,9 @@ public static partial class RoslynTools
             },
             async args =>
             {
-                var solutionPath = args?["solutionPath"]?.GetValue<string>();
+                var (solutionPath, solutionError) = GetSolutionPathOrError();
+                if (solutionError != null) return solutionError;
+
                 var includePrivate = args?["includePrivate"]?.GetValue<bool>() ?? false;
                 var includeTests = args?["includeTests"]?.GetValue<bool>() ?? false;
                 var maxResults = args?["maxResults"]?.GetValue<int>() ?? 100;
@@ -155,14 +153,8 @@ public static partial class RoslynTools
                     .Where(s => !string.IsNullOrEmpty(s))
                     .ToArray() ?? DefaultExcludeFilePatterns;
 
-                if (string.IsNullOrWhiteSpace(solutionPath))
-                    return CreateToolError("Error: solutionPath is required");
-
-                if (!File.Exists(solutionPath))
-                    return CreateToolError($"Error: Solution file not found: {solutionPath}");
-
                 var result = await FindDeadCodeAsync(
-                    solutionPath, includePrivate, includeTests, maxResults,
+                    solutionPath!, includePrivate, includeTests, maxResults,
                     excludeTypePatterns, excludeFilePatterns);
                 return CreateToolResponse(result, !result.Success);
             });
@@ -193,6 +185,9 @@ public static partial class RoslynTools
                 Error = "Solution not found in graph database."
             };
         }
+
+        // Get solution directory for relative paths (Issue #115)
+        var solutionDir = Path.GetDirectoryName(solutionPath) ?? "";
 
         // Use FindSymbolAsync for partial name matching (Issue #33)
         var searchResult = await db.FindSymbolAsync(solution.Id, symbolName);
@@ -240,7 +235,7 @@ public static partial class RoslynTools
             .GroupBy(c => c.FilePath)
             .Select(g => new AffectedFile
             {
-                FilePath = g.Key,
+                FilePath = GetRelativePath(g.Key, solutionDir),
                 FileName = Path.GetFileName(g.Key),
                 AffectedSymbols = g.Select(s => new AffectedSymbol
                 {
@@ -261,7 +256,7 @@ public static partial class RoslynTools
                 Name = symbol.Name,
                 QualifiedName = symbol.QualifiedName,
                 Kind = symbol.Kind.ToString(),
-                FilePath = symbol.FilePath,
+                FilePath = GetRelativePath(symbol.FilePath, solutionDir),
                 Line = symbol.Line
             },
             TotalAffectedSymbols = filteredCallers.Count,
@@ -297,6 +292,9 @@ public static partial class RoslynTools
                 Error = "Solution not found in graph database."
             };
         }
+
+        // Get solution directory for relative paths (Issue #115)
+        var solutionDir = Path.GetDirectoryName(solutionPath) ?? "";
 
         // Get all symbols that are methods or properties
         // Issue #36: Filter out external symbols (BCL, framework types)
@@ -376,7 +374,7 @@ public static partial class RoslynTools
                     Name = symbol.Name,
                     QualifiedName = symbol.QualifiedName,
                     Kind = symbol.Kind.ToString(),
-                    FilePath = symbol.FilePath,
+                    FilePath = GetRelativePath(symbol.FilePath, solutionDir),
                     FileName = Path.GetFileName(symbol.FilePath),
                     Line = symbol.Line
                 });
@@ -495,8 +493,8 @@ public static partial class RoslynTools
         }
     }
 
-    private static readonly string[] definitionArray100 = new[] { "solutionPath" };
-    private static readonly string[] definitionArray0 = new[] { "solutionPath", "symbolName" };
+    private static readonly string[] definitionArray100 = Array.Empty<string>();
+    private static readonly string[] definitionArray0 = new[] { "symbolName" };
 
     private static bool IsTestFile(string filePath)
     {

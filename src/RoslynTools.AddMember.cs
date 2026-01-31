@@ -172,4 +172,14 @@ public static partial class RoslynTools
             return "created";
         }
     }
+
+
+    private static (string? Path, object? Error) GetSolutionPathOrError()
+    {
+        if (string.IsNullOrEmpty(_solutionPath))
+        {
+            return (null, CreateErrorResponse("No solution detected. Run MCP server from solution directory."));
+        }
+        return (_solutionPath, null);
+    }
 }

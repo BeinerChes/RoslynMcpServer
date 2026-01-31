@@ -5,7 +5,7 @@ namespace RoslynMcpServer;
 public static partial class RoslynTools
 {
     private static readonly string[] definitionArray17 = new[] { "private", "internal", "protected", "public" };
-    private static readonly string[] definitionArray18 = new[] { "solutionPath", "filePath", "startLine", "endLine", "methodName" };
+    private static readonly string[] definitionArray18 = new[] { "filePath", "startLine", "endLine", "methodName" };
 
     /// <summary>
     /// Extracts a code block into a new method using Roslyn data flow analysis.
@@ -66,24 +66,14 @@ public static partial class RoslynTools
             },
             async args =>
             {
-                var solutionPath = args?["solutionPath"]?.GetValue<string>();
+                var (solutionPath, solutionError) = GetSolutionPathOrError();
+                if (solutionError != null) return solutionError;
+
                 var filePath = args?["filePath"]?.GetValue<string>();
                 var startLine = args?["startLine"]?.GetValue<int>() ?? 0;
                 var endLine = args?["endLine"]?.GetValue<int>() ?? 0;
                 var methodName = args?["methodName"]?.GetValue<string>();
                 var accessibility = args?["accessibility"]?.GetValue<string>();
-
-                if (string.IsNullOrWhiteSpace(solutionPath))
-                {
-                    return new
-                    {
-                        content = new[]
-                        {
-                            new { type = "text", text = "Error: solutionPath is required" }
-                        },
-                        isError = true
-                    };
-                }
 
                 if (string.IsNullOrWhiteSpace(filePath))
                 {
@@ -134,7 +124,7 @@ public static partial class RoslynTools
                 }
 
                 var result = await SolutionAnalyzerService.ExtractMethodAsync(
-                    solutionPath,
+                    solutionPath!,
                     filePath,
                     startLine,
                     endLine,

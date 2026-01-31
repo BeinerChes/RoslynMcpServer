@@ -7,7 +7,7 @@ public static partial class RoslynTools
 {
     private static readonly string[] definitionArray19 = ["all", "type", "member", "namespace", "typeAndMember"];
     private static readonly string[] definitionArray20 = ["exact", "exactIgnoreCase", "contains", "prefix", "suffix"];
-    private static readonly string[] definitionArray21 = ["solutionPath", "pattern"];
+    private static readonly string[] definitionArray21 = ["pattern"];
 
     /// <summary>
     /// Finds symbols in a solution by name pattern.
@@ -75,8 +75,8 @@ public static partial class RoslynTools
     /// </summary>
     private static async Task<object> HandleFindSymbolAsync(JsonObject? args)
     {
-        if (!TryGetRequiredString(args, "solutionPath", out var solutionPath, out var error))
-            return error!;
+        var (solutionPath, error) = GetSolutionPathOrError();
+        if (error != null) return error;
 
         if (!TryGetRequiredString(args, "pattern", out var pattern, out error))
             return error!;
@@ -87,9 +87,9 @@ public static partial class RoslynTools
         var compact = GetOptionalBool(args, "compact", true);
 
         var result = await _analyzerService!.SearchSymbolsAsync(
-            solutionPath, pattern, symbolKind, matchType, maxResults, compact);
+            solutionPath!, pattern, symbolKind, matchType, maxResults, compact);
 
-        var response = await BuildFindSymbolResponseAsync(solutionPath, result);
+        var response = await BuildFindSymbolResponseAsync(solutionPath!, result);
         return CreateSuccessResponse(response, !result.Success);
     }
 

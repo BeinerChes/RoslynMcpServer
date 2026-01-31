@@ -9,7 +9,7 @@ namespace RoslynMcpServer;
 public static partial class RoslynTools
 {
     private static readonly Dictionary<string, (KnowledgeDatabase Db, SmartComponentsEmbeddingProvider Embedder)> _knowledgeDatabases = new();
-    private static readonly string[] definitionArrayKnowledge = ["solutionPath", "category", "title", "content"];
+    private static readonly string[] definitionArrayKnowledge = ["category", "title", "content"];
 
     /// <summary>
     /// Gets or creates a KnowledgeDatabase for the specified solution.
@@ -102,13 +102,10 @@ public static partial class RoslynTools
     /// </summary>
     private static async Task<object> HandleKnowledgeAddAsync(JsonObject? args)
     {
-        if (!TryGetRequiredString(args, "solutionPath", out var solutionPath, out var error))
-            return error!;
+        var (solutionPath, solutionError) = GetSolutionPathOrError();
+        if (solutionError != null) return solutionError;
 
-        if (!TryValidateSolutionPath(solutionPath, out error))
-            return error!;
-
-        if (!TryGetRequiredString(args, "category", out var category, out error))
+        if (!TryGetRequiredString(args, "category", out var category, out var error))
             return error!;
 
         if (!TryGetRequiredString(args, "title", out var title, out error))
@@ -123,7 +120,7 @@ public static partial class RoslynTools
 
         try
         {
-            var db = await GetKnowledgeDatabaseAsync(solutionPath);
+            var db = await GetKnowledgeDatabaseAsync(solutionPath!);
 
             var input = new AddKnowledgeInput
             {
@@ -204,7 +201,7 @@ public static partial class RoslynTools
                             maximum = 50
                         }
                     },
-                    required = new[] { "solutionPath", "query" }
+                    required = new[] { "query" }
                 },
                 Annotations = new ToolAnnotations
                 {
@@ -214,23 +211,19 @@ public static partial class RoslynTools
             },
             async args =>
             {
-                var solutionPath = args?["solutionPath"]?.GetValue<string>();
+                var (solutionPath, solutionError) = GetSolutionPathOrError();
+                if (solutionError != null) return solutionError;
+
                 var query = args?["query"]?.GetValue<string>();
                 var symbols = args?["symbols"]?.AsArray()?.Select(x => x?.GetValue<string>() ?? "").Where(s => !string.IsNullOrEmpty(s)).ToArray();
                 var limit = args?["limit"]?.GetValue<int>() ?? 10;
-
-                if (string.IsNullOrWhiteSpace(solutionPath))
-                    return CreateErrorResponse("Error: solutionPath is required");
-
-                if (!File.Exists(solutionPath))
-                    return CreateErrorResponse($"Error: Solution file not found: {solutionPath}");
 
                 if (string.IsNullOrWhiteSpace(query))
                     return CreateErrorResponse("Error: query is required");
 
                 try
                 {
-                    var db = await GetKnowledgeDatabaseAsync(solutionPath);
+                    var db = await GetKnowledgeDatabaseAsync(solutionPath!);
                     var results = await db.SearchAsync(query, symbols, limit);
 
                     return CreateJsonResponse(new
@@ -303,7 +296,7 @@ public static partial class RoslynTools
                             minimum = 0
                         }
                     },
-                    required = new[] { "solutionPath" }
+                    required = Array.Empty<string>()
                 },
                 Annotations = new ToolAnnotations
                 {
@@ -313,21 +306,17 @@ public static partial class RoslynTools
             },
             async args =>
             {
-                var solutionPath = args?["solutionPath"]?.GetValue<string>();
+                var (solutionPath, solutionError) = GetSolutionPathOrError();
+                if (solutionError != null) return solutionError;
+
                 var category = args?["category"]?.GetValue<string>();
                 var tag = args?["tag"]?.GetValue<string>();
                 var limit = args?["limit"]?.GetValue<int>() ?? 100;
                 var offset = args?["offset"]?.GetValue<int>() ?? 0;
 
-                if (string.IsNullOrWhiteSpace(solutionPath))
-                    return CreateErrorResponse("Error: solutionPath is required");
-
-                if (!File.Exists(solutionPath))
-                    return CreateErrorResponse($"Error: Solution file not found: {solutionPath}");
-
                 try
                 {
-                    var db = await GetKnowledgeDatabaseAsync(solutionPath);
+                    var db = await GetKnowledgeDatabaseAsync(solutionPath!);
                     var entries = await db.ListEntriesAsync(category, tag, limit, offset);
                     var totalCount = await db.GetEntryCountAsync();
 
@@ -383,7 +372,7 @@ public static partial class RoslynTools
                             description = "ID of the knowledge entry to delete"
                         }
                     },
-                    required = new[] { "solutionPath", "id" }
+                    required = new[] { "id" }
                 },
                 Annotations = new ToolAnnotations
                 {
@@ -393,21 +382,17 @@ public static partial class RoslynTools
             },
             async args =>
             {
-                var solutionPath = args?["solutionPath"]?.GetValue<string>();
+                var (solutionPath, solutionError) = GetSolutionPathOrError();
+                if (solutionError != null) return solutionError;
+
                 var id = args?["id"]?.GetValue<long>() ?? 0;
-
-                if (string.IsNullOrWhiteSpace(solutionPath))
-                    return CreateErrorResponse("Error: solutionPath is required");
-
-                if (!File.Exists(solutionPath))
-                    return CreateErrorResponse($"Error: Solution file not found: {solutionPath}");
 
                 if (id <= 0)
                     return CreateErrorResponse("Error: valid id is required");
 
                 try
                 {
-                    var db = await GetKnowledgeDatabaseAsync(solutionPath);
+                    var db = await GetKnowledgeDatabaseAsync(solutionPath!);
                     var deleted = await db.DeleteEntryAsync(id);
 
                     if (deleted)
@@ -456,7 +441,7 @@ public static partial class RoslynTools
                             description = "ID of the knowledge entry to retrieve"
                         }
                     },
-                    required = new[] { "solutionPath", "id" }
+                    required = new[] { "id" }
                 },
                 Annotations = new ToolAnnotations
                 {
@@ -466,21 +451,17 @@ public static partial class RoslynTools
             },
             async args =>
             {
-                var solutionPath = args?["solutionPath"]?.GetValue<string>();
+                var (solutionPath, solutionError) = GetSolutionPathOrError();
+                if (solutionError != null) return solutionError;
+
                 var id = args?["id"]?.GetValue<long>() ?? 0;
-
-                if (string.IsNullOrWhiteSpace(solutionPath))
-                    return CreateErrorResponse("Error: solutionPath is required");
-
-                if (!File.Exists(solutionPath))
-                    return CreateErrorResponse($"Error: Solution file not found: {solutionPath}");
 
                 if (id <= 0)
                     return CreateErrorResponse("Error: valid id is required");
 
                 try
                 {
-                    var db = await GetKnowledgeDatabaseAsync(solutionPath);
+                    var db = await GetKnowledgeDatabaseAsync(solutionPath!);
                     var entry = await db.GetEntryByIdAsync(id);
 
                     if (entry == null)
@@ -538,7 +519,7 @@ public static partial class RoslynTools
                             description = "Qualified symbol name (e.g., 'MyNamespace.MyClass.MyMethod')"
                         }
                     },
-                    required = new[] { "solutionPath", "symbolName" }
+                    required = new[] { "symbolName" }
                 },
                 Annotations = new ToolAnnotations
                 {
@@ -548,21 +529,17 @@ public static partial class RoslynTools
             },
             async args =>
             {
-                var solutionPath = args?["solutionPath"]?.GetValue<string>();
+                var (solutionPath, solutionError) = GetSolutionPathOrError();
+                if (solutionError != null) return solutionError;
+
                 var symbolName = args?["symbolName"]?.GetValue<string>();
-
-                if (string.IsNullOrWhiteSpace(solutionPath))
-                    return CreateErrorResponse("Error: solutionPath is required");
-
-                if (!File.Exists(solutionPath))
-                    return CreateErrorResponse($"Error: Solution file not found: {solutionPath}");
 
                 if (string.IsNullOrWhiteSpace(symbolName))
                     return CreateErrorResponse("Error: symbolName is required");
 
                 try
                 {
-                    var db = await GetKnowledgeDatabaseAsync(solutionPath);
+                    var db = await GetKnowledgeDatabaseAsync(solutionPath!);
                     var entries = await db.GetEntriesForSymbolAsync(symbolName);
 
                     return CreateJsonResponse(new

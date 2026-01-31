@@ -55,23 +55,13 @@ public static partial class RoslynTools
             },
             async args =>
             {
-                var solutionPath = args?["solutionPath"]?.GetValue<string>();
+                var (solutionPath, solutionError) = GetSolutionPathOrError();
+                if (solutionError != null) return solutionError;
+
                 var typeName = args?["typeName"]?.GetValue<string>();
                 var methodName = args?["methodName"]?.GetValue<string>();
                 var newSourceCode = args?["newSourceCode"]?.GetValue<string>();
                 var parameterTypes = args?["parameterTypes"]?.GetValue<string>();
-
-                if (string.IsNullOrWhiteSpace(solutionPath))
-                {
-                    return new
-                    {
-                        content = new[]
-                        {
-                            new { type = "text", text = "Error: solutionPath is required" }
-                        },
-                        isError = true
-                    };
-                }
 
                 if (string.IsNullOrWhiteSpace(typeName))
                 {
@@ -110,7 +100,7 @@ public static partial class RoslynTools
                 }
 
                 var result = await SolutionAnalyzerService.UpdateMethodAsync(
-                    solutionPath,
+                    solutionPath!,
                     typeName,
                     methodName,
                     newSourceCode,
@@ -127,5 +117,5 @@ public static partial class RoslynTools
             });
     }
 
-    private static readonly string[] definitionArray34 = new[] { "solutionPath", "typeName", "methodName", "newSourceCode" };
+    private static readonly string[] definitionArray34 = new[] { "typeName", "methodName", "newSourceCode" };
 }

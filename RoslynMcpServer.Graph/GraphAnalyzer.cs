@@ -366,6 +366,14 @@ public sealed class GraphAnalyzer
 
     private async Task<long?> FindOrCreateTargetSymbolAsync(ISymbol symbol, long solutionId)
     {
+        // Check if symbol has source code in the solution
+        var location = symbol.Locations.FirstOrDefault();
+        var filePath = location?.SourceTree?.FilePath;
+
+        // Skip external symbols - no source file means BCL/NuGet/external
+        if (string.IsNullOrEmpty(filePath))
+            return null;
+
         var qualifiedName = GetQualifiedName(symbol);
 
         // Check cache first
@@ -380,9 +388,7 @@ public sealed class GraphAnalyzer
             return existing.Id;
         }
 
-        // Create placeholder for external symbols
-        var location = symbol.Locations.FirstOrDefault();
-        var filePath = location?.SourceTree?.FilePath ?? "external";
+        // Create new symbol record for solution code
         var line = location?.GetLineSpan().StartLinePosition.Line + 1 ?? 0;
         var column = location?.GetLineSpan().StartLinePosition.Character + 1 ?? 0;
 

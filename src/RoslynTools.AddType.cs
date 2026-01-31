@@ -7,7 +7,7 @@ public static partial class RoslynTools
 {
     private static readonly string[] definitionArray6 = ["class", "interface", "struct", "record", "enum"];
     private static readonly string[] definitionArray7 = ["public", "internal", "private", "protected"];
-    private static readonly string[] definitionArray8 = ["solutionPath", "projectName", "typeName"];
+    private static readonly string[] definitionArray8 = ["projectName", "typeName"];
 
     /// <summary>
     /// Creates a new type (class, interface, struct, record, enum) in a project.
@@ -98,10 +98,10 @@ public static partial class RoslynTools
     /// </summary>
     private static async Task<object> HandleAddTypeAsync(JsonObject? args)
     {
-        if (!TryGetRequiredString(args, "solutionPath", out var solutionPath, out var error))
-            return error!;
+        var (solutionPath, solutionError) = GetSolutionPathOrError();
+        if (solutionError != null) return solutionError;
 
-        if (!TryGetRequiredString(args, "projectName", out var projectName, out error))
+        if (!TryGetRequiredString(args, "projectName", out var projectName, out var error))
             return error!;
 
         if (!TryGetRequiredString(args, "typeName", out var typeName, out error))
@@ -117,7 +117,7 @@ public static partial class RoslynTools
         var isStatic = GetOptionalBool(args, "isStatic", false);
 
         var result = await SolutionAnalyzerService.AddTypeAsync(
-            solutionPath, projectName, typeName, typeKind, ns, folder,
+            solutionPath!, projectName, typeName, typeKind, ns, folder,
             accessibility, baseTypes, isPartial, isSealed, isStatic);
 
         return CreateSuccessResponse(result, !result.Success);

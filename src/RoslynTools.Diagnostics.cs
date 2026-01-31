@@ -5,7 +5,7 @@ namespace RoslynMcpServer;
 public static partial class RoslynTools
 {
     private static readonly string[] definitionArray15 = new[] { "all", "error", "warning", "info" };
-    private static readonly string[] definitionArray16 = new[] { "solutionPath" };
+    private static readonly string[] definitionArray16 = Array.Empty<string>();
 
     /// <summary>
     /// Gets compilation diagnostics (warnings/errors) from a solution.
@@ -67,19 +67,8 @@ public static partial class RoslynTools
             },
             async args =>
             {
-                var solutionPath = args?["solutionPath"]?.GetValue<string>();
-
-                if (string.IsNullOrWhiteSpace(solutionPath))
-                {
-                    return new
-                    {
-                        content = new[]
-                        {
-                            new { type = "text", text = "Error: solutionPath is required" }
-                        },
-                        isError = true
-                    };
-                }
+                var (solutionPath, solutionError) = GetSolutionPathOrError();
+                if (solutionError != null) return solutionError;
 
                 var diagnosticId = args?["diagnosticId"]?.GetValue<string>();
                 var severityFilter = args?["severityFilter"]?.GetValue<string>();
@@ -88,7 +77,7 @@ public static partial class RoslynTools
                 var offset = args?["offset"]?.GetValue<int>() ?? 0;
 
                 var result = await SolutionAnalyzerService.GetDiagnosticsAsync(
-                    solutionPath,
+                    solutionPath!,
                     diagnosticId,
                     severityFilter,
                     projectFilter,

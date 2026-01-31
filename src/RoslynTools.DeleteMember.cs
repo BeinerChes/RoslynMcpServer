@@ -5,7 +5,7 @@ namespace RoslynMcpServer;
 public static partial class RoslynTools
 {
     private static readonly string[] definitionArray13 = new[] { "method", "property", "field" };
-    private static readonly string[] definitionArray14 = new[] { "solutionPath", "typeName", "memberName" };
+    private static readonly string[] definitionArray14 = new[] { "typeName", "memberName" };
 
     /// <summary>
     /// Deletes a member (method, property, field) from a type.
@@ -60,23 +60,13 @@ public static partial class RoslynTools
             },
             async args =>
             {
-                var solutionPath = args?["solutionPath"]?.GetValue<string>();
+                var (solutionPath, solutionError) = GetSolutionPathOrError();
+                if (solutionError != null) return solutionError;
+
                 var typeName = args?["typeName"]?.GetValue<string>();
                 var memberName = args?["memberName"]?.GetValue<string>();
                 var memberKind = args?["memberKind"]?.GetValue<string>();
                 var parameterTypes = args?["parameterTypes"]?.GetValue<string>();
-
-                if (string.IsNullOrWhiteSpace(solutionPath))
-                {
-                    return new
-                    {
-                        content = new[]
-                        {
-                            new { type = "text", text = "Error: solutionPath is required" }
-                        },
-                        isError = true
-                    };
-                }
 
                 if (string.IsNullOrWhiteSpace(typeName))
                 {
@@ -103,7 +93,7 @@ public static partial class RoslynTools
                 }
 
                 var result = await SolutionAnalyzerService.DeleteMemberAsync(
-                    solutionPath,
+                    solutionPath!,
                     typeName,
                     memberName,
                     memberKind,

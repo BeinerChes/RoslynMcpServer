@@ -39,19 +39,10 @@ public static partial class RoslynTools
             },
             async args =>
             {
-                var solutionPath = args?["solutionPath"]?.GetValue<string>();
+                var (solutionPath, solutionError) = GetSolutionPathOrError();
+                if (solutionError != null) return solutionError;
 
-                if (string.IsNullOrWhiteSpace(solutionPath))
-                {
-                    return CreateErrorResponse("Error: solutionPath is required");
-                }
-
-                if (!File.Exists(solutionPath))
-                {
-                    return CreateErrorResponse($"Error: Solution file not found: {solutionPath}");
-                }
-
-                var result = await GetGraphStatusAsync(solutionPath);
+                var result = await GetGraphStatusAsync(solutionPath!);
                 return CreateJsonResponse(result);
             });
     }
@@ -97,21 +88,13 @@ public static partial class RoslynTools
             },
             async args =>
             {
-                var solutionPath = args?["solutionPath"]?.GetValue<string>();
+                var (solutionPath, solutionError) = GetSolutionPathOrError();
+                if (solutionError != null) return solutionError;
+
                 var incremental = args?["incremental"]?.GetValue<bool>() ?? true;
                 var projectFilter = args?["projectFilter"]?.GetValue<string>();
 
-                if (string.IsNullOrWhiteSpace(solutionPath))
-                {
-                    return CreateErrorResponse("Error: solutionPath is required");
-                }
-
-                if (!File.Exists(solutionPath))
-                {
-                    return CreateErrorResponse($"Error: Solution file not found: {solutionPath}");
-                }
-
-                var result = await AnalyzeGraphAsync(solutionPath, incremental, projectFilter);
+                var result = await AnalyzeGraphAsync(solutionPath!, incremental, projectFilter);
                 return CreateJsonResponse(result, !result.Success);
             });
     }
@@ -165,22 +148,19 @@ public static partial class RoslynTools
             },
             async args =>
             {
-                var solutionPath = args?["solutionPath"]?.GetValue<string>();
+                var (solutionPath, solutionError) = GetSolutionPathOrError();
+                if (solutionError != null) return solutionError;
+
                 var symbolName = args?["symbolName"]?.GetValue<string>();
                 var direction = args?["direction"]?.GetValue<string>() ?? "both";
                 var maxDepth = args?["maxDepth"]?.GetValue<int>() ?? 3;
-
-                if (string.IsNullOrWhiteSpace(solutionPath))
-                {
-                    return CreateErrorResponse("Error: solutionPath is required");
-                }
 
                 if (string.IsNullOrWhiteSpace(symbolName))
                 {
                     return CreateErrorResponse("Error: symbolName is required");
                 }
 
-                var result = await QueryGraphAsync(solutionPath, symbolName, direction, maxDepth);
+                var result = await QueryGraphAsync(solutionPath!, symbolName, direction, maxDepth);
                 return CreateJsonResponse(result, !result.Success);
             });
     }
@@ -287,10 +267,10 @@ public static partial class RoslynTools
         };
     }
 
-    private static readonly string[] definitionArray25 = new[] { "solutionPath", "symbolName" };
+    private static readonly string[] definitionArray25 = new[] { "symbolName" };
     private static readonly string[] definitionArray24 = new[] { "callers", "callees", "both" };
-    private static readonly string[] definitionArray23 = new[] { "solutionPath" };
-    private static readonly string[] definitionArray22 = new[] { "solutionPath" };
+    private static readonly string[] definitionArray23 = Array.Empty<string>();
+    private static readonly string[] definitionArray22 = Array.Empty<string>();
 
     private static async Task<GraphQueryResult> QueryGraphAsync(
         string solutionPath, string symbolName, string direction, int maxDepth)
@@ -317,6 +297,9 @@ public static partial class RoslynTools
                 Error = "Solution not found in graph database."
             };
         }
+
+        // Get solution directory for relative paths (Issue #115)
+        var solutionDir = Path.GetDirectoryName(solutionPath) ?? "";
 
         // Use FindSymbolAsync for partial name matching (Issue #33)
         var searchResult = await db.FindSymbolAsync(solution.Id, symbolName);
@@ -389,7 +372,7 @@ public static partial class RoslynTools
         var result = new GraphQueryResult
         {
             Success = true,
-            Symbol = ToGraphSymbolEntry(symbol),
+            Symbol = ToGraphSymbolEntry(symbol, solutionDir),
             StaleFilesRefreshed = refreshedFiles.Count,
             RefreshedFiles = refreshedFiles.Count > 0 ? refreshedFiles : null
         };
@@ -399,7 +382,7 @@ public static partial class RoslynTools
             var callers = refreshedFiles.Count > 0
                 ? await db.GetRecursiveCallersAsync(symbol.Id, maxDepth)
                 : preliminaryCallers;
-            result.Callers = callers.Select(ToGraphSymbolEntry).ToList();
+            result.Callers = callers.Select(s => ToGraphSymbolEntry(s, solutionDir)).ToList();
         }
 
         if (direction is "callees" or "both")
@@ -407,7 +390,7 @@ public static partial class RoslynTools
             var callees = refreshedFiles.Count > 0
                 ? await db.GetRecursiveCalleesAsync(symbol.Id, maxDepth)
                 : preliminaryCallees;
-            result.Callees = callees.Select(ToGraphSymbolEntry).ToList();
+            result.Callees = callees.Select(s => ToGraphSymbolEntry(s, solutionDir)).ToList();
         }
 
         return result;
@@ -416,12 +399,12 @@ public static partial class RoslynTools
     /// <summary>
     /// Converts a SymbolRecord to a GraphSymbolEntry.
     /// </summary>
-    private static GraphSymbolEntry ToGraphSymbolEntry(SymbolRecord symbol) => new()
+    private static GraphSymbolEntry ToGraphSymbolEntry(SymbolRecord symbol, string solutionDir) => new()
     {
         Name = symbol.Name,
         QualifiedName = symbol.QualifiedName,
         Kind = symbol.Kind.ToString(),
-        FilePath = symbol.FilePath,
+        FilePath = GetRelativePath(symbol.FilePath, solutionDir),
         Line = symbol.Line
     };
 

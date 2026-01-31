@@ -4,7 +4,7 @@ namespace RoslynMcpServer;
 
 public static partial class RoslynTools
 {
-    private static readonly string[] definitionArray27 = new[] { "solutionPath", "typeName", "methodName" };
+    private static readonly string[] definitionArray27 = new[] { "typeName", "methodName" };
 
     /// <summary>
     /// Gets the full source code of a method including its body.
@@ -52,22 +52,12 @@ public static partial class RoslynTools
             },
             async args =>
             {
-                var solutionPath = args?["solutionPath"]?.GetValue<string>();
+                var (solutionPath, solutionError) = GetSolutionPathOrError();
+                if (solutionError != null) return solutionError;
+
                 var typeName = args?["typeName"]?.GetValue<string>();
                 var methodName = args?["methodName"]?.GetValue<string>();
                 var parameterTypes = args?["parameterTypes"]?.GetValue<string>();
-
-                if (string.IsNullOrWhiteSpace(solutionPath))
-                {
-                    return new
-                    {
-                        content = new[]
-                        {
-                            new { type = "text", text = "Error: solutionPath is required" }
-                        },
-                        isError = true
-                    };
-                }
 
                 if (string.IsNullOrWhiteSpace(typeName))
                 {
@@ -94,14 +84,14 @@ public static partial class RoslynTools
                 }
 
                 var result = await SolutionAnalyzerService.GetMethodBodyAsync(
-                    solutionPath,
+                    solutionPath!,
                     typeName,
                     methodName,
                     parameterTypes);
 
                 // Track for visualization sync
                 if (result.Success)
-                    LastSymbolTracker.Track(solutionPath, $"{typeName}.{methodName}", "method");
+                    LastSymbolTracker.Track(solutionPath!, $"{typeName}.{methodName}", "method");
 
                 // Fetch related knowledge entries
                 List<object>? knowledge = null;
@@ -109,7 +99,7 @@ public static partial class RoslynTools
                 {
                     try
                     {
-                        var db = await GetKnowledgeDatabaseAsync(solutionPath);
+                        var db = await GetKnowledgeDatabaseAsync(solutionPath!);
                         // Use fully qualified type name from result
                         var fullyQualifiedSymbol = $"{result.TypeName}.{methodName}";
                         var entries = await db.GetEntriesForSymbolAsync(fullyQualifiedSymbol);
