@@ -182,13 +182,26 @@ static async Task InitializeProject()
     }
 
     Console.WriteLine();
-    Console.WriteLine("Project initialized! Next steps:");
+
+    // Ask about optional features
+    Console.Write("Enable hooks? (suggests Roslyn tools for C# files) [y/N]: ");
+    var enableHooks = Console.ReadLine()?.Trim().ToLowerInvariant() == "y";
+    if (enableHooks)
+    {
+        EnableHooks();
+    }
+
+    Console.Write("Enable skills? (adds /architect command) [y/N]: ");
+    var enableSkills = Console.ReadLine()?.Trim().ToLowerInvariant() == "y";
+    if (enableSkills)
+    {
+        EnableSkills();
+    }
+
+    Console.WriteLine();
+    Console.WriteLine("Done! Next steps:");
     Console.WriteLine("  1. Start Claude Code: claude");
     Console.WriteLine("  2. Verify connection: /mcp");
-    Console.WriteLine();
-    Console.WriteLine("Optional:");
-    Console.WriteLine("  roslyn-mcp --enable-hooks   # Suggest Roslyn tools");
-    Console.WriteLine("  roslyn-mcp --enable-skills  # Add /architect skill");
 }
 
 static void EnableHooks()
