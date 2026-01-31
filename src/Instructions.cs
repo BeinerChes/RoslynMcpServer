@@ -32,15 +32,11 @@ public static class Instructions
     {
         private static readonly string TopicsPath = Path.Combine(BasePath, "Topics");
 
-        public static string[] Available => ["code", "git", "plan", "tdd", "pre-pr", "tools"];
+        public static string[] Available => ["git", "plan", "tools"];
 
         public static string? Get(string topicName)
         {
-            var name = topicName.ToLowerInvariant() switch
-            {
-                "pre-pr" or "prepr" or "pr" => "pre-pr",
-                _ => topicName.ToLowerInvariant()
-            };
+            var name = topicName.ToLowerInvariant();
 
             if (!Available.Contains(name))
                 return null;
