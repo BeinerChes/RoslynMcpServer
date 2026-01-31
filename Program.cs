@@ -163,6 +163,24 @@ static async Task InitializeProject()
         Console.WriteLine($"Created: CLAUDE.md");
     }
 
+    // Add .roslyn-mcp/ to .gitignore if not already there
+    var gitignorePath = Path.Combine(currentDir, ".gitignore");
+    var gitignoreEntry = ".roslyn-mcp/";
+    if (File.Exists(gitignorePath))
+    {
+        var gitignoreContent = await File.ReadAllTextAsync(gitignorePath);
+        if (!gitignoreContent.Contains(gitignoreEntry))
+        {
+            await File.AppendAllTextAsync(gitignorePath, $"\n# Roslyn MCP Server (local install)\n{gitignoreEntry}\n");
+            Console.WriteLine($"Updated: .gitignore (added {gitignoreEntry})");
+        }
+    }
+    else
+    {
+        await File.WriteAllTextAsync(gitignorePath, $"# Roslyn MCP Server (local install)\n{gitignoreEntry}\n");
+        Console.WriteLine($"Created: .gitignore");
+    }
+
     Console.WriteLine();
     Console.WriteLine("Project initialized! Next steps:");
     Console.WriteLine("  1. Start Claude Code: claude");
