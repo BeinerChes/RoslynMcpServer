@@ -22,11 +22,6 @@ public static partial class RoslynTools
                     type = "object",
                     properties = new
                     {
-                        solutionPath = new
-                        {
-                            type = "string",
-                            description = "Absolute path to the .sln or .slnx solution file"
-                        },
                         typeName = new
                         {
                             type = "string",
@@ -36,7 +31,7 @@ public static partial class RoslynTools
                         {
                             type = "string",
                             description = "Filter by member kind: 'all', 'methods', 'properties', 'fields', 'events', 'constructors'. Default: 'all'",
-                            @enum = definitionArray32
+                            @enum = new[] { "all", "methods", "properties", "fields", "events", "constructors" }
                         },
                         includeInherited = new
                         {
@@ -49,7 +44,7 @@ public static partial class RoslynTools
                             description = "Return minimal fields only (name, kind, signature). Default: true. Set to false for detailed info (filePath, line, accessibility, isStatic, etc.)"
                         }
                     },
-                    required = definitionArray33
+                    required = new[] { "typeName" }
                 },
                 Annotations = new ToolAnnotations
                 {

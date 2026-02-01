@@ -24,11 +24,6 @@ public static partial class RoslynTools
                     type = "object",
                     properties = new
                     {
-                        solutionPath = new
-                        {
-                            type = "string",
-                            description = "Absolute path to the .sln or .slnx solution file"
-                        },
                         projectName = new
                         {
                             type = "string",
@@ -43,7 +38,7 @@ public static partial class RoslynTools
                         {
                             type = "string",
                             description = "Kind of type to create: 'class', 'interface', 'struct', 'record', 'enum'. Default: 'class'",
-                            @enum = definitionArray6
+                            @enum = new[] { "class", "interface", "struct", "record", "enum" }
                         },
                         @namespace = new
                         {
@@ -59,7 +54,7 @@ public static partial class RoslynTools
                         {
                             type = "string",
                             description = "Access modifier: 'public', 'internal', 'private', 'protected'. Default: 'public'",
-                            @enum = definitionArray7
+                            @enum = new[] { "public", "internal", "private", "protected" }
                         },
                         baseTypes = new
                         {
@@ -82,7 +77,7 @@ public static partial class RoslynTools
                             description = "Create as static (classes only). Default: false"
                         }
                     },
-                    required = definitionArray8
+                    required = new[] { "projectName", "typeName" }
                 },
                 Annotations = new ToolAnnotations
                 {

@@ -23,11 +23,6 @@ public static partial class RoslynTools
                     type = "object",
                     properties = new
                     {
-                        solutionPath = new
-                        {
-                            type = "string",
-                            description = "Absolute path to the .sln or .slnx solution file"
-                        },
                         typeName = new
                         {
                             type = "string",
@@ -42,7 +37,7 @@ public static partial class RoslynTools
                         {
                             type = "string",
                             description = "Kind of member: 'method', 'property', 'field'. Optional - used to disambiguate when multiple members have the same name.",
-                            @enum = definitionArray13
+                            @enum = new[] { "method", "property", "field" }
                         },
                         parameterTypes = new
                         {
@@ -50,7 +45,7 @@ public static partial class RoslynTools
                             description = "Parameter types for method overloads, e.g. 'string, int'. Required if multiple method overloads exist."
                         }
                     },
-                    required = definitionArray14
+                    required = new[] { "typeName", "memberName" }
                 },
                 Annotations = new ToolAnnotations
                 {

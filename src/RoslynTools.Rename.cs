@@ -19,11 +19,6 @@ public static partial class RoslynTools
                     type = "object",
                     properties = new
                     {
-                        solutionPath = new
-                        {
-                            type = "string",
-                            description = "Absolute path to the .sln or .slnx solution file"
-                        },
                         filePath = new
                         {
                             type = "string",
@@ -47,7 +42,7 @@ public static partial class RoslynTools
                             description = "The new name for the symbol"
                         }
                     },
-                    required = definitionArray29
+                    required = new[] { "filePath", "line", "column", "newName" }
                 },
                 Annotations = new ToolAnnotations
                 {

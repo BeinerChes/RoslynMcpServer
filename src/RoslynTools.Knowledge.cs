@@ -45,11 +45,6 @@ public static partial class RoslynTools
                     type = "object",
                     properties = new
                     {
-                        solutionPath = new
-                        {
-                            type = "string",
-                            description = "Absolute path to the .sln or .slnx solution file"
-                        },
                         category = new
                         {
                             type = "string",
@@ -86,7 +81,7 @@ public static partial class RoslynTools
                             maximum = 1.0
                         }
                     },
-                    required = definitionArrayKnowledge
+                    required = new[] { "category", "title", "content" }
                 },
                 Annotations = new ToolAnnotations
                 {
@@ -177,11 +172,6 @@ public static partial class RoslynTools
                     type = "object",
                     properties = new
                     {
-                        solutionPath = new
-                        {
-                            type = "string",
-                            description = "Absolute path to the .sln or .slnx solution file"
-                        },
                         query = new
                         {
                             type = "string",
@@ -266,11 +256,6 @@ public static partial class RoslynTools
                     type = "object",
                     properties = new
                     {
-                        solutionPath = new
-                        {
-                            type = "string",
-                            description = "Absolute path to the .sln or .slnx solution file"
-                        },
                         category = new
                         {
                             type = "string",
@@ -361,11 +346,6 @@ public static partial class RoslynTools
                     type = "object",
                     properties = new
                     {
-                        solutionPath = new
-                        {
-                            type = "string",
-                            description = "Absolute path to the .sln or .slnx solution file"
-                        },
                         id = new
                         {
                             type = "integer",
@@ -430,11 +410,6 @@ public static partial class RoslynTools
                     type = "object",
                     properties = new
                     {
-                        solutionPath = new
-                        {
-                            type = "string",
-                            description = "Absolute path to the .sln or .slnx solution file"
-                        },
                         id = new
                         {
                             type = "integer",
@@ -508,11 +483,6 @@ public static partial class RoslynTools
                     type = "object",
                     properties = new
                     {
-                        solutionPath = new
-                        {
-                            type = "string",
-                            description = "Absolute path to the .sln or .slnx solution file"
-                        },
                         symbolName = new
                         {
                             type = "string",

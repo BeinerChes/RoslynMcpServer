@@ -207,15 +207,8 @@ public static partial class RoslynTools
                 InputSchema = new
                 {
                     type = "object",
-                    properties = new
-                    {
-                        solutionPath = new
-                        {
-                            type = "string",
-                            description = "Absolute path to the .sln or .slnx solution file"
-                        }
-                    },
-                    required = definitionArray12
+                    properties = new { },
+                    required = Array.Empty<string>()
                 },
                 Annotations = new ToolAnnotations
                 {
@@ -225,21 +218,10 @@ public static partial class RoslynTools
             },
             async args =>
             {
-                var solutionPath = args?["solutionPath"]?.GetValue<string>();
+                var (solutionPath, solutionError) = GetSolutionPathOrError();
+                if (solutionError != null) return solutionError;
 
-                if (string.IsNullOrWhiteSpace(solutionPath))
-                {
-                    return new
-                    {
-                        content = new[]
-                        {
-                            new { type = "text", text = "Error: solutionPath is required" }
-                        },
-                        isError = true
-                    };
-                }
-
-                var result = await _analyzerService!.GetProjectsInBuildOrderAsync(solutionPath);
+                var result = await _analyzerService!.GetProjectsInBuildOrderAsync(solutionPath!);
 
                 return new
                 {

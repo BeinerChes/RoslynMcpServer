@@ -21,15 +21,8 @@ public static partial class RoslynTools
                 InputSchema = new
                 {
                     type = "object",
-                    properties = new
-                    {
-                        solutionPath = new
-                        {
-                            type = "string",
-                            description = "Absolute path to the .sln or .slnx solution file"
-                        }
-                    },
-                    required = definitionArray22
+                    properties = new { },
+                    required = Array.Empty<string>()
                 },
                 Annotations = new ToolAnnotations
                 {
@@ -81,11 +74,6 @@ public static partial class RoslynTools
                     type = "object",
                     properties = new
                     {
-                        solutionPath = new
-                        {
-                            type = "string",
-                            description = "Absolute path to the .sln or .slnx solution file"
-                        },
                         incremental = new
                         {
                             type = "boolean",
@@ -97,7 +85,7 @@ public static partial class RoslynTools
                             description = "Optional: filter by project name (partial match)"
                         }
                     },
-                    required = definitionArray23
+                    required = Array.Empty<string>()
                 },
                 Annotations = new ToolAnnotations
                 {
@@ -147,11 +135,6 @@ public static partial class RoslynTools
                     type = "object",
                     properties = new
                     {
-                        solutionPath = new
-                        {
-                            type = "string",
-                            description = "Absolute path to the .sln or .slnx solution file"
-                        },
                         symbolName = new
                         {
                             type = "string",
@@ -161,7 +144,7 @@ public static partial class RoslynTools
                         {
                             type = "string",
                             description = "Query direction: 'callers', 'callees', or 'both'. Default: 'both'",
-                            @enum = definitionArray24
+                            @enum = new[] { "callers", "callees", "both" }
                         },
                         maxDepth = new
                         {
@@ -171,7 +154,7 @@ public static partial class RoslynTools
                             maximum = 100
                         }
                     },
-                    required = definitionArray25
+                    required = new[] { "symbolName" }
                 },
                 Annotations = new ToolAnnotations
                 {

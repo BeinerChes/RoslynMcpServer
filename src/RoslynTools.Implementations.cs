@@ -21,11 +21,6 @@ public static partial class RoslynTools
                     type = "object",
                     properties = new
                     {
-                        solutionPath = new
-                        {
-                            type = "string",
-                            description = "Absolute path to the .sln or .slnx solution file"
-                        },
                         typeName = new
                         {
                             type = "string",
@@ -44,7 +39,7 @@ public static partial class RoslynTools
                             maximum = 1000
                         }
                     },
-                    required = definitionArray26
+                    required = new[] { "typeName" }
                 },
                 Annotations = new ToolAnnotations
                 {
