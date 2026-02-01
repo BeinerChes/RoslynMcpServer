@@ -254,8 +254,8 @@ public sealed class GraphAnalyzer
 
         foreach (var node in body.DescendantNodes())
         {
-            var edge = await AnalyzeNodeAsync(node, fromSymbolId, solutionId, semanticModel);
-            if (edge != null) edges.Add(edge);
+            var nodeEdges = await AnalyzeNodeAsync(node, fromSymbolId, solutionId, semanticModel);
+            edges.AddRange(nodeEdges);
         }
 
         if (edges.Count > 0)
@@ -270,8 +270,8 @@ public sealed class GraphAnalyzer
 
         foreach (var node in expr.DescendantNodesAndSelf())
         {
-            var edge = await AnalyzeNodeAsync(node, fromSymbolId, solutionId, semanticModel);
-            if (edge != null) edges.Add(edge);
+            var nodeEdges = await AnalyzeNodeAsync(node, fromSymbolId, solutionId, semanticModel);
+            edges.AddRange(nodeEdges);
         }
 
         if (edges.Count > 0)
@@ -280,43 +280,58 @@ public sealed class GraphAnalyzer
         }
     }
 
-    private async Task<EdgeRecord?> AnalyzeNodeAsync(SyntaxNode node, long fromSymbolId, long solutionId, SemanticModel semanticModel)
+    private async Task<List<EdgeRecord>> AnalyzeNodeAsync(SyntaxNode node, long fromSymbolId, long solutionId, SemanticModel semanticModel)
     {
         switch (node)
         {
             case InvocationExpressionSyntax invocation:
-                return await CreateEdgeForInvocationAsync(invocation, fromSymbolId, solutionId, semanticModel);
+                return await CreateEdgesForInvocationAsync(invocation, fromSymbolId, solutionId, semanticModel);
 
             case MemberAccessExpressionSyntax memberAccess:
-                return await CreateEdgeForMemberAccessAsync(memberAccess, fromSymbolId, solutionId, semanticModel);
+                return await CreateEdgesForMemberAccessAsync(memberAccess, fromSymbolId, solutionId, semanticModel);
 
             case IdentifierNameSyntax identifier:
-                return await CreateEdgeForIdentifierAsync(identifier, fromSymbolId, solutionId, semanticModel);
+                var edge = await CreateEdgeForIdentifierAsync(identifier, fromSymbolId, solutionId, semanticModel);
+                return edge != null ? [edge] : [];
         }
 
-        return null;
+        return [];
     }
 
-    private async Task<EdgeRecord?> CreateEdgeForInvocationAsync(
+    private async Task<List<EdgeRecord>> CreateEdgesForInvocationAsync(
         InvocationExpressionSyntax invocation, long fromSymbolId, long solutionId, SemanticModel semanticModel)
     {
+        var edges = new List<EdgeRecord>();
         var symbolInfo = semanticModel.GetSymbolInfo(invocation);
+
         if (symbolInfo.Symbol is IMethodSymbol method)
         {
+            // Create edge to the called method (interface or concrete)
             var targetId = await FindOrCreateTargetSymbolAsync(method, solutionId);
             if (targetId.HasValue)
             {
-                return new EdgeRecord { FromSymbolId = fromSymbolId, ToSymbolId = targetId.Value, EdgeType = EdgeType.Calls };
+                edges.Add(new EdgeRecord { FromSymbolId = fromSymbolId, ToSymbolId = targetId.Value, EdgeType = EdgeType.Calls });
+            }
+
+            // If calling an interface method, also create edges to all implementations
+            if (method.ContainingType?.TypeKind == TypeKind.Interface)
+            {
+                var implementationEdges = await CreateEdgesForInterfaceImplementationsAsync(
+                    method, fromSymbolId, solutionId, semanticModel);
+                edges.AddRange(implementationEdges);
             }
         }
-        return null;
+
+        return edges;
     }
 
-    private async Task<EdgeRecord?> CreateEdgeForMemberAccessAsync(
+    private async Task<List<EdgeRecord>> CreateEdgesForMemberAccessAsync(
         MemberAccessExpressionSyntax memberAccess, long fromSymbolId, long solutionId, SemanticModel semanticModel)
     {
+        var edges = new List<EdgeRecord>();
+
         // Skip if this is part of an invocation (handled separately)
-        if (memberAccess.Parent is InvocationExpressionSyntax) return null;
+        if (memberAccess.Parent is InvocationExpressionSyntax) return edges;
 
         var symbolInfo = semanticModel.GetSymbolInfo(memberAccess);
         var symbol = symbolInfo.Symbol;
@@ -326,7 +341,15 @@ public sealed class GraphAnalyzer
             var targetId = await FindOrCreateTargetSymbolAsync(property, solutionId);
             if (targetId.HasValue)
             {
-                return new EdgeRecord { FromSymbolId = fromSymbolId, ToSymbolId = targetId.Value, EdgeType = EdgeType.Accesses };
+                edges.Add(new EdgeRecord { FromSymbolId = fromSymbolId, ToSymbolId = targetId.Value, EdgeType = EdgeType.Accesses });
+            }
+
+            // If accessing an interface property, also create edges to all implementations
+            if (property.ContainingType?.TypeKind == TypeKind.Interface)
+            {
+                var implementationEdges = await CreateEdgesForInterfacePropertyImplementationsAsync(
+                    property, fromSymbolId, solutionId, semanticModel);
+                edges.AddRange(implementationEdges);
             }
         }
         else if (symbol is IFieldSymbol field)
@@ -335,23 +358,24 @@ public sealed class GraphAnalyzer
             if (targetId.HasValue)
             {
                 var edgeType = IsWriteContext(memberAccess) ? EdgeType.Writes : EdgeType.Reads;
-                return new EdgeRecord { FromSymbolId = fromSymbolId, ToSymbolId = targetId.Value, EdgeType = edgeType };
+                edges.Add(new EdgeRecord { FromSymbolId = fromSymbolId, ToSymbolId = targetId.Value, EdgeType = edgeType });
             }
         }
 
-        return null;
+        return edges;
     }
 
     private async Task<EdgeRecord?> CreateEdgeForIdentifierAsync(
         IdentifierNameSyntax identifier, long fromSymbolId, long solutionId, SemanticModel semanticModel)
     {
-        // Skip if part of member access or invocation
+        // Skip if part of member access or invocation (those are handled separately)
         if (identifier.Parent is MemberAccessExpressionSyntax || identifier.Parent is InvocationExpressionSyntax)
             return null;
 
         var symbolInfo = semanticModel.GetSymbolInfo(identifier);
         var symbol = symbolInfo.Symbol;
 
+        // Handle fields
         if (symbol is IFieldSymbol field && !field.IsConst)
         {
             var targetId = await FindOrCreateTargetSymbolAsync(field, solutionId);
@@ -359,6 +383,27 @@ public sealed class GraphAnalyzer
             {
                 var edgeType = IsWriteContext(identifier) ? EdgeType.Writes : EdgeType.Reads;
                 return new EdgeRecord { FromSymbolId = fromSymbolId, ToSymbolId = targetId.Value, EdgeType = edgeType };
+            }
+        }
+
+        // Handle properties (for object initializers like: new Foo { Property = value })
+        if (symbol is IPropertySymbol property)
+        {
+            var targetId = await FindOrCreateTargetSymbolAsync(property, solutionId);
+            if (targetId.HasValue)
+            {
+                var edgeType = IsWriteContext(identifier) ? EdgeType.Writes : EdgeType.Accesses;
+                return new EdgeRecord { FromSymbolId = fromSymbolId, ToSymbolId = targetId.Value, EdgeType = edgeType };
+            }
+        }
+
+        // Handle method references (delegates/method groups like: server.AddTool("name", HandleFooAsync))
+        if (symbol is IMethodSymbol method)
+        {
+            var targetId = await FindOrCreateTargetSymbolAsync(method, solutionId);
+            if (targetId.HasValue)
+            {
+                return new EdgeRecord { FromSymbolId = fromSymbolId, ToSymbolId = targetId.Value, EdgeType = EdgeType.References };
             }
         }
 
@@ -497,5 +542,83 @@ public sealed class GraphAnalyzer
                 .Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
         }
         return absolutePath;
+    }
+
+
+    private async Task<List<EdgeRecord>> CreateEdgesForInterfaceImplementationsAsync(
+            IMethodSymbol interfaceMethod, long fromSymbolId, long solutionId, SemanticModel semanticModel)
+    {
+        var edges = new List<EdgeRecord>();
+        var interfaceType = interfaceMethod.ContainingType;
+        if (interfaceType == null) return edges;
+
+        // Find all types in the compilation that implement this interface
+        var compilation = semanticModel.Compilation;
+        foreach (var syntaxTree in compilation.SyntaxTrees)
+        {
+            var treeSemanticModel = compilation.GetSemanticModel(syntaxTree);
+            var root = await syntaxTree.GetRootAsync();
+
+            foreach (var typeDecl in root.DescendantNodes().OfType<TypeDeclarationSyntax>())
+            {
+                var typeSymbol = treeSemanticModel.GetDeclaredSymbol(typeDecl) as INamedTypeSymbol;
+                if (typeSymbol == null || typeSymbol.TypeKind == TypeKind.Interface) continue;
+
+                // Check if this type implements the interface
+                if (!typeSymbol.AllInterfaces.Contains(interfaceType, SymbolEqualityComparer.Default)) continue;
+
+                // Find the implementation of this interface method
+                var implementation = typeSymbol.FindImplementationForInterfaceMember(interfaceMethod);
+                if (implementation is IMethodSymbol implMethod)
+                {
+                    var targetId = await FindOrCreateTargetSymbolAsync(implMethod, solutionId);
+                    if (targetId.HasValue)
+                    {
+                        edges.Add(new EdgeRecord { FromSymbolId = fromSymbolId, ToSymbolId = targetId.Value, EdgeType = EdgeType.Calls });
+                    }
+                }
+            }
+        }
+
+        return edges;
+    }
+
+
+    private async Task<List<EdgeRecord>> CreateEdgesForInterfacePropertyImplementationsAsync(
+            IPropertySymbol interfaceProperty, long fromSymbolId, long solutionId, SemanticModel semanticModel)
+    {
+        var edges = new List<EdgeRecord>();
+        var interfaceType = interfaceProperty.ContainingType;
+        if (interfaceType == null) return edges;
+
+        // Find all types in the compilation that implement this interface
+        var compilation = semanticModel.Compilation;
+        foreach (var syntaxTree in compilation.SyntaxTrees)
+        {
+            var treeSemanticModel = compilation.GetSemanticModel(syntaxTree);
+            var root = await syntaxTree.GetRootAsync();
+
+            foreach (var typeDecl in root.DescendantNodes().OfType<TypeDeclarationSyntax>())
+            {
+                var typeSymbol = treeSemanticModel.GetDeclaredSymbol(typeDecl) as INamedTypeSymbol;
+                if (typeSymbol == null || typeSymbol.TypeKind == TypeKind.Interface) continue;
+
+                // Check if this type implements the interface
+                if (!typeSymbol.AllInterfaces.Contains(interfaceType, SymbolEqualityComparer.Default)) continue;
+
+                // Find the implementation of this interface property
+                var implementation = typeSymbol.FindImplementationForInterfaceMember(interfaceProperty);
+                if (implementation is IPropertySymbol implProperty)
+                {
+                    var targetId = await FindOrCreateTargetSymbolAsync(implProperty, solutionId);
+                    if (targetId.HasValue)
+                    {
+                        edges.Add(new EdgeRecord { FromSymbolId = fromSymbolId, ToSymbolId = targetId.Value, EdgeType = EdgeType.Accesses });
+                    }
+                }
+            }
+        }
+
+        return edges;
     }
 }

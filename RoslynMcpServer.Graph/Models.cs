@@ -75,7 +75,8 @@ public enum EdgeType
     Writes,
     Implements,
     Overrides,
-    Accesses
+    Accesses,
+    References  // Method group / delegate reference
 }
 
 /// <summary>

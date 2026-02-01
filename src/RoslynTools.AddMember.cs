@@ -386,4 +386,50 @@ public static partial class RoslynTools
 
         return result;
     }
+
+
+    private static async Task<Microsoft.CodeAnalysis.ISymbol?> FindSymbolByQualifiedNameAsync(
+            Microsoft.CodeAnalysis.Solution solution, string qualifiedName)
+    {
+        // Parse the qualified name to extract type and member
+        var lastDot = qualifiedName.LastIndexOf('.');
+        if (lastDot < 0) return null;
+
+        var memberName = qualifiedName.Substring(lastDot + 1);
+        var containingTypeName = qualifiedName.Substring(0, lastDot);
+
+        // Handle method parameters in qualified name (e.g., "Type.Method(param1, param2)")
+        var parenIndex = memberName.IndexOf('(');
+        if (parenIndex > 0)
+        {
+            memberName = memberName.Substring(0, parenIndex);
+        }
+
+        // Find the containing type first
+        foreach (var project in solution.Projects)
+        {
+            var compilation = await project.GetCompilationAsync();
+            if (compilation == null) continue;
+
+            // Try to find the type
+            var typeSymbol = compilation.GetTypeByMetadataName(containingTypeName);
+            if (typeSymbol == null)
+            {
+                // Try with nested type format
+                typeSymbol = compilation.GetTypeByMetadataName(containingTypeName.Replace('.', '+'));
+            }
+
+            if (typeSymbol != null)
+            {
+                // Find the member in the type
+                var members = typeSymbol.GetMembers(memberName);
+                if (members.Length > 0)
+                {
+                    return members[0]; // Return first match
+                }
+            }
+        }
+
+        return null;
+    }
 }
