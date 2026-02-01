@@ -1,22 +1,15 @@
 # CLAUDE.md - Instructions for Claude Code
 
-> **Note:** This file is for developing RoslynMcpServer itself. Other projects use the template at `Instructions/Templates/standard.md`.
+> **Note:** This file is for developing RoslynMcpServer itself. Other projects use `Instructions/Templates/CLAUDE.md`.
 
-## MANDATORY: Start Every Session with Plan Instructions
+## Session Start
 
-**Before doing anything else:**
-1. Find the solution file: `glob pattern "*.sln*"`
-2. Call `roslyn_get_instructions(topic: "plan")` and follow those instructions.
-
-## MANDATORY: Get Instructions Before Operations
-
-**Call `roslyn_get_instructions` with the appropriate topic before each operation:**
-
-| Before doing this... | Call with topic |
-|---------------------|-----------------|
-| Starting or resuming a task | `"plan"` |
-| Using any Roslyn tool | `"tools"` |
-| Making any code change | `"git"` |
+Call these at the start of each session:
+```
+roslyn_get_instructions(topic: "plan")
+roslyn_get_instructions(topic: "tools")
+roslyn_get_instructions(topic: "git")
+```
 
 ## IMPORTANT: Self-Referential Project
 
@@ -46,12 +39,12 @@ This project **uses itself** for development. There are TWO copies of hooks and 
 |-------------|-----------------|
 | New tool added | `Instructions/Topics/tools.md`, `README.md` (Available Tools table) |
 | Tool modified | `Instructions/Topics/tools.md`, `README.md` if signature changed |
-| New instruction topic | `Instructions/Topics/`, `Instructions.cs` (Available array) |
+| New instruction topic | Add `.md` file to `Instructions/Topics/` (auto-discovered) |
 | Workflow changed | `Instructions/Topics/git.md` or relevant topic file |
 | Hook added/modified | `.claude/hooks/` (edit), then sync to `Instructions/Hooks/` |
 | Skill added/modified | `.claude/skills/` (edit), then sync to `Instructions/Skills/` |
 
-**Note:** Templates (`CLAUDE_TEMPLATE.md`, `Instructions/Templates/*.md`) fetch instructions dynamically via `roslyn_get_instructions` - no updates needed for tool/workflow changes.
+**Note:** Template (`Instructions/Templates/CLAUDE.md`) fetches instructions dynamically via `roslyn_get_instructions` - no updates needed for tool/workflow changes.
 
 ## MANDATORY: Pre-Commit Sync Check
 

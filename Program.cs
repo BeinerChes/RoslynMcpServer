@@ -122,7 +122,7 @@ static async Task InitializeProject()
         Console.WriteLine($"Created: .mcp.json");
     }
 
-    // Create minimal CLAUDE.md
+    // Create CLAUDE.md from template
     var claudeMdPath = Path.Combine(currentDir, "CLAUDE.md");
     if (File.Exists(claudeMdPath))
     {
@@ -130,37 +130,17 @@ static async Task InitializeProject()
     }
     else
     {
-        var claudeMd = """
-            # CLAUDE.md - C# Development with Roslyn MCP
-
-            ## Use Roslyn Tools for C# Code
-
-            When working with C# code, prefer Roslyn MCP tools over text search:
-
-            | Instead of... | Use... |
-            |---------------|--------|
-            | `grep "MethodName"` | `roslyn_find_symbol` |
-            | Reading entire files | `roslyn_get_method_body` |
-            | Find/replace rename | `roslyn_rename_symbol` |
-
-            ## Available Tools
-
-            - `roslyn_find_symbol` - Find types, methods, properties
-            - `roslyn_get_callers` - Find all call sites
-            - `roslyn_get_type_members` - List class members
-            - `roslyn_get_method_body` - Get method source code
-            - `roslyn_rename_symbol` - Rename across solution
-            - `roslyn_get_diagnostics` - Get compiler errors/warnings
-
-            ## Build Commands
-
-            ```bash
-            dotnet build    # Build solution
-            dotnet test     # Run tests
-            ```
-            """;
-        await File.WriteAllTextAsync(claudeMdPath, claudeMd);
-        Console.WriteLine($"Created: CLAUDE.md");
+        var templatePath = Path.Combine(exeDir, "Instructions", "Templates", "CLAUDE.md");
+        if (File.Exists(templatePath))
+        {
+            var claudeMd = await File.ReadAllTextAsync(templatePath);
+            await File.WriteAllTextAsync(claudeMdPath, claudeMd);
+            Console.WriteLine($"Created: CLAUDE.md");
+        }
+        else
+        {
+            Console.Error.WriteLine($"Warning: Template not found at {templatePath}");
+        }
     }
 
     // Add .roslyn-mcp/ to .gitignore if not already there

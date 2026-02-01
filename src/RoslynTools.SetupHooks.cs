@@ -27,17 +27,17 @@ public static partial class RoslynTools
                         template = new
                         {
                             type = "string",
-                            description = "Template to use for CLAUDE.md. Default: 'standard'",
-                            @enum = definitionArray30
+                            description = "Template to use for CLAUDE.md. Default: 'claude'",
+                            @enum = Instructions.Templates.Available
                         }
                     },
-                    required = definitionArray31
+                    required = RequiredProjectPath
                 }
             },
             async args =>
             {
                 var projectPath = args?["projectPath"]?.GetValue<string>();
-                var template = args?["template"]?.GetValue<string>() ?? "standard";
+                var template = args?["template"]?.GetValue<string>() ?? "claude";
 
                 if (string.IsNullOrEmpty(projectPath))
                 {
@@ -262,8 +262,7 @@ public static partial class RoslynTools
         AppContext.BaseDirectory,
         "Instructions",
         "Hooks");
-    private static readonly string[] definitionArray30 = new[] { "standard" };
-    private static readonly string[] definitionArray31 = new[] { "projectPath" };
+    private static readonly string[] RequiredProjectPath = new[] { "projectPath" };
 
     private static string GetHookContent(string hookName)
     {

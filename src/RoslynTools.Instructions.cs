@@ -46,7 +46,7 @@ public static partial class RoslynTools
             },
             async args =>
             {
-                var templateName = args?["template"]?.GetValue<string>()?.ToLowerInvariant() ?? "standard";
+                var templateName = args?["template"]?.GetValue<string>()?.ToLowerInvariant() ?? "claude";
                 var template = Instructions.Templates.Get(templateName);
 
                 if (template == null)
