@@ -183,6 +183,9 @@ public static partial class RoslynTools
         var solution = await db.GetSolutionAsync(solutionPath);
         if (solution == null) return null;
 
+        // Ensure graph is fresh before querying (blocking)
+        var freshnessResult = await EnsureGraphFreshAsync(db, solution.Id, solutionPath);
+
         // Get the symbol's qualified name from Roslyn
         var roslynSolution = await SolutionAnalyzerService.LoadSolutionAsync(solutionPath);
         if (roslynSolution == null) return null;
@@ -194,37 +197,8 @@ public static partial class RoslynTools
         var symbol = await db.GetSymbolByQualifiedNameAsync(solution.Id, qualifiedName);
         if (symbol == null) return null;
 
-        // Check for stale files and refresh
+        // Get callers from fresh graph
         var callers = await db.GetCallersAsync(symbol.Id);
-        var filesToCheck = new HashSet<string> { symbol.FilePath };
-        foreach (var caller in callers)
-        {
-            if (!string.IsNullOrEmpty(caller.FilePath) && caller.FilePath != "external")
-                filesToCheck.Add(caller.FilePath);
-        }
-
-        var staleFiles = await db.GetStaleFilesAsync(solution.Id, filesToCheck);
-        var refreshedCount = 0;
-
-        if (staleFiles.Count > 0)
-        {
-            var analyzer = new GraphAnalyzer(db);
-            foreach (var staleFilePath in staleFiles)
-            {
-                var document = roslynSolution.Projects
-                    .SelectMany(p => p.Documents)
-                    .FirstOrDefault(d => d.FilePath == staleFilePath);
-
-                if (document != null)
-                {
-                    await analyzer.AnalyzeDocumentAsync(document, solution.Id);
-                    refreshedCount++;
-                }
-            }
-
-            // Re-query callers after refresh
-            callers = await db.GetCallersAsync(symbol.Id);
-        }
 
         // Apply filters
         var filteredCallers = callers.AsEnumerable();
@@ -268,8 +242,8 @@ public static partial class RoslynTools
             Symbol = qualifiedName,
             TotalCallers = totalCallers,
             ReturnedCount = paginatedCallers.Count,
-            Source = refreshedCount > 0 ? "graph+refresh" : "graph",
-            StaleFilesRefreshed = refreshedCount,
+            Source = freshnessResult.FilesReanalyzed > 0 ? "graph+refresh" : "graph",
+            StaleFilesRefreshed = freshnessResult.FilesReanalyzed,
             Callers = paginatedCallers
         };
     }

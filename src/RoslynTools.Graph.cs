@@ -4,7 +4,7 @@ using RoslynMcpServer.Graph;
 namespace RoslynMcpServer;
 
 /// <summary>
-/// Graph-related MCP tools for call graph analysis.
+/// Graph-related MCP tools for call graph analysis and queries.
 /// </summary>
 public static partial class RoslynTools
 {
@@ -13,6 +13,7 @@ public static partial class RoslynTools
     /// </summary>
     internal static void RegisterGraphStatusTool(McpServer server)
     {
+        // Test change v14
         server.RegisterTool(
             "roslyn_graph_status",
             new ToolDefinition
@@ -230,6 +231,9 @@ public static partial class RoslynTools
             };
         }
 
+        // Ensure graph is fresh before returning status (blocking)
+        var freshnessResult = await EnsureGraphFreshAsync(db, solution.Id, solutionPath);
+
         var symbolStats = await db.GetSymbolStatsAsync(solution.Id);
         var edgeStats = await db.GetEdgeStatsAsync(solution.Id);
 
@@ -240,7 +244,9 @@ public static partial class RoslynTools
             GraphExists = true,
             LastAnalyzed = solution.LastAnalyzed,
             SymbolStats = symbolStats,
-            EdgeStats = edgeStats
+            EdgeStats = edgeStats,
+            StaleFilesRefreshed = freshnessResult.FilesReanalyzed,
+            RefreshedFiles = freshnessResult.ReanalyzedFiles
         };
     }
 
@@ -252,6 +258,7 @@ public static partial class RoslynTools
 
         var solution = await db.GetOrCreateSolutionAsync(solutionPath);
         var analyzer = new GraphAnalyzer(db);
+        var solutionDir = Path.GetDirectoryName(solutionPath);
 
         // Load the Roslyn solution
         var roslynSolution = await SolutionAnalyzerService.LoadSolutionAsync(solutionPath);
@@ -281,7 +288,7 @@ public static partial class RoslynTools
                 if (document.FilePath.EndsWith(".g.cs") || document.FilePath.EndsWith(".designer.cs"))
                     continue;
 
-                await analyzer.AnalyzeDocumentAsync(document, solution.Id);
+                await analyzer.AnalyzeDocumentAsync(document, solution.Id, solutionDir);
                 documentsAnalyzed++;
             }
         }
@@ -334,24 +341,14 @@ public static partial class RoslynTools
             };
         }
 
+        // Ensure graph is fresh before querying (blocking)
+        var freshnessResult = await EnsureGraphFreshAsync(db, solution.Id, solutionPath);
+
         // Get solution directory for relative paths (Issue #115)
         var solutionDir = Path.GetDirectoryName(solutionPath) ?? "";
 
         // Use FindSymbolAsync for partial name matching (Issue #33)
         var searchResult = await db.FindSymbolAsync(solution.Id, symbolName);
-
-        // Issue #35: If not found, try Roslyn search and analyze stale files
-        if (searchResult.Symbol == null && _analyzerService != null)
-        {
-            var autoRefreshedFiles = await TryRefreshFilesForSymbolAsync(
-                db, solution.Id, solutionPath, symbolName);
-
-            if (autoRefreshedFiles.Count > 0)
-            {
-                // Retry graph search after refresh
-                searchResult = await db.FindSymbolAsync(solution.Id, symbolName);
-            }
-        }
 
         if (searchResult.Symbol == null)
         {
@@ -369,63 +366,23 @@ public static partial class RoslynTools
 
         var symbol = searchResult.Symbol;
 
-        // Collect all file paths to check for staleness
-        var filesToCheck = new HashSet<string> { symbol.FilePath };
-
-        // Get preliminary results to find all related files
-        var preliminaryCallers = direction is "callers" or "both"
-            ? await db.GetRecursiveCallersAsync(symbol.Id, maxDepth)
-            : new List<SymbolRecord>();
-        var preliminaryCallees = direction is "callees" or "both"
-            ? await db.GetRecursiveCalleesAsync(symbol.Id, maxDepth)
-            : new List<SymbolRecord>();
-
-        foreach (var c in preliminaryCallers.Concat(preliminaryCallees))
-        {
-            if (!string.IsNullOrEmpty(c.FilePath) && c.FilePath != "external")
-                filesToCheck.Add(c.FilePath);
-        }
-
-        // Check for stale files and refresh if needed
-        var staleFiles = await db.GetStaleFilesAsync(solution.Id, filesToCheck);
-        var refreshedFiles = await RefreshStaleFilesAsync(db, solution.Id, solutionPath, staleFiles);
-
-        // Re-query to get fresh results if any files were refreshed
-        if (refreshedFiles.Count > 0)
-        {
-            var refreshResult = await db.FindSymbolAsync(solution.Id, symbolName);
-            if (refreshResult.Symbol == null)
-            {
-                return new GraphQueryResult
-                {
-                    Success = false,
-                    Error = $"Symbol '{symbolName}' not found after refresh."
-                };
-            }
-            symbol = refreshResult.Symbol;
-        }
-
         var result = new GraphQueryResult
         {
             Success = true,
             Symbol = ToGraphSymbolEntry(symbol, solutionDir),
-            StaleFilesRefreshed = refreshedFiles.Count,
-            RefreshedFiles = refreshedFiles.Count > 0 ? refreshedFiles : null
+            StaleFilesRefreshed = freshnessResult.FilesReanalyzed,
+            RefreshedFiles = freshnessResult.ReanalyzedFiles
         };
 
         if (direction is "callers" or "both")
         {
-            var callers = refreshedFiles.Count > 0
-                ? await db.GetRecursiveCallersAsync(symbol.Id, maxDepth)
-                : preliminaryCallers;
+            var callers = await db.GetRecursiveCallersAsync(symbol.Id, maxDepth);
             result.Callers = callers.Select(s => ToGraphSymbolEntry(s, solutionDir)).ToList();
         }
 
         if (direction is "callees" or "both")
         {
-            var callees = refreshedFiles.Count > 0
-                ? await db.GetRecursiveCalleesAsync(symbol.Id, maxDepth)
-                : preliminaryCallees;
+            var callees = await db.GetRecursiveCalleesAsync(symbol.Id, maxDepth);
             result.Callees = callees.Select(s => ToGraphSymbolEntry(s, solutionDir)).ToList();
         }
 
@@ -584,6 +541,8 @@ public class GraphStatusResult
     public string? Message { get; set; }
     public SymbolStats? SymbolStats { get; set; }
     public EdgeStats? EdgeStats { get; set; }
+    public int StaleFilesRefreshed { get; set; }
+    public List<string>? RefreshedFiles { get; set; }
 }
 
 public class GraphAnalyzeResult

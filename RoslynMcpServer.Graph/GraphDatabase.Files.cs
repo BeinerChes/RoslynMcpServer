@@ -234,6 +234,17 @@ public sealed partial class GraphDatabase
     }
 
     /// <summary>
+    /// Computes SHA256 hash of text content (first 16 hex chars).
+    /// Use this when hashing in-memory content to ensure hash matches analyzed content.
+    /// </summary>
+    public static string ComputeContentHash(string content)
+    {
+        var bytes = System.Text.Encoding.UTF8.GetBytes(content);
+        var hash = SHA256.HashData(bytes);
+        return Convert.ToHexString(hash)[..16];
+    }
+
+    /// <summary>
     /// Creates a FileRecord for a file with current metadata.
     /// </summary>
     public static FileRecord CreateFileRecord(long solutionId, string filePath)

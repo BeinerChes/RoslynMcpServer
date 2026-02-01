@@ -289,11 +289,10 @@ public class GraphDatabaseSymbolTests : IAsyncLifetime
     }
 
     /// <summary>
-    /// Tests that UpdateSymbolStatusAsync updates the status.
-    /// Issue: #13
+    /// Tests that UpdateSymbolFileHashAsync updates the FileHash.
     /// </summary>
     [Fact]
-    public async Task UpdateSymbolStatusAsync_UpdatesStatus()
+    public async Task UpdateSymbolFileHashAsync_UpdatesFileHash()
     {
         // Arrange
         var symbol = new SymbolRecord
@@ -309,12 +308,12 @@ public class GraphDatabaseSymbolTests : IAsyncLifetime
         await _db.InsertSymbolAsync(symbol);
 
         // Act
-        await _db.UpdateSymbolStatusAsync(symbol.Id, SymbolStatus.Analyzed, "hash123");
+        await _db.UpdateSymbolFileHashAsync(symbol.Id, "hash123");
         var updated = await _db.GetSymbolByQualifiedNameAsync(_solution.Id, "A.DoWork");
 
         // Assert
         Assert.NotNull(updated);
-        Assert.Equal("hash123", updated.BodyHash);
+        Assert.Equal("hash123", updated.FileHash);
     }
 
     /// <summary>

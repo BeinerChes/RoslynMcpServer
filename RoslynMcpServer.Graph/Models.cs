@@ -1,7 +1,7 @@
 namespace RoslynMcpServer.Graph;
 
 /// <summary>
-/// Represents a .NET solution tracked in the graph database.
+/// Represents a .NET solution tracked in the call graph database.
 /// </summary>
 public sealed class SolutionRecord
 {
@@ -22,13 +22,11 @@ public sealed class SymbolRecord
     public required SymbolKind Kind { get; set; }
     public required string Name { get; set; }
     public required string QualifiedName { get; set; }
-    public required string FilePath { get; set; }
+    public required string FilePath { get; set; }  // Relative to solution directory
     public int Line { get; set; }
     public int Column { get; set; }
-    public string? BodyHash { get; set; }
-    public long? ContainingTypeId { get; set; }
-    public SymbolStatus Status { get; set; } = SymbolStatus.Pending;
-    public DateTime? LastAnalyzed { get; set; }
+    public string? FileHash { get; set; }
+    public SymbolStatus Status { get; set; } = SymbolStatus.Analyzed;
 }
 
 /// <summary>
