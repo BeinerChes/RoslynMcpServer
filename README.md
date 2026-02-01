@@ -44,32 +44,6 @@ claude
 
 ---
 
-## What Can It Do?
-
-| Instead of... | Claude now uses... | Result |
-|---------------|---------------------|--------|
-| `grep "Save"` | `roslyn_find_symbol` | Finds exact methods, not text |
-| Reading 2000-line files | `roslyn_get_method_body` | Gets just the method you need |
-| Find/replace refactoring | `roslyn_rename_symbol` | Updates all references correctly |
-
-### Example Prompts
-
-```
-Find all types containing "Controller"
-→ Uses roslyn_find_symbol
-
-What methods does UserService have?
-→ Uses roslyn_get_type_members
-
-Fix the null reference in BuildCache method
-→ Uses roslyn_get_method_body + roslyn_update_method
-
-Rename GetData to FetchDataAsync
-→ Uses roslyn_rename_symbol (updates all call sites)
-```
-
----
-
 ## Benchmark: MCP vs Native Tools
 
 Tested on a real enterprise codebase (36 projects, 155-member class across 13 partial files):
@@ -178,9 +152,7 @@ RoslynMcpServer.exe [command]
 
 Commands:
   (none)           Run as MCP server (default)
-  --init           Initialize project (.mcp.json + CLAUDE.md)
-  --enable-hooks   Enable Roslyn tool suggestions
-  --enable-skills  Enable /architect skill
+  --init           Initialize project (creates .mcp.json, CLAUDE.md, optional hooks/skills)
   --version        Show version
   --help           Show help
 ```
@@ -189,12 +161,12 @@ Commands:
 
 ## Prerequisites
 
-| Requirement | For |
-|-------------|-----|
+| Requirement | Notes |
+|-------------|-------|
 | Windows x64 | Required |
 | [Claude Code CLI](https://claude.ai/download) | Required |
-| Python 3.x | Only if using hooks (optional) |
-| Visual Studio 2022 or Build Tools | MSBuild discovery |
+| Visual Studio 2022 or Build Tools | Required (MSBuild) |
+| Python 3.x | Optional (for hooks) |
 
 ---
 
@@ -239,21 +211,6 @@ powershell -ExecutionPolicy Bypass -File build-release.ps1
 ```
 
 Requires .NET 10.0 SDK.
-
----
-
-## Architecture
-
-```
-RoslynMcpServer/
-├── src/                      # MCP server (JSON-RPC over stdio)
-├── Instructions/             # Topic instructions, templates, hooks
-├── RoslynMcpServer.Graph/    # Call graph + knowledge database
-├── RoslynMcpServer.Web/      # 3D visualization (experimental)
-└── RoslynMcpServer.Tests/    # Unit tests
-```
-
-Uses: MSBuildWorkspace, Roslyn APIs, SQLite, SmartComponents embeddings
 
 ---
 
