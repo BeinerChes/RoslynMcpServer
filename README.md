@@ -19,7 +19,7 @@ Download `roslyn-mcp-win-x64.zip` from [Releases](https://github.com/BeinerChes/
 ```
 YourSolution/
 ├── .roslyn-mcp/          ← Extract here
-│   ├── roslyn-mcp.exe
+│   ├── RoslynMcpServer.exe
 │   └── ...
 ├── YourProject/
 └── YourSolution.sln
@@ -29,7 +29,7 @@ YourSolution/
 
 ```bash
 cd C:\path\to\YourSolution
-.roslyn-mcp\roslyn-mcp.exe --init
+.roslyn-mcp\RoslynMcpServer.exe --init
 ```
 
 ### 4. Verify
@@ -77,7 +77,7 @@ Rename GetData to FetchDataAsync
 Hooks suggest using Roslyn tools instead of grep for C# files:
 
 ```bash
-.roslyn-mcp\roslyn-mcp.exe --enable-hooks
+.roslyn-mcp\RoslynMcpServer.exe --enable-hooks
 ```
 
 ### Enable Skills
@@ -85,7 +85,7 @@ Hooks suggest using Roslyn tools instead of grep for C# files:
 Skills add custom commands like `/architect`:
 
 ```bash
-.roslyn-mcp\roslyn-mcp.exe --enable-skills
+.roslyn-mcp\RoslynMcpServer.exe --enable-skills
 ```
 
 | Command | What it does |
@@ -199,7 +199,7 @@ Code modification (add/update/delete methods) performed similarly with both appr
 ## CLI Reference
 
 ```
-roslyn-mcp.exe [command]
+RoslynMcpServer.exe [command]
 
 Commands:
   (none)           Run as MCP server (default)
@@ -230,7 +230,7 @@ Commands:
 
 The server may be locked. Kill and reconnect:
 ```powershell
-taskkill /F /IM roslyn-mcp.exe
+taskkill /F /IM RoslynMcpServer.exe
 # In Claude Code: /mcp reconnect roslyn
 ```
 
