@@ -44,35 +44,9 @@ claude
 
 ---
 
-## Benchmark: MCP vs Native Tools
+## Benchmark
 
-Tested on a real enterprise codebase (36 projects, 155-member class across 13 partial files):
-
-|                    | MCP Tools | Native Tools |
-|--------------------|-----------|--------------|
-| Tool Calls         | 11        | 38           |
-| Context Tokens     | 123K      | 233K         |
-| Accuracy           | 100%      | 80%          |
-
-### Where MCP Makes a Difference
-
-| Task | MCP | Native |
-|------|-----|--------|
-| Find callers | 18 exact results | 155 matches (false positives) |
-| Impact analysis | 44 symbols traced | Failed (can't build call graph) |
-| Dead code detection | 50 unused symbols | Not feasible |
-
-### Where It Doesn't Matter
-
-Code modification (add/update/delete methods) performed similarly with both approaches. Native Edit works fine when files are in context.
-
-### Honest Assessment
-
-- **3 of 11 steps** showed clear MCP advantage (semantic queries)
-- **7 steps** were roughly equivalent
-- **1 step** native was more efficient (simple text search)
-
-**MCP solves problems native tools cannot solve.** For everything else, either works.
+MCP vs Native tools on enterprise codebase: 47% fewer tokens, 100% accuracy vs 80%.
 
 [Full benchmark with methodology](docs/benchmark/results.md)
 
