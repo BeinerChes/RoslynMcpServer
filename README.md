@@ -70,31 +70,6 @@ Rename GetData to FetchDataAsync
 
 ---
 
-## Optional Features
-
-### Enable Hooks
-
-Hooks suggest using Roslyn tools instead of grep for C# files:
-
-```bash
-.roslyn-mcp\RoslynMcpServer.exe --enable-hooks
-```
-
-### Enable Skills
-
-Skills add custom commands like `/architect`:
-
-```bash
-.roslyn-mcp\RoslynMcpServer.exe --enable-skills
-```
-
-| Command | What it does |
-|---------|--------------|
-| `/architect` | Deep code analysis with actionable improvement tasks |
-| `/update-docs` | Update documentation after code changes |
-
----
-
 ## Benchmark: MCP vs Native Tools
 
 Tested on a real enterprise codebase (36 projects, 155-member class across 13 partial files):
