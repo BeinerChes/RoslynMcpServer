@@ -294,26 +294,25 @@ public static partial class RoslynTools
             };
         }
 
-        // Ensure graph is fresh before querying (blocking)
+        // Ensure graph is fresh before querying
         await EnsureGraphFreshAsync(db, solution.Id, solutionPath);
 
-        // Get solution directory for relative paths (Issue #115)
+        // Get solution directory for relative paths
         var solutionDir = Path.GetDirectoryName(solutionPath) ?? "";
 
-        // OPTIMIZATION: Get all symbols with no callers in a single query
-        // This replaces the N+1 query pattern where we queried callers for each symbol
+        // STEP 1: Use graph to quickly find candidates (symbols with no incoming edges)
         var uncalledSymbols = await db.GetSymbolsWithNoCallersAsync(
             solution.Id,
             new[] { SymbolKind.Method, SymbolKind.Property });
 
-        // Apply filters in memory
+        // Apply basic filters
         var candidateSymbols = uncalledSymbols
             .Where(s => !IsEntryPoint(s))
             .Where(s => includePrivate || !IsPrivateSymbol(s))
             .Where(s => includeTests || !IsTestFile(s.FilePath))
             .ToList();
 
-        // Apply file pattern exclusions (Issue #106)
+        // Apply file pattern exclusions
         if (excludeFilePatterns.Length > 0)
         {
             candidateSymbols = candidateSymbols
@@ -322,7 +321,7 @@ public static partial class RoslynTools
                 .ToList();
         }
 
-        // Apply type pattern exclusions (Issue #106)
+        // Apply type pattern exclusions
         if (excludeTypePatterns.Length > 0)
         {
             candidateSymbols = candidateSymbols
@@ -335,104 +334,59 @@ public static partial class RoslynTools
                 .ToList();
         }
 
+        // STEP 2: Load Roslyn solution for accurate validation
+        var roslynSolution = await SolutionAnalyzerService.LoadSolutionAsync(solutionPath);
+        if (roslynSolution == null)
+        {
+            return new DeadCodeResult
+            {
+                Success = false,
+                Error = "Could not load Roslyn solution for validation."
+            };
+        }
+
         var deadCode = new List<DeadCodeEntry>();
+        var validatedCount = 0;
+        var falsePositivesFiltered = 0;
 
-        // Issue #36: Load Roslyn solution to check for attributes and pure model detection
-        Microsoft.CodeAnalysis.Solution? roslynSolution = null;
-        if (_analyzerService != null)
-        {
-            roslynSolution = await SolutionAnalyzerService.LoadSolutionAsync(solutionPath);
-        }
-
-        // OPTIMIZATION: Cache syntax roots by file to avoid loading same file multiple times
-        var syntaxRootCache = new Dictionary<string, Microsoft.CodeAnalysis.SyntaxNode?>();
-        var pureModelCache = new Dictionary<string, bool>();
-
-        // Group properties by file for efficient syntax tree caching
-        var propertiesByFile = candidateSymbols
-            .Where(s => s.Kind == SymbolKind.Property)
-            .GroupBy(s => s.FilePath)
-            .ToDictionary(g => g.Key, g => g.ToList());
-
-        // Process properties with cached syntax trees
-        if (roslynSolution != null)
-        {
-            foreach (var (filePath, properties) in propertiesByFile)
-            {
-                if (deadCode.Count >= maxResults) break;
-
-                // Get or cache syntax root for this file
-                if (!syntaxRootCache.TryGetValue(filePath, out var syntaxRoot))
-                {
-                    syntaxRoot = await GetCachedSyntaxRootAsync(roslynSolution, filePath);
-                    syntaxRootCache[filePath] = syntaxRoot;
-                }
-
-                foreach (var prop in properties)
-                {
-                    if (deadCode.Count >= maxResults) break;
-
-                    // Skip properties with any attributes (likely used for serialization)
-                    if (syntaxRoot != null && HasAttributesInSyntaxRoot(syntaxRoot, prop.Line))
-                    {
-                        continue;
-                    }
-
-                    // Skip properties on pure model/DTO classes (structural detection)
-                    var containingType = GetContainingTypeName(prop.QualifiedName);
-                    if (!pureModelCache.TryGetValue(containingType, out var isPureModel))
-                    {
-                        isPureModel = syntaxRoot != null && IsPureModelClassInSyntaxRoot(syntaxRoot, containingType);
-                        pureModelCache[containingType] = isPureModel;
-                    }
-                    if (isPureModel)
-                    {
-                        continue;
-                    }
-
-                    deadCode.Add(new DeadCodeEntry
-                    {
-                        Name = prop.Name,
-                        QualifiedName = prop.QualifiedName,
-                        Kind = prop.Kind.ToString(),
-                        FilePath = GetRelativePath(prop.FilePath, solutionDir),
-                        FileName = Path.GetFileName(prop.FilePath),
-                        Line = prop.Line
-                    });
-                }
-            }
-        }
-        else
-        {
-            // No Roslyn solution - add all properties as potential dead code
-            foreach (var prop in candidateSymbols.Where(s => s.Kind == SymbolKind.Property))
-            {
-                if (deadCode.Count >= maxResults) break;
-                deadCode.Add(new DeadCodeEntry
-                {
-                    Name = prop.Name,
-                    QualifiedName = prop.QualifiedName,
-                    Kind = prop.Kind.ToString(),
-                    FilePath = GetRelativePath(prop.FilePath, solutionDir),
-                    FileName = Path.GetFileName(prop.FilePath),
-                    Line = prop.Line
-                });
-            }
-        }
-
-        // Add methods (no syntax tree checks needed for methods)
-        foreach (var method in candidateSymbols.Where(s => s.Kind == SymbolKind.Method))
+        // STEP 3: Validate each candidate using FindReferencesAsync
+        foreach (var candidate in candidateSymbols)
         {
             if (deadCode.Count >= maxResults) break;
-            deadCode.Add(new DeadCodeEntry
+
+            // Find the symbol by qualified name using Roslyn
+            var roslynSymbol = await FindSymbolByQualifiedNameAsync(roslynSolution, candidate.QualifiedName);
+            if (roslynSymbol == null) continue;
+
+            validatedCount++;
+
+            // Use FindReferencesAsync for accurate reference detection
+            var references = await Microsoft.CodeAnalysis.FindSymbols.SymbolFinder
+                .FindReferencesAsync(roslynSymbol, roslynSolution);
+
+            // Count actual references (excluding the definition itself)
+            var refLocations = references.SelectMany(r => r.Locations).ToList();
+            var definitionSpan = roslynSymbol.Locations.FirstOrDefault()?.SourceSpan;
+            var refCount = refLocations.Count(loc =>
+                definitionSpan == null || !loc.Location.SourceSpan.Equals(definitionSpan));
+
+            if (refCount == 0)
             {
-                Name = method.Name,
-                QualifiedName = method.QualifiedName,
-                Kind = method.Kind.ToString(),
-                FilePath = GetRelativePath(method.FilePath, solutionDir),
-                FileName = Path.GetFileName(method.FilePath),
-                Line = method.Line
-            });
+                // Truly dead - no references found
+                deadCode.Add(new DeadCodeEntry
+                {
+                    Name = candidate.Name,
+                    QualifiedName = candidate.QualifiedName,
+                    Kind = candidate.Kind.ToString(),
+                    FilePath = GetRelativePath(candidate.FilePath, solutionDir),
+                    FileName = Path.GetFileName(candidate.FilePath),
+                    Line = candidate.Line
+                });
+            }
+            else
+            {
+                falsePositivesFiltered++;
+            }
         }
 
         // Group by file
@@ -454,9 +408,8 @@ public static partial class RoslynTools
             TotalFound = deadCode.Count,
             TotalFiles = byFile.Count,
             ByFile = byFile,
-            Note = deadCode.Count >= maxResults
-                ? $"Results limited to {maxResults}. Use maxResults parameter to see more."
-                : null
+            Note = $"Validated {validatedCount} candidates, filtered {falsePositivesFiltered} false positives." +
+                   (deadCode.Count >= maxResults ? $" Results limited to {maxResults}." : "")
         };
     }
 
