@@ -16,8 +16,8 @@ public sealed partial class GraphDatabase
 
         var id = await _connection.ExecuteScalarAsync<long>(
             """
-            INSERT INTO Symbols (SolutionId, Kind, Name, QualifiedName, FilePath, Line, Column, BodyHash, ContainingTypeId, Status, LastAnalyzed)
-            VALUES (@SolutionId, @Kind, @Name, @QualifiedName, @FilePath, @Line, @Column, @BodyHash, @ContainingTypeId, @Status, @LastAnalyzed);
+            INSERT INTO Symbols (SolutionId, Kind, Name, QualifiedName, FilePath, Line, Column, FileHash, Status)
+            VALUES (@SolutionId, @Kind, @Name, @QualifiedName, @FilePath, @Line, @Column, @FileHash, @Status);
             SELECT last_insert_rowid();
             """,
             new
@@ -29,10 +29,8 @@ public sealed partial class GraphDatabase
                 symbol.FilePath,
                 symbol.Line,
                 symbol.Column,
-                symbol.BodyHash,
-                symbol.ContainingTypeId,
-                Status = symbol.Status.ToString(),
-                LastAnalyzed = symbol.LastAnalyzed?.ToString("o")
+                symbol.FileHash,
+                Status = symbol.Status.ToString()
             });
 
         symbol.Id = id;
@@ -48,7 +46,7 @@ public sealed partial class GraphDatabase
 
         return await _connection.QuerySingleOrDefaultAsync<SymbolRecord>(
             """
-            SELECT Id, SolutionId, Kind, Name, QualifiedName, FilePath, Line, Column, BodyHash, ContainingTypeId, Status, LastAnalyzed
+            SELECT Id, SolutionId, Kind, Name, QualifiedName, FilePath, Line, Column, FileHash, Status
             FROM Symbols
             WHERE SolutionId = @SolutionId AND QualifiedName = @QualifiedName
             """,
@@ -74,7 +72,6 @@ public sealed partial class GraphDatabase
         }
 
         // 2. Handle .ctor syntax for constructors (Issue #65)
-        // Roslyn stores constructors as "Namespace.Type.Type(params)" but users query with ".ctor"
         if (searchName.Contains(".ctor"))
         {
             var ctorResult = await FindConstructorAsync(solutionId, searchName);
@@ -82,15 +79,12 @@ public sealed partial class GraphDatabase
             {
                 return ctorResult;
             }
-            // Fall through to normal search if constructor search found nothing
         }
 
-        // 3. Try partial matching with multiple strategies (Issue #68)
-        // - Prefix match: "Namespace.Type.Method" matches "Namespace.Type.Method(params)"
-        // - Suffix match: "Type.Method" or "Method" matches "...Type.Method(params)"
+        // 3. Try partial matching with multiple strategies
         var candidates = await _connection.QueryAsync<SymbolRecord>(
             """
-            SELECT Id, SolutionId, Kind, Name, QualifiedName, FilePath, Line, Column, BodyHash, ContainingTypeId, Status, LastAnalyzed
+            SELECT Id, SolutionId, Kind, Name, QualifiedName, FilePath, Line, Column, FileHash, Status
             FROM Symbols
             WHERE SolutionId = @SolutionId
               AND (QualifiedName LIKE @SearchName || '(%'
@@ -115,7 +109,6 @@ public sealed partial class GraphDatabase
             return new SymbolSearchResult { Symbol = matches[0] };
         }
 
-        // Multiple matches - return error with candidates
         return new SymbolSearchResult
         {
             Error = $"Multiple symbols match '{searchName}'. Please be more specific.",
@@ -131,46 +124,37 @@ public sealed partial class GraphDatabase
     {
         if (_connection == null) throw new InvalidOperationException("Database not open");
 
-        // Parse the .ctor syntax: "Namespace.Type..ctor" or "Namespace.Type..ctor(params)"
-        // Extract type path and parameter signature
         var ctorIndex = searchName.IndexOf(".ctor", StringComparison.Ordinal);
         if (ctorIndex <= 0)
         {
             return new SymbolSearchResult { Error = $"Invalid constructor syntax: '{searchName}'" };
         }
 
-        // Get the type path (everything before .ctor, minus the trailing dot)
         var typePath = searchName.Substring(0, ctorIndex);
         if (typePath.EndsWith('.'))
         {
             typePath = typePath.Substring(0, typePath.Length - 1);
         }
 
-        // Get the type name (last part of the path)
         var lastDotIndex = typePath.LastIndexOf('.');
         var typeName = lastDotIndex >= 0 ? typePath.Substring(lastDotIndex + 1) : typePath;
 
-        // Get parameter signature if present
         var paramStart = searchName.IndexOf('(', ctorIndex);
         var paramSignature = paramStart >= 0 ? searchName.Substring(paramStart) : "";
 
-        // Build the expected qualified name pattern: "TypePath.TypeName(params)"
-        // e.g., "Atlas.Data.FeatureSet.FeatureSet(string)"
         var expectedQualifiedName = $"{typePath}.{typeName}{paramSignature}";
 
-        // First try exact match with the translated name
         var exact = await GetSymbolByQualifiedNameAsync(solutionId, expectedQualifiedName);
         if (exact != null)
         {
             return new SymbolSearchResult { Symbol = exact };
         }
 
-        // If no params specified, search for all constructors of this type
         if (string.IsNullOrEmpty(paramSignature))
         {
             var candidates = await _connection.QueryAsync<SymbolRecord>(
                 """
-                SELECT Id, SolutionId, Kind, Name, QualifiedName, FilePath, Line, Column, BodyHash, ContainingTypeId, Status, LastAnalyzed
+                SELECT Id, SolutionId, Kind, Name, QualifiedName, FilePath, Line, Column, FileHash, Status
                 FROM Symbols
                 WHERE SolutionId = @SolutionId
                   AND Name = '.ctor'
@@ -193,10 +177,9 @@ public sealed partial class GraphDatabase
             }
         }
 
-        // Try partial matching for type path (in case namespace is partial)
         var partialCandidates = await _connection.QueryAsync<SymbolRecord>(
             """
-            SELECT Id, SolutionId, Kind, Name, QualifiedName, FilePath, Line, Column, BodyHash, ContainingTypeId, Status, LastAnalyzed
+            SELECT Id, SolutionId, Kind, Name, QualifiedName, FilePath, Line, Column, FileHash, Status
             FROM Symbols
             WHERE SolutionId = @SolutionId
               AND Name = '.ctor'
@@ -218,7 +201,7 @@ public sealed partial class GraphDatabase
             };
         }
 
-        return new SymbolSearchResult(); // Empty result, let caller handle
+        return new SymbolSearchResult();
     }
 
     /// <summary>
@@ -249,25 +232,16 @@ public sealed partial class GraphDatabase
     }
 
     /// <summary>
-    /// Updates a symbol's status and hash.
+    /// Updates a symbol's file hash and marks it as Analyzed.
+    /// Called when we directly analyze a symbol from source.
     /// </summary>
-    public async Task UpdateSymbolStatusAsync(long symbolId, SymbolStatus status, string? bodyHash = null)
+    public async Task UpdateSymbolFileHashAsync(long symbolId, string? fileHash)
     {
         if (_connection == null) throw new InvalidOperationException("Database not open");
 
         await _connection.ExecuteAsync(
-            """
-            UPDATE Symbols
-            SET Status = @Status, BodyHash = @BodyHash, LastAnalyzed = @LastAnalyzed
-            WHERE Id = @Id
-            """,
-            new
-            {
-                Id = symbolId,
-                Status = status.ToString(),
-                BodyHash = bodyHash,
-                LastAnalyzed = DateTime.UtcNow.ToString("o")
-            });
+            "UPDATE Symbols SET FileHash = @FileHash, Status = 'Analyzed' WHERE Id = @Id",
+            new { Id = symbolId, FileHash = fileHash });
     }
 
     /// <summary>

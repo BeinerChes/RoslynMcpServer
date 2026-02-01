@@ -197,24 +197,14 @@ public static partial class RoslynTools
             };
         }
 
+        // Ensure graph is fresh before querying (blocking)
+        await EnsureGraphFreshAsync(db, solution.Id, solutionPath);
+
         // Get solution directory for relative paths (Issue #115)
         var solutionDir = Path.GetDirectoryName(solutionPath) ?? "";
 
         // Use FindSymbolAsync for partial name matching (Issue #33)
         var searchResult = await db.FindSymbolAsync(solution.Id, symbolName);
-
-        // Issue #35: If not found, try Roslyn search and analyze stale files
-        if (searchResult.Symbol == null && _analyzerService != null)
-        {
-            var refreshedFiles = await TryRefreshFilesForSymbolAsync(
-                db, solution.Id, solutionPath, symbolName);
-
-            if (refreshedFiles.Count > 0)
-            {
-                // Retry graph search after refresh
-                searchResult = await db.FindSymbolAsync(solution.Id, symbolName);
-            }
-        }
 
         if (searchResult.Symbol == null)
         {
@@ -304,15 +294,20 @@ public static partial class RoslynTools
             };
         }
 
+        // Ensure graph is fresh before querying (blocking)
+        await EnsureGraphFreshAsync(db, solution.Id, solutionPath);
+
         // Get solution directory for relative paths (Issue #115)
         var solutionDir = Path.GetDirectoryName(solutionPath) ?? "";
 
-        // Get all symbols that are methods or properties
-        // Issue #36: Filter out external symbols (BCL, framework types)
-        var allSymbols = await db.GetSymbolsAsync(solution.Id, null, null);
-        var candidateSymbols = allSymbols
-            .Where(s => s.Kind is SymbolKind.Method or SymbolKind.Property)
-            .Where(s => !string.IsNullOrEmpty(s.FilePath) && s.FilePath != "external")
+        // OPTIMIZATION: Get all symbols with no callers in a single query
+        // This replaces the N+1 query pattern where we queried callers for each symbol
+        var uncalledSymbols = await db.GetSymbolsWithNoCallersAsync(
+            solution.Id,
+            new[] { SymbolKind.Method, SymbolKind.Property });
+
+        // Apply filters in memory
+        var candidateSymbols = uncalledSymbols
             .Where(s => !IsEntryPoint(s))
             .Where(s => includePrivate || !IsPrivateSymbol(s))
             .Where(s => includeTests || !IsTestFile(s.FilePath))
@@ -327,6 +322,19 @@ public static partial class RoslynTools
                 .ToList();
         }
 
+        // Apply type pattern exclusions (Issue #106)
+        if (excludeTypePatterns.Length > 0)
+        {
+            candidateSymbols = candidateSymbols
+                .Where(s =>
+                {
+                    var typeName = GetContainingTypeName(s.QualifiedName);
+                    return !excludeTypePatterns.Any(pattern =>
+                        typeName.EndsWith(pattern, StringComparison.OrdinalIgnoreCase));
+                })
+                .ToList();
+        }
+
         var deadCode = new List<DeadCodeEntry>();
 
         // Issue #36: Load Roslyn solution to check for attributes and pure model detection
@@ -336,60 +344,95 @@ public static partial class RoslynTools
             roslynSolution = await SolutionAnalyzerService.LoadSolutionAsync(solutionPath);
         }
 
-        // Cache for pure model class detection (Issue #106)
+        // OPTIMIZATION: Cache syntax roots by file to avoid loading same file multiple times
+        var syntaxRootCache = new Dictionary<string, Microsoft.CodeAnalysis.SyntaxNode?>();
         var pureModelCache = new Dictionary<string, bool>();
 
-        foreach (var symbol in candidateSymbols)
+        // Group properties by file for efficient syntax tree caching
+        var propertiesByFile = candidateSymbols
+            .Where(s => s.Kind == SymbolKind.Property)
+            .GroupBy(s => s.FilePath)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        // Process properties with cached syntax trees
+        if (roslynSolution != null)
         {
-            if (deadCode.Count >= maxResults) break;
-
-            // Issue #106: Apply type pattern exclusions
-            if (excludeTypePatterns.Length > 0)
+            foreach (var (filePath, properties) in propertiesByFile)
             {
-                var typeName = GetContainingTypeName(symbol.QualifiedName);
-                if (excludeTypePatterns.Any(pattern =>
-                    typeName.EndsWith(pattern, StringComparison.OrdinalIgnoreCase)))
+                if (deadCode.Count >= maxResults) break;
+
+                // Get or cache syntax root for this file
+                if (!syntaxRootCache.TryGetValue(filePath, out var syntaxRoot))
                 {
-                    continue;
+                    syntaxRoot = await GetCachedSyntaxRootAsync(roslynSolution, filePath);
+                    syntaxRootCache[filePath] = syntaxRoot;
                 }
-            }
 
-            // Issue #36: For properties, check Reads/Accesses edges too, not just Calls
-            // Use null edgeType to check ALL edge types
-            var callers = await db.GetCallersAsync(symbol.Id, edgeType: null);
-            if (callers.Count == 0)
-            {
-                // Issue #36: Skip properties with any attributes (likely used for serialization)
-                if (symbol.Kind == SymbolKind.Property && roslynSolution != null)
+                foreach (var prop in properties)
                 {
-                    if (await HasAttributesAsync(roslynSolution, symbol.FilePath, symbol.Line))
+                    if (deadCode.Count >= maxResults) break;
+
+                    // Skip properties with any attributes (likely used for serialization)
+                    if (syntaxRoot != null && HasAttributesInSyntaxRoot(syntaxRoot, prop.Line))
                     {
                         continue;
                     }
 
-                    // Issue #106: Skip properties on pure model/DTO classes (structural detection)
-                    var containingType = GetContainingTypeName(symbol.QualifiedName);
+                    // Skip properties on pure model/DTO classes (structural detection)
+                    var containingType = GetContainingTypeName(prop.QualifiedName);
                     if (!pureModelCache.TryGetValue(containingType, out var isPureModel))
                     {
-                        isPureModel = await IsPureModelClassAsync(roslynSolution, symbol.FilePath, containingType);
+                        isPureModel = syntaxRoot != null && IsPureModelClassInSyntaxRoot(syntaxRoot, containingType);
                         pureModelCache[containingType] = isPureModel;
                     }
                     if (isPureModel)
                     {
                         continue;
                     }
-                }
 
+                    deadCode.Add(new DeadCodeEntry
+                    {
+                        Name = prop.Name,
+                        QualifiedName = prop.QualifiedName,
+                        Kind = prop.Kind.ToString(),
+                        FilePath = GetRelativePath(prop.FilePath, solutionDir),
+                        FileName = Path.GetFileName(prop.FilePath),
+                        Line = prop.Line
+                    });
+                }
+            }
+        }
+        else
+        {
+            // No Roslyn solution - add all properties as potential dead code
+            foreach (var prop in candidateSymbols.Where(s => s.Kind == SymbolKind.Property))
+            {
+                if (deadCode.Count >= maxResults) break;
                 deadCode.Add(new DeadCodeEntry
                 {
-                    Name = symbol.Name,
-                    QualifiedName = symbol.QualifiedName,
-                    Kind = symbol.Kind.ToString(),
-                    FilePath = GetRelativePath(symbol.FilePath, solutionDir),
-                    FileName = Path.GetFileName(symbol.FilePath),
-                    Line = symbol.Line
+                    Name = prop.Name,
+                    QualifiedName = prop.QualifiedName,
+                    Kind = prop.Kind.ToString(),
+                    FilePath = GetRelativePath(prop.FilePath, solutionDir),
+                    FileName = Path.GetFileName(prop.FilePath),
+                    Line = prop.Line
                 });
             }
+        }
+
+        // Add methods (no syntax tree checks needed for methods)
+        foreach (var method in candidateSymbols.Where(s => s.Kind == SymbolKind.Method))
+        {
+            if (deadCode.Count >= maxResults) break;
+            deadCode.Add(new DeadCodeEntry
+            {
+                Name = method.Name,
+                QualifiedName = method.QualifiedName,
+                Kind = method.Kind.ToString(),
+                FilePath = GetRelativePath(method.FilePath, solutionDir),
+                FileName = Path.GetFileName(method.FilePath),
+                Line = method.Line
+            });
         }
 
         // Group by file

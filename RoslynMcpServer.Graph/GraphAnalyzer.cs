@@ -14,6 +14,8 @@ public sealed class GraphAnalyzer
     private readonly GraphDatabase _db;
     private readonly Dictionary<string, long> _symbolCache = new();
 
+
+    private string? _solutionDir;
     public GraphAnalyzer(GraphDatabase db)
     {
         _db = db;
@@ -23,20 +25,33 @@ public sealed class GraphAnalyzer
     /// Analyzes a single document and extracts symbols and edges.
     /// Also records file metadata for change detection.
     /// </summary>
-    public async Task AnalyzeDocumentAsync(Document document, long solutionId)
+    public async Task AnalyzeDocumentAsync(Document document, long solutionId, string? solutionDir = null)
     {
+        _solutionDir = solutionDir;  // Store for use in FindOrCreateTargetSymbolAsync
+
         var syntaxTree = await document.GetSyntaxTreeAsync();
         var semanticModel = await document.GetSemanticModelAsync();
         if (syntaxTree == null || semanticModel == null) return;
 
         var root = await syntaxTree.GetRootAsync();
-        var filePath = document.FilePath ?? document.Name;
+        var absolutePath = document.FilePath ?? document.Name;
 
-        // Record file metadata for change detection
+        // Convert to relative path for storage
+        var filePath = ToRelativePath(absolutePath);
+
+        // Compute file hash from disk - must match how EnsureGraphFreshAsync computes hashes
+        string? fileHash = null;
         if (!string.IsNullOrEmpty(document.FilePath) && File.Exists(document.FilePath))
         {
-            var fileRecord = GraphDatabase.CreateFileRecord(solutionId, document.FilePath);
-            await _db.UpsertFileAsync(fileRecord);
+            try
+            {
+                var content = File.ReadAllText(document.FilePath);
+                fileHash = GraphDatabase.ComputeContentHash(content);
+            }
+            catch
+            {
+                // If we can't read from disk, skip hash
+            }
         }
 
         // Find all type declarations
@@ -47,8 +62,7 @@ public sealed class GraphAnalyzer
             var typeSymbol = semanticModel.GetDeclaredSymbol(typeDecl);
             if (typeSymbol == null) continue;
 
-            // Process type members
-            await ProcessTypeMembersAsync(typeDecl, typeSymbol, semanticModel, solutionId, filePath);
+            await ProcessTypeMembersAsync(typeDecl, typeSymbol, semanticModel, solutionId, filePath, fileHash);
         }
     }
 
@@ -57,23 +71,24 @@ public sealed class GraphAnalyzer
         INamedTypeSymbol typeSymbol,
         SemanticModel semanticModel,
         long solutionId,
-        string filePath)
+        string filePath,
+        string? fileHash)
     {
         foreach (var member in typeDecl.Members)
         {
             switch (member)
             {
                 case MethodDeclarationSyntax method:
-                    await ProcessMethodAsync(method, typeSymbol, semanticModel, solutionId, filePath);
+                    await ProcessMethodAsync(method, typeSymbol, semanticModel, solutionId, filePath, fileHash);
                     break;
                 case PropertyDeclarationSyntax property:
-                    await ProcessPropertyAsync(property, typeSymbol, semanticModel, solutionId, filePath);
+                    await ProcessPropertyAsync(property, typeSymbol, semanticModel, solutionId, filePath, fileHash);
                     break;
                 case FieldDeclarationSyntax field:
-                    await ProcessFieldAsync(field, typeSymbol, semanticModel, solutionId, filePath);
+                    await ProcessFieldAsync(field, typeSymbol, semanticModel, solutionId, filePath, fileHash);
                     break;
                 case ConstructorDeclarationSyntax ctor:
-                    await ProcessConstructorAsync(ctor, typeSymbol, semanticModel, solutionId, filePath);
+                    await ProcessConstructorAsync(ctor, typeSymbol, semanticModel, solutionId, filePath, fileHash);
                     break;
             }
         }
@@ -84,13 +99,13 @@ public sealed class GraphAnalyzer
         INamedTypeSymbol containingType,
         SemanticModel semanticModel,
         long solutionId,
-        string filePath)
+        string filePath,
+        string? fileHash)
     {
         var methodSymbol = semanticModel.GetDeclaredSymbol(method);
         if (methodSymbol == null) return;
 
         var qualifiedName = GetQualifiedName(methodSymbol);
-        var bodyHash = ComputeBodyHash(method.Body?.ToString() ?? method.ExpressionBody?.ToString() ?? "");
         var lineSpan = method.GetLocation().GetLineSpan();
 
         var symbolId = await GetOrCreateSymbolAsync(new SymbolRecord
@@ -102,7 +117,7 @@ public sealed class GraphAnalyzer
             FilePath = filePath,
             Line = lineSpan.StartLinePosition.Line + 1,
             Column = lineSpan.StartLinePosition.Character + 1,
-            BodyHash = bodyHash,
+            FileHash = fileHash,
             Status = SymbolStatus.Analyzed
         });
 
@@ -122,7 +137,8 @@ public sealed class GraphAnalyzer
         INamedTypeSymbol containingType,
         SemanticModel semanticModel,
         long solutionId,
-        string filePath)
+        string filePath,
+        string? fileHash)
     {
         var propertySymbol = semanticModel.GetDeclaredSymbol(property);
         if (propertySymbol == null) return;
@@ -139,6 +155,7 @@ public sealed class GraphAnalyzer
             FilePath = filePath,
             Line = lineSpan.StartLinePosition.Line + 1,
             Column = lineSpan.StartLinePosition.Character + 1,
+            FileHash = fileHash,
             Status = SymbolStatus.Analyzed
         });
 
@@ -168,7 +185,8 @@ public sealed class GraphAnalyzer
         INamedTypeSymbol containingType,
         SemanticModel semanticModel,
         long solutionId,
-        string filePath)
+        string filePath,
+        string? fileHash)
     {
         foreach (var variable in field.Declaration.Variables)
         {
@@ -187,6 +205,7 @@ public sealed class GraphAnalyzer
                 FilePath = filePath,
                 Line = lineSpan.StartLinePosition.Line + 1,
                 Column = lineSpan.StartLinePosition.Character + 1,
+                FileHash = fileHash,
                 Status = SymbolStatus.Analyzed
             });
         }
@@ -197,13 +216,13 @@ public sealed class GraphAnalyzer
         INamedTypeSymbol containingType,
         SemanticModel semanticModel,
         long solutionId,
-        string filePath)
+        string filePath,
+        string? fileHash)
     {
         var ctorSymbol = semanticModel.GetDeclaredSymbol(ctor);
         if (ctorSymbol == null) return;
 
         var qualifiedName = GetQualifiedName(ctorSymbol);
-        var bodyHash = ComputeBodyHash(ctor.Body?.ToString() ?? ctor.ExpressionBody?.ToString() ?? "");
         var lineSpan = ctor.GetLocation().GetLineSpan();
 
         var symbolId = await GetOrCreateSymbolAsync(new SymbolRecord
@@ -215,7 +234,7 @@ public sealed class GraphAnalyzer
             FilePath = filePath,
             Line = lineSpan.StartLinePosition.Line + 1,
             Column = lineSpan.StartLinePosition.Character + 1,
-            BodyHash = bodyHash,
+            FileHash = fileHash,
             Status = SymbolStatus.Analyzed
         });
 
@@ -368,11 +387,14 @@ public sealed class GraphAnalyzer
     {
         // Check if symbol has source code in the solution
         var location = symbol.Locations.FirstOrDefault();
-        var filePath = location?.SourceTree?.FilePath;
+        var absolutePath = location?.SourceTree?.FilePath;
 
         // Skip external symbols - no source file means BCL/NuGet/external
-        if (string.IsNullOrEmpty(filePath))
+        if (string.IsNullOrEmpty(absolutePath))
             return null;
+
+        // Convert to relative path
+        var filePath = ToRelativePath(absolutePath);
 
         var qualifiedName = GetQualifiedName(symbol);
 
@@ -420,12 +442,23 @@ public sealed class GraphAnalyzer
     private async Task<long> GetOrCreateSymbolAsync(SymbolRecord symbol)
     {
         if (_symbolCache.TryGetValue(symbol.QualifiedName, out var cachedId))
+        {
+            // Symbol exists - update FileHash and mark as Analyzed
+            if (symbol.FileHash != null)
+            {
+                await _db.UpdateSymbolFileHashAsync(cachedId, symbol.FileHash);
+            }
             return cachedId;
+        }
 
         var existing = await _db.GetSymbolByQualifiedNameAsync(symbol.SolutionId, symbol.QualifiedName);
         if (existing != null)
         {
             _symbolCache[symbol.QualifiedName] = existing.Id;
+            if (symbol.FileHash != null)
+            {
+                await _db.UpdateSymbolFileHashAsync(existing.Id, symbol.FileHash);
+            }
             return existing.Id;
         }
 
@@ -451,5 +484,18 @@ public sealed class GraphAnalyzer
     private static string NormalizeWhitespace(string text)
     {
         return string.Join(" ", text.Split(default(char[]), StringSplitOptions.RemoveEmptyEntries));
+    }
+
+
+    private string ToRelativePath(string absolutePath)
+    {
+        if (_solutionDir != null && absolutePath.StartsWith(_solutionDir, StringComparison.OrdinalIgnoreCase))
+        {
+            // Normalize path separators to match EnsureGraphFreshAsync
+            return absolutePath.Substring(_solutionDir.Length)
+                .TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                .Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
+        }
+        return absolutePath;
     }
 }
