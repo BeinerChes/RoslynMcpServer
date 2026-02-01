@@ -24,11 +24,6 @@ public static partial class RoslynTools
                     type = "object",
                     properties = new
                     {
-                        solutionPath = new
-                        {
-                            type = "string",
-                            description = "Absolute path to the .sln or .slnx solution file"
-                        },
                         pattern = new
                         {
                             type = "string",
@@ -38,13 +33,13 @@ public static partial class RoslynTools
                         {
                             type = "string",
                             description = "Kind of symbols to find: 'all', 'type', 'member', 'namespace', 'typeAndMember'. Default: 'all'",
-                            @enum = definitionArray19
+                            @enum = new[] { "all", "type", "member", "namespace", "typeAndMember" }
                         },
                         matchType = new
                         {
                             type = "string",
                             description = "How to match the pattern: 'exact', 'exactIgnoreCase', 'contains', 'prefix', 'suffix'. Default: 'contains'",
-                            @enum = definitionArray20
+                            @enum = new[] { "exact", "exactIgnoreCase", "contains", "prefix", "suffix" }
                         },
                         maxResults = new
                         {
@@ -59,7 +54,7 @@ public static partial class RoslynTools
                             description = "Return minimal fields only (name, qualifiedName, kind, file, line). Default: true. Set to false for detailed info (column, containingType, accessibility, isStatic, signature)"
                         }
                     },
-                    required = definitionArray21
+                    required = new[] { "pattern" }
                 },
                 Annotations = new ToolAnnotations
                 {

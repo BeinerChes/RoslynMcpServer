@@ -23,11 +23,6 @@ public static partial class RoslynTools
                     type = "object",
                     properties = new
                     {
-                        solutionPath = new
-                        {
-                            type = "string",
-                            description = "Absolute path to the .sln or .slnx solution file"
-                        },
                         symbolName = new
                         {
                             type = "string",
@@ -46,7 +41,7 @@ public static partial class RoslynTools
                             description = "Include test files in impact analysis. Default: true"
                         }
                     },
-                    required = definitionArray0
+                    required = new[] { "symbolName" }
                 },
                 Annotations = new ToolAnnotations
                 {
@@ -111,11 +106,6 @@ public static partial class RoslynTools
                     type = "object",
                     properties = new
                     {
-                        solutionPath = new
-                        {
-                            type = "string",
-                            description = "Absolute path to the .sln or .slnx solution file"
-                        },
                         includePrivate = new
                         {
                             type = "boolean",
@@ -146,7 +136,7 @@ public static partial class RoslynTools
                             description = "Additional file path patterns to exclude (contains match). Example: ['Models/', 'Dto/']. Empty by default - relies on structural detection instead."
                         }
                     },
-                    required = definitionArray100
+                    required = Array.Empty<string>()
                 },
                 Annotations = new ToolAnnotations
                 {

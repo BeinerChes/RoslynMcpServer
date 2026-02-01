@@ -22,11 +22,6 @@ public static partial class RoslynTools
                     type = "object",
                     properties = new
                     {
-                        solutionPath = new
-                        {
-                            type = "string",
-                            description = "Absolute path to the .sln or .slnx solution file"
-                        },
                         filePath = new
                         {
                             type = "string",
@@ -53,10 +48,10 @@ public static partial class RoslynTools
                         {
                             type = "string",
                             description = "Access modifier for the new method. Default: 'private'",
-                            @enum = definitionArray17
+                            @enum = new[] { "private", "internal", "protected", "public" }
                         }
                     },
-                    required = definitionArray18
+                    required = new[] { "filePath", "startLine", "endLine", "methodName" }
                 },
                 Annotations = new ToolAnnotations
                 {

@@ -20,11 +20,6 @@ public static partial class RoslynTools
                     type = "object",
                     properties = new
                     {
-                        solutionPath = new
-                        {
-                            type = "string",
-                            description = "Absolute path to the .sln or .slnx solution file"
-                        },
                         diagnosticId = new
                         {
                             type = "string",
@@ -53,7 +48,7 @@ public static partial class RoslynTools
                             description = "If true, returns what would change without actually applying fixes. Default: false"
                         }
                     },
-                    required = definitionArray9
+                    required = new[] { "diagnosticId" }
                 },
                 Annotations = new ToolAnnotations
                 {

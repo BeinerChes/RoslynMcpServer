@@ -21,11 +21,6 @@ public static partial class RoslynTools
                     type = "object",
                     properties = new
                     {
-                        solutionPath = new
-                        {
-                            type = "string",
-                            description = "Absolute path to the .sln or .slnx solution file"
-                        },
                         filePath = new
                         {
                             type = "string",
@@ -61,7 +56,7 @@ public static partial class RoslynTools
                             description = "Filter by file path. Supports wildcards (*). Example: '*Controller.cs' or 'Services'"
                         }
                     },
-                    required = definitionArray28
+                    required = new[] { "filePath", "line", "column" }
                 },
                 Annotations = new ToolAnnotations
                 {

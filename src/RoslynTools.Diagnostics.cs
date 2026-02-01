@@ -22,11 +22,6 @@ public static partial class RoslynTools
                     type = "object",
                     properties = new
                     {
-                        solutionPath = new
-                        {
-                            type = "string",
-                            description = "Absolute path to the .sln or .slnx solution file"
-                        },
                         diagnosticId = new
                         {
                             type = "string",
@@ -36,7 +31,7 @@ public static partial class RoslynTools
                         {
                             type = "string",
                             description = "Filter by severity: 'error', 'warning', 'info', or 'all'. Default: 'all'",
-                            @enum = definitionArray15
+                            @enum = new[] { "all", "error", "warning", "info" }
                         },
                         projectFilter = new
                         {
@@ -57,7 +52,7 @@ public static partial class RoslynTools
                             minimum = 0
                         }
                     },
-                    required = definitionArray16
+                    required = Array.Empty<string>()
                 },
                 Annotations = new ToolAnnotations
                 {

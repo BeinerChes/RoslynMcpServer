@@ -21,11 +21,6 @@ public static partial class RoslynTools
                     type = "object",
                     properties = new
                     {
-                        solutionPath = new
-                        {
-                            type = "string",
-                            description = "Absolute path to the .sln or .slnx solution file"
-                        },
                         typeName = new
                         {
                             type = "string",
@@ -42,7 +37,7 @@ public static partial class RoslynTools
                             description = "Parameter types to identify a specific overload, e.g. 'string, int' or 'CancellationToken, bool'. Required if multiple overloads exist."
                         }
                     },
-                    required = definitionArray27
+                    required = new[] { "typeName", "methodName" }
                 },
                 Annotations = new ToolAnnotations
                 {

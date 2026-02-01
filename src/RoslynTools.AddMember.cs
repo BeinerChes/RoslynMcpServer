@@ -22,11 +22,6 @@ public static partial class RoslynTools
                     type = "object",
                     properties = new
                     {
-                        solutionPath = new
-                        {
-                            type = "string",
-                            description = "Absolute path to the .sln or .slnx solution file"
-                        },
                         typeName = new
                         {
                             type = "string",
@@ -41,10 +36,10 @@ public static partial class RoslynTools
                         {
                             type = "string",
                             description = "Where to insert: 'start', 'end', 'after-fields', 'after-constructors', 'after-properties', 'before-methods'. Default: smart placement based on member type.",
-                            @enum = definition
+                            @enum = new[] { "start", "end", "after-fields", "after-constructors", "after-properties", "before-methods" }
                         }
                     },
-                    required = definitionArray
+                    required = new[] { "typeName", "memberCode" }
                 },
                 Annotations = new ToolAnnotations
                 {
@@ -54,22 +49,12 @@ public static partial class RoslynTools
             },
             async args =>
             {
-                var solutionPath = args?["solutionPath"]?.GetValue<string>();
+                var (solutionPath, solutionError) = GetSolutionPathOrError();
+                if (solutionError != null) return solutionError;
+
                 var typeName = args?["typeName"]?.GetValue<string>();
                 var memberCode = args?["memberCode"]?.GetValue<string>();
                 var insertionPoint = args?["insertionPoint"]?.GetValue<string>();
-
-                if (string.IsNullOrWhiteSpace(solutionPath))
-                {
-                    return new
-                    {
-                        content = new[]
-                        {
-                            new { type = "text", text = "Error: solutionPath is required" }
-                        },
-                        isError = true
-                    };
-                }
 
                 if (string.IsNullOrWhiteSpace(typeName))
                 {
@@ -96,7 +81,7 @@ public static partial class RoslynTools
                 }
 
                 var result = await SolutionAnalyzerService.AddMemberAsync(
-                    solutionPath,
+                    solutionPath!,
                     typeName,
                     memberCode,
                     insertionPoint);
