@@ -8,7 +8,7 @@
     <RootNamespace>RoslynMcpServer</RootNamespace>
     <Version>1.0.7</Version>
     <!-- Exclude sub-projects from compilation -->
-    <DefaultItemExcludes>$(DefaultItemExcludes);RoslynMcpServer.Tests\**;RoslynMcpServer.Graph\**;RoslynMcpServer.Web\**;SharpTinyCoder.DataExtractor\**</DefaultItemExcludes>
+    <DefaultItemExcludes>$(DefaultItemExcludes);RoslynMcpServer.Tests\**;RoslynMcpServer.Graph\**;RoslynMcpServer.Web\**;SharpTinyCoder.DataExtractor\**;SharpOps\**</DefaultItemExcludes>
   </PropertyGroup>
 
   <!-- Single-file publish settings -->
