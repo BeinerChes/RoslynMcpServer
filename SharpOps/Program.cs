@@ -14,11 +14,17 @@ public static class Program
             return CompileTest(args.Skip(1).ToArray());
         }
 
+        if (args.Length >= 1 && args[0] == "validate")
+        {
+            return ValidateResults(args.Skip(1).ToArray());
+        }
+
         if (args.Length < 2)
         {
             Console.Error.WriteLine("Usage:");
             Console.Error.WriteLine("  SharpOps <input-path> <output-folder> [options]");
             Console.Error.WriteLine("  SharpOps compile <jsonl-file> [line-number]");
+            Console.Error.WriteLine("  SharpOps validate <validation_results.json>");
             Console.Error.WriteLine();
             Console.Error.WriteLine("Input can be: .sln, .slnx, .csproj, or directory with .csproj files");
             Console.Error.WriteLine("Output folder will contain ProjectName.jsonl for each project");
@@ -148,5 +154,76 @@ public static class Program
             Console.Error.WriteLine(ex.StackTrace);
             return 1;
         }
+    }
+
+    private static int ValidateResults(string[] args)
+    {
+        if (args.Length < 1)
+        {
+            Console.Error.WriteLine("Usage: SharpOps validate <validation_results.json>");
+            return 1;
+        }
+
+        var inputPath = args[0];
+        var json = File.ReadAllText(inputPath);
+
+        using var doc = JsonDocument.Parse(json);
+        var results = new List<Dictionary<string, object?>>();
+
+        foreach (var item in doc.RootElement.EnumerateArray())
+        {
+            var entry = new Dictionary<string, object?>
+            {
+                ["index"] = item.GetProperty("index").GetInt32(),
+                ["input"] = item.GetProperty("input").GetString(),
+                ["expected"] = item.GetProperty("expected").GetString(),
+                ["generated"] = item.GetProperty("generated").GetString(),
+                ["match"] = item.GetProperty("match").GetBoolean()
+            };
+
+            // Try to compile the generated ops
+            var generated = item.GetProperty("generated").GetString() ?? "";
+
+            // Add leading space if missing (for BPE tokenization)
+            if (!generated.StartsWith(" "))
+                generated = " " + generated;
+
+            try
+            {
+                var sequence = SharpOpsSequence.ParseOps(generated);
+                var code = SharpOpsCompiler.CompileToString(sequence);
+                entry["compiled"] = code;
+                entry["compileError"] = null;
+            }
+            catch (Exception ex)
+            {
+                entry["compiled"] = null;
+                entry["compileError"] = ex.Message;
+            }
+
+            results.Add(entry);
+        }
+
+        // Write back
+        var outputPath = Path.Combine(
+            Path.GetDirectoryName(inputPath) ?? ".",
+            Path.GetFileNameWithoutExtension(inputPath) + "_compiled.json");
+
+        var options = new JsonSerializerOptions
+        {
+            WriteIndented = true,
+            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+        };
+        File.WriteAllText(outputPath, JsonSerializer.Serialize(results, options));
+
+        // Summary
+        var compiled = results.Count(r => r["compiled"] != null);
+        var failed = results.Count(r => r["compileError"] != null);
+        Console.WriteLine($"Validated {results.Count} results:");
+        Console.WriteLine($"  Compiled successfully: {compiled}");
+        Console.WriteLine($"  Failed to compile: {failed}");
+        Console.WriteLine($"  Output: {outputPath}");
+
+        return 0;
     }
 }
