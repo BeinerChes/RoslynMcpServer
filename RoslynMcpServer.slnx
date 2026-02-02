@@ -4,5 +4,4 @@
   <Project Path="RoslynMcpServer.Tests\RoslynMcpServer.Tests.csproj" />
   <Project Path="RoslynMcpServer.Web\RoslynMcpServer.Web.csproj" />
   <Project Path="SharpOps/SharpOps.csproj" />
-  <Project Path="SharpTinyCoder.DataExtractor/SharpTinyCoder.DataExtractor.csproj" />
 </Solution>

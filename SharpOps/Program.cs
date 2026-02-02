@@ -19,12 +19,18 @@ public static class Program
             return ValidateResults(args.Skip(1).ToArray());
         }
 
+        if (args.Length >= 1 && args[0] == "debug")
+        {
+            return DebugParse(args.Skip(1).ToArray());
+        }
+
         if (args.Length < 2)
         {
             Console.Error.WriteLine("Usage:");
             Console.Error.WriteLine("  SharpOps <input-path> <output-folder> [options]");
             Console.Error.WriteLine("  SharpOps compile <jsonl-file> [line-number]");
             Console.Error.WriteLine("  SharpOps validate <validation_results.json>");
+            Console.Error.WriteLine("  SharpOps debug <ops-string>");
             Console.Error.WriteLine();
             Console.Error.WriteLine("Input can be: .sln, .slnx, .csproj, or directory with .csproj files");
             Console.Error.WriteLine("Output folder will contain ProjectName.jsonl for each project");
@@ -224,6 +230,27 @@ public static class Program
         Console.WriteLine($"  Failed to compile: {failed}");
         Console.WriteLine($"  Output: {outputPath}");
 
+        return 0;
+    }
+
+
+    private static int DebugParse(string[] args)
+    {
+        var input = string.Join(" ", args);
+        Console.WriteLine($"Input: {input}");
+        Console.WriteLine();
+
+        var sequence = SharpOpsSequence.ParseOps(input);
+        Console.WriteLine($"Parsed {sequence.Ops.Count} ops:");
+        foreach (var op in sequence.Ops)
+        {
+            Console.WriteLine($"  Kind={op.Kind}, Arg={op.Argument}, SymbolKind={op.SymbolKind}");
+        }
+        Console.WriteLine();
+
+        var code = SharpOpsCompiler.CompileToString(sequence);
+        Console.WriteLine("=== COMPILED ===");
+        Console.WriteLine(code);
         return 0;
     }
 }

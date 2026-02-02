@@ -50,6 +50,11 @@ public class SharpOpsSequence
         }
 
         var index = int.Parse(reference[1..]);
+        if (index >= StringTable.Count)
+        {
+            // No string table or index out of range - return placeholder
+            return $"<string{index}>";
+        }
         return StringTable[index];
     }
 

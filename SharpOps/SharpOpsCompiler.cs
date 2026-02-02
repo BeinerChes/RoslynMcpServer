@@ -348,6 +348,7 @@ public class SharpOpsCompiler
         {
             SyntaxKind.DeclarationPattern => CompileDeclarationPattern(op),
             SyntaxKind.ConstantPattern => ConstantPattern(CompileExpression()),
+            SyntaxKind.NotPattern => UnaryPattern(Token(SyntaxKind.NotKeyword), CompilePattern()),
             _ => throw new NotSupportedException($"Pattern: {op.Kind}")
         };
     }

@@ -76,69 +76,41 @@ public readonly struct SharpOp
 
         var next = tokens[start + 1];
 
-        // Special case: IdentifierName with SymbolKind - check FIRST
-        // because some SymbolKind names (Parameter, Property, Field, etc.) are also valid SyntaxKind names
-        if (kind == SyntaxKind.IdentifierName)
+        // IdentifierName with SymbolKind: 3 tokens (kind, symbolKind, name)
+        // Check this FIRST because SymbolKind names (Parameter, Property, Field) are also valid SyntaxKind names
+        if (kind == SyntaxKind.IdentifierName && Enum.TryParse<SymbolKind>(next, out var symbolKind))
         {
-            if (Enum.TryParse<SymbolKind>(next, out var symbolKind) && start + 2 < tokens.Length)
-            {
-                // Collect all tokens until next SyntaxKind/SymbolKind (handles BPE-split names)
-                var (name, consumed) = CollectIdentifierTokens(tokens, start + 2);
-                return (new SharpOp(kind, name, symbolKind), 2 + consumed);
-            }
-            // No SymbolKind, just name - collect until next SyntaxKind
-            var (name2, consumed2) = CollectIdentifierTokens(tokens, start + 1);
-            return (new SharpOp(kind, name2), 1 + consumed2);
+            if (start + 2 >= tokens.Length)
+                throw new ArgumentException($"IdentifierName with SymbolKind {symbolKind} missing name");
+            return (new SharpOp(kind, tokens[start + 2], symbolKind), 3);
         }
 
-        // Check for multi-part argument (type + count/name) - check BEFORE SyntaxKind check
-        // Handles BPE-split type names like "Tra in ing S ample 0" → "TrainingSample:0"
+        // Two-part argument: type + count/name (e.g., "VariableDeclaration var 1" or "DeclarationPattern MyType myVar")
         if (HasTwoPartArgument(kind) && start + 2 < tokens.Length)
         {
-            // Collect type tokens until we hit a number (the arg count)
-            var typeParts = new List<string>();
-            var i = start + 1;
-            while (i < tokens.Length && !char.IsDigit(tokens[i][0]))
+            var thirdToken = tokens[start + 2];
+            // Check that third token is not a SyntaxKind NAME (which would mean this op has no two-part arg)
+            // But allow digits (counts) and identifiers that happen to match SyntaxKind names
+            if (char.IsDigit(thirdToken[0]) || !Enum.TryParse<SyntaxKind>(thirdToken, out _))
             {
-                // Stop if we hit a SyntaxKind (means no count follows)
-                if (Enum.TryParse<SyntaxKind>(tokens[i], out _))
-                    break;
-                typeParts.Add(tokens[i]);
-                i++;
-            }
-
-            if (typeParts.Count > 0 && i < tokens.Length && char.IsDigit(tokens[i][0]))
-            {
-                var typeName = string.Join("", typeParts);
-                var count = tokens[i];
-                return (new SharpOp(kind, $"{typeName}:{count}"), i - start + 1);
+                return (new SharpOp(kind, $"{next}:{thirdToken}"), 3);
             }
         }
 
-        // If next token is a valid SyntaxKind NAME (not numeric), current op has no argument
+        // Ops that always take an identifier argument (member names, variable names)
+        // These should consume the next token even if it happens to match a SyntaxKind name
+        if (TakesIdentifierArgument(kind))
+        {
+            return (new SharpOp(kind, next), 2);
+        }
+
+        // If next token is a SyntaxKind NAME (not a number), current op has no argument
+        // Numbers can match enum values (e.g., "4" matches SyntaxKind.List), so skip that check for digits
         if (!char.IsDigit(next[0]) && Enum.TryParse<SyntaxKind>(next, out _))
             return (new SharpOp(kind), 1);
 
-        // For ops that take identifier-like arguments (member names, variable names),
-        // collect all tokens until next SyntaxKind (handles BPE-split names)
-        if (TakesIdentifierArgument(kind))
-        {
-            var (name, consumed) = CollectIdentifierTokens(tokens, start + 1);
-            return (new SharpOp(kind, name), 1 + consumed);
-        }
-
-        // Single argument (numbers, string refs like $0, etc.)
+        // Single argument
         return (new SharpOp(kind, next), 2);
-    }
-
-    private static bool TakesIdentifierArgument(SyntaxKind kind)
-    {
-        // These ops take identifier-like arguments that may be BPE-split
-        // SimpleMemberAccessExpression/MemberBindingExpression may have generic type args like "OfType<T>"
-        return kind is SyntaxKind.SimpleMemberAccessExpression
-                    or SyntaxKind.MemberBindingExpression
-                    or SyntaxKind.VariableDeclarator
-                    or SyntaxKind.StringLiteralExpression;  // $0 might be split to "$ 0"
     }
 
     private static bool HasTwoPartArgument(SyntaxKind kind)
@@ -148,39 +120,6 @@ public readonly struct SharpOp
                     or SyntaxKind.VariableDeclaration
                     or SyntaxKind.DeclarationExpression
                     or SyntaxKind.DeclarationPattern;
-    }
-
-    /// <summary>
-    /// Collect identifier tokens until we hit a SyntaxKind.
-    /// Handles BPE-split identifiers: "Customer" "Data" → "CustomerData"
-    /// Note: Does NOT stop at SymbolKind - "Method Name" should join to "MethodName"
-    /// </summary>
-    private static (string name, int consumed) CollectIdentifierTokens(string[] tokens, int start)
-    {
-        var parts = new List<string>();
-        var i = start;
-
-        while (i < tokens.Length)
-        {
-            var token = tokens[i];
-
-            // Stop if we hit a SyntaxKind (but not if it looks like an identifier fragment)
-            // SyntaxKind names are PascalCase and end with specific suffixes
-            if (!char.IsDigit(token[0]) && Enum.TryParse<SyntaxKind>(token, out _))
-                break;
-
-            parts.Add(token);
-            i++;
-        }
-
-        // Must consume at least one token
-        if (parts.Count == 0 && start < tokens.Length)
-        {
-            parts.Add(tokens[start]);
-            i = start + 1;
-        }
-
-        return (string.Join("", parts), i - start);
     }
 
     /// <summary>
@@ -214,5 +153,15 @@ public readonly struct SharpOp
         }
 
         throw new FormatException($"Invalid SharpOp format: {s}");
+    }
+
+
+    private static bool TakesIdentifierArgument(SyntaxKind kind)
+    {
+        // These ops always take an identifier argument (member name, variable name)
+        // The argument should be consumed even if it happens to match a SyntaxKind name (like "None")
+        return kind is SyntaxKind.SimpleMemberAccessExpression
+                    or SyntaxKind.MemberBindingExpression
+                    or SyntaxKind.VariableDeclarator;
     }
 }
