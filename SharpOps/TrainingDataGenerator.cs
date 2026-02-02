@@ -160,6 +160,10 @@ public class TrainingDataGenerator
         var result = new GenerationResult { OutputFile = outputFolder };
         using var workspace = CreateWorkspace();
 
+        // Collect all unique tokens for BPE special tokens
+        var allSyntaxKinds = new HashSet<string>();
+        var allSymbolKinds = new HashSet<string>();
+
         // Determine input type and get projects
         var projects = await LoadProjectsAsync(inputPath, workspace);
 
@@ -177,7 +181,7 @@ public class TrainingDataGenerator
                 continue;
             }
 
-            var projectResult = await ProcessProjectAsync(project, outputFolder, options, jsonOptions);
+            var projectResult = await ProcessProjectAsync(project, outputFolder, options, jsonOptions, allSyntaxKinds, allSymbolKinds);
 
             // Accumulate stats
             result.TotalMethods += projectResult.TotalMethods;
@@ -191,6 +195,13 @@ public class TrainingDataGenerator
             result.SkippedNoBody += projectResult.SkippedNoBody;
         }
 
+        // Write special tokens files for BPE tokenizer
+        var syntaxKindsPath = Path.Combine(outputFolder, "syntax_kinds.txt");
+        var symbolKindsPath = Path.Combine(outputFolder, "symbol_kinds.txt");
+        await File.WriteAllLinesAsync(syntaxKindsPath, allSyntaxKinds.OrderBy(x => x));
+        await File.WriteAllLinesAsync(symbolKindsPath, allSymbolKinds.OrderBy(x => x));
+        Console.Error.WriteLine($"Special tokens: {allSyntaxKinds.Count} SyntaxKinds, {allSymbolKinds.Count} SymbolKinds");
+
         Console.Error.WriteLine($"Extraction complete: {result.ExtractedMethods} samples in {outputFolder}");
 
         return result;
@@ -200,7 +211,9 @@ public class TrainingDataGenerator
         Project project,
         string outputFolder,
         GenerationOptions options,
-        JsonSerializerOptions jsonOptions)
+        JsonSerializerOptions jsonOptions,
+        HashSet<string> allSyntaxKinds,
+        HashSet<string> allSymbolKinds)
     {
         var outputPath = Path.Combine(outputFolder, $"{project.Name}.jsonl");
         var result = new GenerationResult { OutputFile = outputPath };
@@ -232,8 +245,16 @@ public class TrainingDataGenerator
             {
                 result.TotalMethods++;
 
-                var sample = TryExtractSample(method, semanticModel, document.FilePath, options, result);
+                var (sample, sequence) = TryExtractSample(method, semanticModel, document.FilePath, options, result);
                 if (sample == null) continue;
+
+                // Collect unique tokens for BPE
+                foreach (var op in sequence!.Ops)
+                {
+                    allSyntaxKinds.Add(op.Kind.ToString());
+                    if (op.SymbolKind.HasValue)
+                        allSymbolKinds.Add(op.SymbolKind.Value.ToString());
+                }
 
                 samples.Add(sample);
                 result.ExtractedMethods++;
@@ -262,7 +283,7 @@ public class TrainingDataGenerator
         return result;
     }
 
-    private object? TryExtractSample(
+    private (object? sample, SharpOpsSequence? sequence) TryExtractSample(
         MethodDeclarationSyntax method,
         SemanticModel semanticModel,
         string filePath,
@@ -270,27 +291,27 @@ public class TrainingDataGenerator
         GenerationResult result)
     {
         var symbol = semanticModel.GetDeclaredSymbol(method);
-        if (symbol == null) return null;
+        if (symbol == null) return (null, null);
 
         // Must have a body
         if (method.Body == null && method.ExpressionBody == null)
         {
             result.SkippedNoBody++;
-            return null;
+            return (null, null);
         }
 
         // Check for XML documentation
         if (options.RequireXmlDoc && !HasXmlDoc(method))
         {
             result.SkippedNoDoc++;
-            return null;
+            return (null, null);
         }
 
         // Check statement count (for block bodies)
         if (method.Body != null && method.Body.Statements.Count < options.MinStatements)
         {
             result.SkippedTooShort++;
-            return null;
+            return (null, null);
         }
 
         // Extract SharpOps
@@ -300,14 +321,14 @@ public class TrainingDataGenerator
         if (sequence.Ops.Count > options.MaxOps)
         {
             result.SkippedTooLong++;
-            return null;
+            return (null, null);
         }
 
         // Skip methods with long strings (SQL schemas, config blocks, etc.)
         if (sequence.StringTable.Any(s => s.Length > options.MaxStringLength))
         {
             result.SkippedLongStrings++;
-            return null;
+            return (null, null);
         }
 
         // Extract context
@@ -316,7 +337,7 @@ public class TrainingDataGenerator
         // Get line number
         var lineSpan = method.GetLocation().GetLineSpan();
 
-        return new
+        var sample = new
         {
             input = context.Replace("\r\n", "\n"),
             output = sequence.SerializeOps(),
@@ -325,6 +346,8 @@ public class TrainingDataGenerator
             line = lineSpan.StartLinePosition.Line + 1,
             method = symbol.ToDisplayString()
         };
+
+        return (sample, sequence);
     }
 
     private static bool HasXmlDoc(MethodDeclarationSyntax method)
