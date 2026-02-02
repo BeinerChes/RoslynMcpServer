@@ -17,8 +17,11 @@ public static class Program
         if (args.Length < 2)
         {
             Console.Error.WriteLine("Usage:");
-            Console.Error.WriteLine("  SharpOps <solution-path> <output.jsonl> [options]");
+            Console.Error.WriteLine("  SharpOps <input-path> <output-folder> [options]");
             Console.Error.WriteLine("  SharpOps compile <jsonl-file> [line-number]");
+            Console.Error.WriteLine();
+            Console.Error.WriteLine("Input can be: .sln, .slnx, .csproj, or directory with .csproj files");
+            Console.Error.WriteLine("Output folder will contain ProjectName.jsonl for each project");
             Console.Error.WriteLine();
             Console.Error.WriteLine("Options:");
             Console.Error.WriteLine("  --min-statements <n>  Minimum statements in method (default: 3)");

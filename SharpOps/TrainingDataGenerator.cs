@@ -92,27 +92,72 @@ public class TrainingDataGenerator
     }
 
     /// <summary>
-    /// Generate training data from a solution.
+    /// Load projects from solution, project file, or directory.
     /// </summary>
-    public async Task<GenerationResult> GenerateAsync(string solutionPath, string outputPath, GenerationOptions? options = null)
+    private static async Task<List<Project>> LoadProjectsAsync(string inputPath, MSBuildWorkspace workspace)
+    {
+        var projects = new List<Project>();
+
+        if (Directory.Exists(inputPath))
+        {
+            // Directory: find all .csproj files recursively
+            var csprojFiles = Directory.GetFiles(inputPath, "*.csproj", SearchOption.AllDirectories);
+            Console.Error.WriteLine($"Found {csprojFiles.Length} projects in {inputPath}");
+
+            foreach (var csproj in csprojFiles)
+            {
+                try
+                {
+                    Console.Error.WriteLine($"Loading project: {csproj}");
+                    var project = await workspace.OpenProjectAsync(csproj);
+                    projects.Add(project);
+                }
+                catch (Exception ex)
+                {
+                    Console.Error.WriteLine($"  Failed to load: {ex.Message}");
+                }
+            }
+        }
+        else if (inputPath.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase))
+        {
+            // Single project
+            Console.Error.WriteLine($"Loading project: {inputPath}");
+            var project = await workspace.OpenProjectAsync(inputPath);
+            projects.Add(project);
+        }
+        else if (inputPath.EndsWith(".sln", StringComparison.OrdinalIgnoreCase) ||
+                 inputPath.EndsWith(".slnx", StringComparison.OrdinalIgnoreCase))
+        {
+            // Solution
+            Console.Error.WriteLine($"Loading solution: {inputPath}");
+            var solution = await workspace.OpenSolutionAsync(inputPath);
+            projects.AddRange(solution.Projects);
+        }
+        else
+        {
+            throw new ArgumentException($"Unsupported input: {inputPath}. Use .sln, .slnx, .csproj, or directory path.");
+        }
+
+        return projects;
+    }
+
+    /// <summary>
+    /// Generate training data from a solution, project, or directory of projects.
+    /// Each project gets its own ProjectName.jsonl file in the output folder.
+    /// </summary>
+    public async Task<GenerationResult> GenerateAsync(string inputPath, string outputFolder, GenerationOptions? options = null)
     {
         options ??= new GenerationOptions();
         EnsureMSBuildRegistered();
 
-        var result = new GenerationResult { OutputFile = outputPath };
+        // Create output folder if needed
+        Directory.CreateDirectory(outputFolder);
 
-        if (!File.Exists(solutionPath))
-        {
-            throw new FileNotFoundException($"Solution file not found: {solutionPath}");
-        }
-
-        Console.Error.WriteLine($"Loading solution: {solutionPath}");
-
+        var result = new GenerationResult { OutputFile = outputFolder };
         using var workspace = CreateWorkspace();
-        var solution = await workspace.OpenSolutionAsync(solutionPath);
 
-        await using var writer = new StreamWriter(outputPath, append: false,
-            encoding: new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+        // Determine input type and get projects
+        var projects = await LoadProjectsAsync(inputPath, workspace);
 
         var jsonOptions = new JsonSerializerOptions
         {
@@ -120,52 +165,95 @@ public class TrainingDataGenerator
             Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
         };
 
-        foreach (var project in solution.Projects)
+        foreach (var project in projects)
         {
-            Console.Error.WriteLine($"Processing project: {project.Name}");
-
             // Skip test projects if configured
             if (!options.IncludeTests && IsTestProject(project))
             {
                 continue;
             }
 
-            var compilation = await project.GetCompilationAsync();
-            if (compilation == null) continue;
+            var projectResult = await ProcessProjectAsync(project, outputFolder, options, jsonOptions);
 
-            foreach (var document in project.Documents)
+            // Accumulate stats
+            result.TotalMethods += projectResult.TotalMethods;
+            result.ExtractedMethods += projectResult.ExtractedMethods;
+            result.SkippedNoDoc += projectResult.SkippedNoDoc;
+            result.SkippedTooShort += projectResult.SkippedTooShort;
+            result.SkippedTooLong += projectResult.SkippedTooLong;
+            result.SkippedLongStrings += projectResult.SkippedLongStrings;
+            result.SkippedGenerated += projectResult.SkippedGenerated;
+            result.SkippedTests += projectResult.SkippedTests;
+            result.SkippedNoBody += projectResult.SkippedNoBody;
+        }
+
+        Console.Error.WriteLine($"Extraction complete: {result.ExtractedMethods} samples in {outputFolder}");
+
+        return result;
+    }
+
+    private async Task<GenerationResult> ProcessProjectAsync(
+        Project project,
+        string outputFolder,
+        GenerationOptions options,
+        JsonSerializerOptions jsonOptions)
+    {
+        var outputPath = Path.Combine(outputFolder, $"{project.Name}.jsonl");
+        var result = new GenerationResult { OutputFile = outputPath };
+
+        var compilation = await project.GetCompilationAsync();
+        if (compilation == null) return result;
+
+        var samples = new List<object>();
+
+        foreach (var document in project.Documents)
+        {
+            if (document.FilePath == null) continue;
+
+            // Skip generated files
+            if (IsGeneratedFile(document.FilePath))
             {
-                if (document.FilePath == null) continue;
+                continue;
+            }
 
-                // Skip generated files
-                if (IsGeneratedFile(document.FilePath))
-                {
-                    continue;
-                }
+            var syntaxTree = await document.GetSyntaxTreeAsync();
+            if (syntaxTree == null) continue;
 
-                var syntaxTree = await document.GetSyntaxTreeAsync();
-                if (syntaxTree == null) continue;
+            var semanticModel = compilation.GetSemanticModel(syntaxTree);
+            var root = await syntaxTree.GetRootAsync();
 
-                var semanticModel = compilation.GetSemanticModel(syntaxTree);
-                var root = await syntaxTree.GetRootAsync();
+            var methods = root.DescendantNodes().OfType<MethodDeclarationSyntax>();
 
-                var methods = root.DescendantNodes().OfType<MethodDeclarationSyntax>();
+            foreach (var method in methods)
+            {
+                result.TotalMethods++;
 
-                foreach (var method in methods)
-                {
-                    result.TotalMethods++;
+                var sample = TryExtractSample(method, semanticModel, document.FilePath, options, result);
+                if (sample == null) continue;
 
-                    var sample = TryExtractSample(method, semanticModel, document.FilePath, options, result);
-                    if (sample == null) continue;
-
-                    var json = JsonSerializer.Serialize(sample, jsonOptions);
-                    await writer.WriteLineAsync(json.Replace("\r\n", "\n"));
-                    result.ExtractedMethods++;
-                }
+                samples.Add(sample);
+                result.ExtractedMethods++;
             }
         }
 
-        Console.Error.WriteLine($"Extraction complete: {result.ExtractedMethods} samples written to {outputPath}");
+        // Only write file if we have samples
+        if (samples.Count > 0)
+        {
+            await using var writer = new StreamWriter(outputPath, append: false,
+                encoding: new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+
+            foreach (var sample in samples)
+            {
+                var json = JsonSerializer.Serialize(sample, jsonOptions);
+                await writer.WriteLineAsync(json.Replace("\r\n", "\n"));
+            }
+
+            Console.Error.WriteLine($"  {project.Name}: {samples.Count} samples → {Path.GetFileName(outputPath)}");
+        }
+        else
+        {
+            Console.Error.WriteLine($"  {project.Name}: 0 samples (skipped)");
+        }
 
         return result;
     }
