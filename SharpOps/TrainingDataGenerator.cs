@@ -21,7 +21,7 @@ public class TrainingDataGenerator
     public record GenerationOptions
     {
         public int MinStatements { get; init; } = 3;
-        public int MaxOps { get; init; } = 100;
+        public int MaxOps { get; init; } = int.MaxValue;  // No limit by default
         public int MaxStringLength { get; init; } = 100;  // Skip methods with strings > this
         public bool IncludeTests { get; init; } = false;
         public bool RequireXmlDoc { get; init; } = true;
