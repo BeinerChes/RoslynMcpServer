@@ -32,12 +32,12 @@ public readonly struct SharpOp
     }
 
     /// <summary>
-    /// Serialize to string format. All names from Roslyn's ToString().
+    /// Serialize to string format. Space-separated tokens.
     /// Examples:
-    ///   IfStatement:2
-    ///   NumericLiteralExpression:42
-    ///   IdentifierName:Field:_tokens
-    ///   StringLiteralExpression:$0
+    ///   IfStatement 2
+    ///   NumericLiteralExpression 42
+    ///   IdentifierName Field _tokens
+    ///   StringLiteralExpression $0
     /// </summary>
     public override string ToString()
     {
@@ -45,14 +45,15 @@ public readonly struct SharpOp
 
         if (SymbolKind.HasValue && Argument != null)
         {
-            // Identifier with symbol kind: IdentifierName:Field:_tokens
-            return $"{kindName}:{SymbolKind.Value}:{Argument}";
+            // Identifier with symbol kind: IdentifierName Field _tokens
+            return $"{kindName} {SymbolKind.Value} {Argument}";
         }
 
         if (Argument != null)
         {
-            // Op with argument: NumericLiteralExpression:42, Block:3
-            return $"{kindName}:{Argument}";
+            // Multi-part arguments use : internally, convert to spaces
+            var spacedArg = Argument.Replace(":", " ");
+            return $"{kindName} {spacedArg}";
         }
 
         // Op without argument: ReturnStatement, AddExpression
@@ -60,7 +61,65 @@ public readonly struct SharpOp
     }
 
     /// <summary>
-    /// Parse from string format. Uses Roslyn's Enum.Parse.
+    /// Parse from space-separated tokens. Returns the op and number of tokens consumed.
+    /// </summary>
+    public static (SharpOp op, int consumed) ParseTokens(string[] tokens, int start)
+    {
+        if (start >= tokens.Length)
+            throw new ArgumentException("No tokens to parse");
+
+        var kind = Enum.Parse<SyntaxKind>(tokens[start]);
+
+        // Check if there's a next token
+        if (start + 1 >= tokens.Length)
+            return (new SharpOp(kind), 1);
+
+        var next = tokens[start + 1];
+
+        // Special case: IdentifierName with SymbolKind - check FIRST
+        // because some SymbolKind names (Parameter, Property, Field, etc.) are also valid SyntaxKind names
+        if (kind == SyntaxKind.IdentifierName)
+        {
+            if (Enum.TryParse<SymbolKind>(next, out var symbolKind) && start + 2 < tokens.Length)
+            {
+                return (new SharpOp(kind, tokens[start + 2], symbolKind), 3);
+            }
+            // No SymbolKind, just name
+            return (new SharpOp(kind, next), 2);
+        }
+
+        // Check for multi-part argument (type + count/name) - check BEFORE SyntaxKind check
+        if (HasTwoPartArgument(kind) && start + 2 < tokens.Length)
+        {
+            var third = tokens[start + 2];
+            // Check if third token is not a SyntaxKind name (or is numeric)
+            if (char.IsDigit(third[0]) || !Enum.TryParse<SyntaxKind>(third, out _))
+            {
+                // Rejoin with colon for internal storage
+                var arg = $"{next}:{third}";
+                return (new SharpOp(kind, arg), 3);
+            }
+        }
+
+        // If next token is a valid SyntaxKind NAME (not numeric), current op has no argument
+        if (!char.IsDigit(next[0]) && Enum.TryParse<SyntaxKind>(next, out _))
+            return (new SharpOp(kind), 1);
+
+        // Single argument
+        return (new SharpOp(kind, next), 2);
+    }
+
+    private static bool HasTwoPartArgument(SyntaxKind kind)
+    {
+        return kind is SyntaxKind.ObjectCreationExpression
+                    or SyntaxKind.ForEachStatement
+                    or SyntaxKind.VariableDeclaration
+                    or SyntaxKind.DeclarationExpression
+                    or SyntaxKind.DeclarationPattern;
+    }
+
+    /// <summary>
+    /// Parse from old colon-separated format (for backwards compatibility).
     /// </summary>
     public static SharpOp Parse(string s)
     {
@@ -80,15 +139,12 @@ public readonly struct SharpOp
 
         if (parts.Length >= 3)
         {
-            // Only IdentifierName has SymbolKind: IdentifierName:Field:_tokens
-            // Other ops with 3+ parts just have multi-colon arguments: VariableDeclaration:var:1
             if (kind == SyntaxKind.IdentifierName && Enum.TryParse<SymbolKind>(parts[1], out var symbolKind))
             {
                 var name = string.Join(":", parts.Skip(2));
                 return new SharpOp(kind, name, symbolKind);
             }
 
-            // Not an identifier, treat everything after first colon as argument
             return new SharpOp(kind, string.Join(":", parts.Skip(1)));
         }
 

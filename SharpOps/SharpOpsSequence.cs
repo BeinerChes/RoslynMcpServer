@@ -62,7 +62,7 @@ public class SharpOpsSequence
     }
 
     /// <summary>
-    /// Parse ops from single-line string.
+    /// Parse ops from single-line string (space-separated tokens).
     /// </summary>
     public static SharpOpsSequence ParseOps(string opsString, IEnumerable<string>? stringTable = null)
     {
@@ -74,9 +74,12 @@ public class SharpOpsSequence
         }
 
         var tokens = opsString.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        foreach (var token in tokens)
+        var i = 0;
+        while (i < tokens.Length)
         {
-            sequence.Ops.Add(SharpOp.Parse(token));
+            var (op, consumed) = SharpOp.ParseTokens(tokens, i);
+            sequence.Ops.Add(op);
+            i += consumed;
         }
 
         return sequence;

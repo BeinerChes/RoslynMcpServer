@@ -100,9 +100,11 @@ public class TrainingDataGenerator
 
         if (Directory.Exists(inputPath))
         {
-            // Directory: find all .csproj files recursively
-            var csprojFiles = Directory.GetFiles(inputPath, "*.csproj", SearchOption.AllDirectories);
-            Console.Error.WriteLine($"Found {csprojFiles.Length} projects in {inputPath}");
+            // Directory: find all .csproj files recursively (skip obj folders)
+            var csprojFiles = Directory.GetFiles(inputPath, "*.csproj", SearchOption.AllDirectories)
+                .Where(f => !f.Contains(Path.DirectorySeparatorChar + "obj" + Path.DirectorySeparatorChar))
+                .ToArray();
+            Console.Error.WriteLine($"Found {csprojFiles.Length} C# projects in {inputPath}");
 
             foreach (var csproj in csprojFiles)
             {
@@ -128,10 +130,12 @@ public class TrainingDataGenerator
         else if (inputPath.EndsWith(".sln", StringComparison.OrdinalIgnoreCase) ||
                  inputPath.EndsWith(".slnx", StringComparison.OrdinalIgnoreCase))
         {
-            // Solution
+            // Solution - only C# projects
             Console.Error.WriteLine($"Loading solution: {inputPath}");
             var solution = await workspace.OpenSolutionAsync(inputPath);
-            projects.AddRange(solution.Projects);
+            var csharpProjects = solution.Projects.Where(p => p.Language == "C#").ToList();
+            Console.Error.WriteLine($"Found {csharpProjects.Count} C# projects (skipped {solution.Projects.Count() - csharpProjects.Count} non-C#)");
+            projects.AddRange(csharpProjects);
         }
         else
         {
