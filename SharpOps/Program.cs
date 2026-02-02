@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.CodeAnalysis.CSharp;
 
 namespace SharpOps;
 
@@ -24,6 +25,11 @@ public static class Program
             return DebugParse(args.Skip(1).ToArray());
         }
 
+        if (args.Length >= 1 && args[0] == "export-tokens")
+        {
+            return ExportTokens(args.Skip(1).ToArray());
+        }
+
         if (args.Length < 2)
         {
             Console.Error.WriteLine("Usage:");
@@ -31,6 +37,7 @@ public static class Program
             Console.Error.WriteLine("  SharpOps compile <jsonl-file> [line-number]");
             Console.Error.WriteLine("  SharpOps validate <validation_results.json>");
             Console.Error.WriteLine("  SharpOps debug <ops-string>");
+            Console.Error.WriteLine("  SharpOps export-tokens <output-file>");
             Console.Error.WriteLine();
             Console.Error.WriteLine("Input can be: .sln, .slnx, .csproj, or directory with .csproj files");
             Console.Error.WriteLine("Output folder will contain ProjectName.jsonl for each project");
@@ -251,6 +258,91 @@ public static class Program
         var code = SharpOpsCompiler.CompileToString(sequence);
         Console.WriteLine("=== COMPILED ===");
         Console.WriteLine(code);
+        return 0;
+    }
+
+
+    private static int ExportTokens(string[] args)
+    {
+        // Get all SyntaxKind values that we use in SharpOps
+        var usedKinds = new HashSet<SyntaxKind>
+        {
+            // Statements
+            SyntaxKind.Block, SyntaxKind.LocalDeclarationStatement, SyntaxKind.ExpressionStatement,
+            SyntaxKind.ReturnStatement, SyntaxKind.ThrowStatement, SyntaxKind.IfStatement,
+            SyntaxKind.ElseClause, SyntaxKind.WhileStatement, SyntaxKind.ForStatement,
+            SyntaxKind.ForEachStatement, SyntaxKind.BreakStatement, SyntaxKind.ContinueStatement,
+            SyntaxKind.TryStatement, SyntaxKind.CatchClause, SyntaxKind.FinallyClause,
+            SyntaxKind.LockStatement, SyntaxKind.UsingStatement,
+            
+            // Expressions
+            SyntaxKind.IdentifierName, SyntaxKind.NumericLiteralExpression, SyntaxKind.StringLiteralExpression,
+            SyntaxKind.CharacterLiteralExpression, SyntaxKind.TrueLiteralExpression, SyntaxKind.FalseLiteralExpression,
+            SyntaxKind.NullLiteralExpression, SyntaxKind.DefaultLiteralExpression,
+            SyntaxKind.InvocationExpression, SyntaxKind.ObjectCreationExpression,
+            SyntaxKind.SimpleMemberAccessExpression, SyntaxKind.ElementAccessExpression,
+            SyntaxKind.ConditionalExpression, SyntaxKind.ConditionalAccessExpression,
+            SyntaxKind.MemberBindingExpression, SyntaxKind.CastExpression, SyntaxKind.AwaitExpression,
+            SyntaxKind.ThisExpression, SyntaxKind.BaseExpression, SyntaxKind.ThrowExpression,
+            SyntaxKind.SimpleLambdaExpression, SyntaxKind.ParenthesizedLambdaExpression,
+            SyntaxKind.AnonymousObjectCreationExpression, SyntaxKind.TupleExpression,
+            SyntaxKind.DeclarationExpression, SyntaxKind.InterpolatedStringExpression,
+            SyntaxKind.RangeExpression,
+            
+            // Patterns
+            SyntaxKind.IsPatternExpression, SyntaxKind.DeclarationPattern, SyntaxKind.ConstantPattern,
+            SyntaxKind.NotPattern,
+            
+            // Binary operators
+            SyntaxKind.AddExpression, SyntaxKind.SubtractExpression, SyntaxKind.MultiplyExpression,
+            SyntaxKind.DivideExpression, SyntaxKind.ModuloExpression,
+            SyntaxKind.EqualsExpression, SyntaxKind.NotEqualsExpression,
+            SyntaxKind.LessThanExpression, SyntaxKind.LessThanOrEqualExpression,
+            SyntaxKind.GreaterThanExpression, SyntaxKind.GreaterThanOrEqualExpression,
+            SyntaxKind.LogicalAndExpression, SyntaxKind.LogicalOrExpression,
+            SyntaxKind.BitwiseAndExpression, SyntaxKind.BitwiseOrExpression, SyntaxKind.ExclusiveOrExpression,
+            SyntaxKind.LeftShiftExpression, SyntaxKind.RightShiftExpression,
+            SyntaxKind.CoalesceExpression, SyntaxKind.AsExpression, SyntaxKind.IsExpression,
+            
+            // Unary operators
+            SyntaxKind.UnaryMinusExpression, SyntaxKind.UnaryPlusExpression,
+            SyntaxKind.LogicalNotExpression, SyntaxKind.BitwiseNotExpression,
+            SyntaxKind.PreIncrementExpression, SyntaxKind.PreDecrementExpression,
+            SyntaxKind.PostIncrementExpression, SyntaxKind.PostDecrementExpression,
+            
+            // Assignment
+            SyntaxKind.SimpleAssignmentExpression, SyntaxKind.AddAssignmentExpression,
+            SyntaxKind.SubtractAssignmentExpression, SyntaxKind.MultiplyAssignmentExpression,
+            SyntaxKind.DivideAssignmentExpression, SyntaxKind.ModuloAssignmentExpression,
+            SyntaxKind.AndAssignmentExpression, SyntaxKind.OrAssignmentExpression,
+            SyntaxKind.ExclusiveOrAssignmentExpression, SyntaxKind.LeftShiftAssignmentExpression,
+            SyntaxKind.RightShiftAssignmentExpression, SyntaxKind.CoalesceAssignmentExpression,
+            
+            // Declarations
+            SyntaxKind.VariableDeclaration, SyntaxKind.VariableDeclarator, SyntaxKind.EqualsValueClause,
+            SyntaxKind.Argument, SyntaxKind.ArrowExpressionClause
+        };
+
+        // Convert to UPPERCASE strings
+        var tokens = usedKinds
+            .Select(k => k.ToString().ToUpperInvariant())
+            .OrderBy(s => s)
+            .ToList();
+
+        if (args.Length >= 1)
+        {
+            File.WriteAllLines(args[0], tokens);
+            Console.WriteLine($"Exported {tokens.Count} tokens to {args[0]}");
+        }
+        else
+        {
+            foreach (var token in tokens)
+            {
+                Console.WriteLine(token);
+            }
+            Console.WriteLine($"Total: {tokens.Count} tokens");
+        }
+
         return 0;
     }
 }

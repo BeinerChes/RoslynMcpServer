@@ -248,12 +248,12 @@ public class TrainingDataGenerator
                 var (sample, sequence) = TryExtractSample(method, semanticModel, document.FilePath, options, result);
                 if (sample == null) continue;
 
-                // Collect unique tokens for BPE
+                // Collect unique tokens for BPE (UPPERCASE format)
                 foreach (var op in sequence!.Ops)
                 {
-                    allSyntaxKinds.Add(op.Kind.ToString());
+                    allSyntaxKinds.Add(op.Kind.ToString().ToUpperInvariant());
                     if (op.SymbolKind.HasValue)
-                        allSymbolKinds.Add(op.SymbolKind.Value.ToString());
+                        allSymbolKinds.Add(op.SymbolKind.Value.ToString().ToUpperInvariant());
                 }
 
                 samples.Add(sample);
