@@ -55,10 +55,11 @@ public class SharpOpsSequence
 
     /// <summary>
     /// Serialize ops to single-line string (space-separated).
+    /// Leading space ensures first token gets Ġ prefix for BPE tokenization.
     /// </summary>
     public string SerializeOps()
     {
-        return string.Join(" ", Ops.Select(op => op.ToString()));
+        return " " + string.Join(" ", Ops.Select(op => op.ToString()));
     }
 
     /// <summary>
