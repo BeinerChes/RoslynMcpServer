@@ -92,15 +92,26 @@ public readonly struct SharpOp
         }
 
         // Check for multi-part argument (type + count/name) - check BEFORE SyntaxKind check
+        // Handles BPE-split type names like "Tra in ing S ample 0" → "TrainingSample:0"
         if (HasTwoPartArgument(kind) && start + 2 < tokens.Length)
         {
-            var third = tokens[start + 2];
-            // Check if third token is not a SyntaxKind name (or is numeric)
-            if (char.IsDigit(third[0]) || !Enum.TryParse<SyntaxKind>(third, out _))
+            // Collect type tokens until we hit a number (the arg count)
+            var typeParts = new List<string>();
+            var i = start + 1;
+            while (i < tokens.Length && !char.IsDigit(tokens[i][0]))
             {
-                // Rejoin with colon for internal storage
-                var arg = $"{next}:{third}";
-                return (new SharpOp(kind, arg), 3);
+                // Stop if we hit a SyntaxKind (means no count follows)
+                if (Enum.TryParse<SyntaxKind>(tokens[i], out _))
+                    break;
+                typeParts.Add(tokens[i]);
+                i++;
+            }
+
+            if (typeParts.Count > 0 && i < tokens.Length && char.IsDigit(tokens[i][0]))
+            {
+                var typeName = string.Join("", typeParts);
+                var count = tokens[i];
+                return (new SharpOp(kind, $"{typeName}:{count}"), i - start + 1);
             }
         }
 
@@ -124,7 +135,8 @@ public readonly struct SharpOp
     {
         return kind is SyntaxKind.SimpleMemberAccessExpression
                     or SyntaxKind.MemberBindingExpression
-                    or SyntaxKind.VariableDeclarator;
+                    or SyntaxKind.VariableDeclarator
+                    or SyntaxKind.StringLiteralExpression;  // $0 might be split to "$ 0"
     }
 
     private static bool HasTwoPartArgument(SyntaxKind kind)
@@ -137,8 +149,9 @@ public readonly struct SharpOp
     }
 
     /// <summary>
-    /// Collect identifier tokens until we hit a SyntaxKind or SymbolKind.
+    /// Collect identifier tokens until we hit a SyntaxKind.
     /// Handles BPE-split identifiers: "Customer" "Data" → "CustomerData"
+    /// Note: Does NOT stop at SymbolKind - "Method Name" should join to "MethodName"
     /// </summary>
     private static (string name, int consumed) CollectIdentifierTokens(string[] tokens, int start)
     {
@@ -149,12 +162,9 @@ public readonly struct SharpOp
         {
             var token = tokens[i];
 
-            // Stop if we hit a SyntaxKind (unless it's a number)
+            // Stop if we hit a SyntaxKind (but not if it looks like an identifier fragment)
+            // SyntaxKind names are PascalCase and end with specific suffixes
             if (!char.IsDigit(token[0]) && Enum.TryParse<SyntaxKind>(token, out _))
-                break;
-
-            // Stop if we hit a SymbolKind
-            if (Enum.TryParse<SymbolKind>(token, out _))
                 break;
 
             parts.Add(token);
