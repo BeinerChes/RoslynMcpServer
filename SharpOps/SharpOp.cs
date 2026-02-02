@@ -82,10 +82,13 @@ public readonly struct SharpOp
         {
             if (Enum.TryParse<SymbolKind>(next, out var symbolKind) && start + 2 < tokens.Length)
             {
-                return (new SharpOp(kind, tokens[start + 2], symbolKind), 3);
+                // Collect all tokens until next SyntaxKind/SymbolKind (handles BPE-split names)
+                var (name, consumed) = CollectIdentifierTokens(tokens, start + 2);
+                return (new SharpOp(kind, name, symbolKind), 2 + consumed);
             }
-            // No SymbolKind, just name
-            return (new SharpOp(kind, next), 2);
+            // No SymbolKind, just name - collect until next SyntaxKind
+            var (name2, consumed2) = CollectIdentifierTokens(tokens, start + 1);
+            return (new SharpOp(kind, name2), 1 + consumed2);
         }
 
         // Check for multi-part argument (type + count/name) - check BEFORE SyntaxKind check
@@ -105,8 +108,23 @@ public readonly struct SharpOp
         if (!char.IsDigit(next[0]) && Enum.TryParse<SyntaxKind>(next, out _))
             return (new SharpOp(kind), 1);
 
-        // Single argument
+        // For ops that take identifier-like arguments (member names, variable names),
+        // collect all tokens until next SyntaxKind (handles BPE-split names)
+        if (TakesIdentifierArgument(kind))
+        {
+            var (name, consumed) = CollectIdentifierTokens(tokens, start + 1);
+            return (new SharpOp(kind, name), 1 + consumed);
+        }
+
+        // Single argument (numbers, string refs like $0, etc.)
         return (new SharpOp(kind, next), 2);
+    }
+
+    private static bool TakesIdentifierArgument(SyntaxKind kind)
+    {
+        return kind is SyntaxKind.SimpleMemberAccessExpression
+                    or SyntaxKind.MemberBindingExpression
+                    or SyntaxKind.VariableDeclarator;
     }
 
     private static bool HasTwoPartArgument(SyntaxKind kind)
@@ -116,6 +134,41 @@ public readonly struct SharpOp
                     or SyntaxKind.VariableDeclaration
                     or SyntaxKind.DeclarationExpression
                     or SyntaxKind.DeclarationPattern;
+    }
+
+    /// <summary>
+    /// Collect identifier tokens until we hit a SyntaxKind or SymbolKind.
+    /// Handles BPE-split identifiers: "Customer" "Data" → "CustomerData"
+    /// </summary>
+    private static (string name, int consumed) CollectIdentifierTokens(string[] tokens, int start)
+    {
+        var parts = new List<string>();
+        var i = start;
+
+        while (i < tokens.Length)
+        {
+            var token = tokens[i];
+
+            // Stop if we hit a SyntaxKind (unless it's a number)
+            if (!char.IsDigit(token[0]) && Enum.TryParse<SyntaxKind>(token, out _))
+                break;
+
+            // Stop if we hit a SymbolKind
+            if (Enum.TryParse<SymbolKind>(token, out _))
+                break;
+
+            parts.Add(token);
+            i++;
+        }
+
+        // Must consume at least one token
+        if (parts.Count == 0 && start < tokens.Length)
+        {
+            parts.Add(tokens[start]);
+            i = start + 1;
+        }
+
+        return (string.Join("", parts), i - start);
     }
 
     /// <summary>
