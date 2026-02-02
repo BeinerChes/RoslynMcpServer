@@ -133,6 +133,8 @@ public readonly struct SharpOp
 
     private static bool TakesIdentifierArgument(SyntaxKind kind)
     {
+        // These ops take identifier-like arguments that may be BPE-split
+        // SimpleMemberAccessExpression/MemberBindingExpression may have generic type args like "OfType<T>"
         return kind is SyntaxKind.SimpleMemberAccessExpression
                     or SyntaxKind.MemberBindingExpression
                     or SyntaxKind.VariableDeclarator

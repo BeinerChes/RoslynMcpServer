@@ -211,7 +211,7 @@ public class SharpOpsCompiler
             SyntaxKind.TrueLiteralExpression or SyntaxKind.FalseLiteralExpression or
             SyntaxKind.NullLiteralExpression or SyntaxKind.DefaultLiteralExpression => LiteralExpression(op.Kind),
             SyntaxKind.IdentifierName => IdentifierName(op.Argument ?? "x"),
-            SyntaxKind.SimpleMemberAccessExpression => MemberAccessExpression(op.Kind, CompileExpression(), IdentifierName(op.Argument ?? "M")),
+            SyntaxKind.SimpleMemberAccessExpression => MemberAccessExpression(op.Kind, CompileExpression(), ParseMemberName(op.Argument ?? "M")),
             SyntaxKind.InvocationExpression => CompileInvoke(op),
             SyntaxKind.ObjectCreationExpression => CompileNew(op),
             SyntaxKind.ElementAccessExpression => CompileIndex(op),
@@ -222,7 +222,7 @@ public class SharpOpsCompiler
             SyntaxKind.BaseExpression => BaseExpression(),
             SyntaxKind.ThrowExpression => ThrowExpression(CompileExpression()),
             SyntaxKind.ConditionalAccessExpression => ConditionalAccessExpression(CompileExpression(), CompileExpression()),
-            SyntaxKind.MemberBindingExpression => MemberBindingExpression(IdentifierName(op.Argument ?? "M")),
+            SyntaxKind.MemberBindingExpression => MemberBindingExpression(ParseMemberName(op.Argument ?? "M")),
             SyntaxKind.DeclarationExpression => CompileDeclarationExpr(op),
             SyntaxKind.AnonymousObjectCreationExpression => CompileAnonymousObject(op),
             SyntaxKind.TupleExpression => CompileTuple(op),
@@ -414,6 +414,25 @@ public class SharpOpsCompiler
     private string GetStr(string r) => r.StartsWith('$') ? _sequence.GetString(r) : r;
     private static SyntaxToken ParseNum(string v) => int.TryParse(v, out var i) ? Literal(i) :
         long.TryParse(v, out var l) ? Literal(l) : double.TryParse(v, out var d) ? Literal(d) : Literal(int.Parse(v));
+
+    /// <summary>
+    /// Parse member name, handling generic type arguments.
+    /// e.g., "OfType" or "OfType&lt;XmlElementSyntax&gt;"
+    /// </summary>
+    private static SimpleNameSyntax ParseMemberName(string name)
+    {
+        var ltIndex = name.IndexOf('<');
+        if (ltIndex < 0)
+            return IdentifierName(name);
+
+        var baseName = name[..ltIndex];
+        var typeArgsStr = name[(ltIndex + 1)..^1]; // strip < and >
+        var typeArgs = typeArgsStr.Split(',', StringSplitOptions.RemoveEmptyEntries)
+            .Select(t => ParseTypeName(t.Trim()))
+            .ToArray();
+
+        return GenericName(Identifier(baseName), TypeArgumentList(SeparatedList(typeArgs)));
+    }
 
     private static bool IsBinary(SyntaxKind k) => k is SyntaxKind.AddExpression or SyntaxKind.SubtractExpression or
         SyntaxKind.MultiplyExpression or SyntaxKind.DivideExpression or SyntaxKind.ModuloExpression or

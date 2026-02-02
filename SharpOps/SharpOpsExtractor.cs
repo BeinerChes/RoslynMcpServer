@@ -94,9 +94,12 @@ public class SharpOpsExtractor : CSharpSyntaxWalker
             // Skip member binding name in conditional access - name is in MemberBindingExpression argument
             IdentifierNameSyntax id2 when id2.Parent is MemberBindingExpressionSyntax => true,
 
-            // Skip generic type names and type arguments - type is captured in parent's argument
+            // Skip generic type names and type arguments - type is captured in member access argument
             GenericNameSyntax => true,
             TypeArgumentListSyntax => true,
+
+            // Skip identifiers that are type arguments in generic names
+            IdentifierNameSyntax id9 when id9.Parent is TypeArgumentListSyntax => true,
 
             // Skip type identifiers in object creation - type is in ObjectCreationExpression argument
             IdentifierNameSyntax id3 when id3.Parent is ObjectCreationExpressionSyntax => true,
@@ -172,13 +175,13 @@ public class SharpOpsExtractor : CSharpSyntaxWalker
             PrefixUnaryExpressionSyntax or PostfixUnaryExpressionSyntax =>
                 new SharpOp(kind),
 
-            // Member access
+            // Member access - include type arguments for generic methods
             MemberAccessExpressionSyntax memberAccess =>
-                new SharpOp(kind, memberAccess.Name.Identifier.Text),
+                new SharpOp(kind, GetMemberName(memberAccess.Name)),
 
             // Member binding in conditional access (?.Member)
             MemberBindingExpressionSyntax memberBinding =>
-                new SharpOp(kind, memberBinding.Name.Identifier.Text),
+                new SharpOp(kind, GetMemberName(memberBinding.Name)),
 
             // Conditional access (?.)
             ConditionalAccessExpressionSyntax => new SharpOp(kind),
@@ -307,5 +310,19 @@ public class SharpOpsExtractor : CSharpSyntaxWalker
             DiscardDesignationSyntax => "_",
             _ => "x"
         };
+    }
+
+    /// <summary>
+    /// Get member name including type arguments for generic methods.
+    /// e.g., "OfType" or "OfType&lt;XmlElementSyntax&gt;"
+    /// </summary>
+    private static string GetMemberName(SimpleNameSyntax name)
+    {
+        if (name is GenericNameSyntax generic)
+        {
+            var typeArgs = string.Join(",", generic.TypeArgumentList.Arguments.Select(a => a.ToString()));
+            return $"{generic.Identifier.Text}<{typeArgs}>";
+        }
+        return name.Identifier.Text;
     }
 }
