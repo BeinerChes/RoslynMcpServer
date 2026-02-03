@@ -160,10 +160,6 @@ public class TrainingDataGenerator
         var result = new GenerationResult { OutputFile = outputFolder };
         using var workspace = CreateWorkspace();
 
-        // Collect all unique tokens for BPE special tokens
-        var allSyntaxKinds = new HashSet<string>();
-        var allSymbolKinds = new HashSet<string>();
-
         // Determine input type and get projects
         var projects = await LoadProjectsAsync(inputPath, workspace);
 
@@ -181,7 +177,7 @@ public class TrainingDataGenerator
                 continue;
             }
 
-            var projectResult = await ProcessProjectAsync(project, outputFolder, options, jsonOptions, allSyntaxKinds, allSymbolKinds);
+            var projectResult = await ProcessProjectAsync(project, outputFolder, options, jsonOptions);
 
             // Accumulate stats
             result.TotalMethods += projectResult.TotalMethods;
@@ -195,13 +191,6 @@ public class TrainingDataGenerator
             result.SkippedNoBody += projectResult.SkippedNoBody;
         }
 
-        // Write special tokens files for BPE tokenizer
-        var syntaxKindsPath = Path.Combine(outputFolder, "syntax_kinds.txt");
-        var symbolKindsPath = Path.Combine(outputFolder, "symbol_kinds.txt");
-        await File.WriteAllLinesAsync(syntaxKindsPath, allSyntaxKinds.OrderBy(x => x));
-        await File.WriteAllLinesAsync(symbolKindsPath, allSymbolKinds.OrderBy(x => x));
-        Console.Error.WriteLine($"Special tokens: {allSyntaxKinds.Count} SyntaxKinds, {allSymbolKinds.Count} SymbolKinds");
-
         Console.Error.WriteLine($"Extraction complete: {result.ExtractedMethods} samples in {outputFolder}");
 
         return result;
@@ -211,9 +200,7 @@ public class TrainingDataGenerator
         Project project,
         string outputFolder,
         GenerationOptions options,
-        JsonSerializerOptions jsonOptions,
-        HashSet<string> allSyntaxKinds,
-        HashSet<string> allSymbolKinds)
+        JsonSerializerOptions jsonOptions)
     {
         var outputPath = Path.Combine(outputFolder, $"{project.Name}.jsonl");
         var result = new GenerationResult { OutputFile = outputPath };
@@ -247,14 +234,6 @@ public class TrainingDataGenerator
 
                 var (sample, sequence) = TryExtractSample(method, semanticModel, document.FilePath, options, result);
                 if (sample == null) continue;
-
-                // Collect unique tokens for BPE (UPPERCASE format)
-                foreach (var op in sequence!.Ops)
-                {
-                    allSyntaxKinds.Add(op.Kind.ToString().ToUpperInvariant());
-                    if (op.SymbolKind.HasValue)
-                        allSymbolKinds.Add(op.SymbolKind.Value.ToString().ToUpperInvariant());
-                }
 
                 samples.Add(sample);
                 result.ExtractedMethods++;
