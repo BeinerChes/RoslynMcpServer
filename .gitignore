@@ -362,6 +362,10 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 
+# ONNX models (large binary files, downloaded at build time)
+*.onnx
+*.onnx.data
+
 # Roslyn MCP graph database (generated per-solution)
 .roslyn-mcp/
 /nul
