@@ -17,4 +17,13 @@ public class ToolStats
 
 
     public long TotalDurationMs { get; set; }
+
+
+    public int? TotalInputTokens { get; set; }
+
+
+    public int? TotalOutputTokens { get; set; }
+
+
+    public double? AvgTokensPerSecond { get; set; }
 }

@@ -7,6 +7,14 @@ public class SharpOpsInference : IDisposable
 {
 
 
+    public record GenerationStats(
+        string Output,
+        int InputTokens,
+        int OutputTokens,
+        double ElapsedMs,
+        double TokensPerSecond,
+        double MsPerToken);
+
     private readonly InferenceSession _session;
 
 
@@ -22,6 +30,12 @@ public class SharpOpsInference : IDisposable
         _tokenizer = new SharpOpsTokenizer(tokenizerPath);
     }
 
+
+    private SharpOpsInference(InferenceSession session, SharpOpsTokenizer tokenizer)
+    {
+        _session = session;
+        _tokenizer = tokenizer;
+    }
 
     public string Generate(string input, float temperature = 0.7f, float topP = 0.9f, int maxTokens = 512)
     {
@@ -240,5 +254,128 @@ public class SharpOpsInference : IDisposable
         }
 
         return _tokenizer.DecodeOutput(currentIds.ToArray());
+    }
+
+
+    public GenerationStats GenerateWithStats(string input, float temperature = 0.7f, float topP = 0.9f, int maxTokens = 512)
+    {
+        var inputIds = _tokenizer.Encode(input);
+        var currentIds = new List<int>(inputIds);
+        var inputTokenCount = inputIds.Length;
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        int generatedTokens = 0;
+
+        for (int i = 0; i < maxTokens; i++)
+        {
+            var inputTensor = new DenseTensor<long>(new[] { 1, currentIds.Count });
+            for (int j = 0; j < currentIds.Count; j++)
+            {
+                inputTensor[0, j] = currentIds[j];
+            }
+
+            var inputs = new List<NamedOnnxValue>
+        {
+            NamedOnnxValue.CreateFromTensor("input_ids", inputTensor)
+        };
+
+            using var results = _session.Run(inputs);
+            var logitsOutput = results.First().AsTensor<float>();
+
+            var seqLen = currentIds.Count;
+            var vocabSize = logitsOutput.Dimensions[2];
+            var logits = new float[vocabSize];
+            for (int v = 0; v < vocabSize; v++)
+            {
+                logits[v] = logitsOutput[0, seqLen - 1, v];
+            }
+
+            var nextToken = SampleWithTemperatureAndTopP(logits, temperature, topP);
+            currentIds.Add(nextToken);
+            generatedTokens++;
+
+            if (nextToken == _tokenizer.EosId)
+                break;
+        }
+
+        sw.Stop();
+        var elapsedMs = sw.Elapsed.TotalMilliseconds;
+        var tokensPerSec = generatedTokens / (elapsedMs / 1000.0);
+        var msPerToken = elapsedMs / generatedTokens;
+
+        var output = _tokenizer.DecodeOutput(currentIds.ToArray());
+
+        return new GenerationStats(
+            Output: output,
+            InputTokens: inputTokenCount,
+            OutputTokens: generatedTokens,
+            ElapsedMs: elapsedMs,
+            TokensPerSecond: tokensPerSec,
+            MsPerToken: msPerToken);
+    }
+
+
+    public static void RunBenchmark(string modelPath, string tokenizerPath, int warmupRuns = 2, int benchRuns = 5)
+    {
+        var testPrompt = "Add two numbers\n\npublic int Add(int a, int b)\n\n<|output|>";
+        var providers = new List<(string Name, SessionOptions Options)>
+    {
+        ("CPU", new SessionOptions())
+    };
+
+        // Try to add DirectML if available
+        try
+        {
+            var dmlOptions = new SessionOptions();
+            dmlOptions.AppendExecutionProvider_DML(0);
+            providers.Add(("DirectML (GPU)", dmlOptions));
+        }
+        catch { /* DirectML not available */ }
+
+        // Try to add CUDA if available
+        try
+        {
+            var cudaOptions = new SessionOptions();
+            cudaOptions.AppendExecutionProvider_CUDA(0);
+            providers.Add(("CUDA (GPU)", cudaOptions));
+        }
+        catch { /* CUDA not available */ }
+
+        Console.WriteLine($"SharpTinyCoder Benchmark");
+        Console.WriteLine($"========================");
+        Console.WriteLine($"Model: {Path.GetFileName(modelPath)}");
+        Console.WriteLine($"Warmup: {warmupRuns} runs, Benchmark: {benchRuns} runs");
+        Console.WriteLine();
+
+        foreach (var (name, options) in providers)
+        {
+            try
+            {
+                Console.Write($"{name,-20}");
+
+                using var session = new InferenceSession(modelPath, options);
+                var tokenizer = new SharpOpsTokenizer(tokenizerPath);
+                var inference = new SharpOpsInference(session, tokenizer);
+
+                // Warmup
+                for (int i = 0; i < warmupRuns; i++)
+                    inference.GenerateWithStats(testPrompt, maxTokens: 50);
+
+                // Benchmark
+                var results = new List<GenerationStats>();
+                for (int i = 0; i < benchRuns; i++)
+                    results.Add(inference.GenerateWithStats(testPrompt, maxTokens: 50));
+
+                var avgTokens = results.Average(r => r.OutputTokens);
+                var avgMs = results.Average(r => r.ElapsedMs);
+                var avgTokSec = results.Average(r => r.TokensPerSecond);
+
+                Console.WriteLine($"{avgTokSec,8:F1} tok/s  ({avgMs,6:F0} ms, {avgTokens,3:F0} tokens)");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"{"FAILED",-8} - {ex.Message}");
+            }
+        }
     }
 }

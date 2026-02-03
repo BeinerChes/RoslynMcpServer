@@ -73,4 +73,17 @@ public class SharpOpsService : IDisposable
     {
         _inference.Dispose();
     }
+
+
+    public SharpOpsInference.GenerationStats GenerateWithStats(
+        string methodSignature,
+        Dictionary<string, string>? fields = null,
+        string? description = null,
+        float temperature = 0.7f,
+        float topP = 0.9f,
+        int maxTokens = 512)
+    {
+        var prompt = BuildPrompt(methodSignature, fields, description);
+        return _inference.GenerateWithStats(prompt, temperature, topP, maxTokens);
+    }
 }

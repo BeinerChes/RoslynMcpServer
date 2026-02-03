@@ -135,8 +135,8 @@ public static partial class RoslynTools
 
         try
         {
-            // Generate SharpOps
-            var sharpOps = service.GenerateSharpOps(
+            // Generate SharpOps with stats
+            var stats = service.GenerateWithStats(
                 methodSignature,
                 fields,
                 description,
@@ -144,12 +144,23 @@ public static partial class RoslynTools
                 topP: 0.9f,
                 maxTokens);
 
+            // Log inference stats
+            Logging.ToolCallLogger.Log(new Logging.ToolCallEntry
+            {
+                Tool = "generate_method_inference",
+                Success = true,
+                DurationMs = (long)stats.ElapsedMs,
+                InputTokens = stats.InputTokens,
+                OutputTokens = stats.OutputTokens,
+                TokensPerSecond = Math.Round(stats.TokensPerSecond, 1)
+            });
+
             // Try to compile to C# for preview
             string? compiledCSharp = null;
             string? compileError = null;
             try
             {
-                var sequence = SharpOps.SharpOpsSequence.ParseOps(sharpOps, null);
+                var sequence = SharpOps.SharpOpsSequence.ParseOps(stats.Output, null);
                 compiledCSharp = SharpOps.SharpOpsCompiler.CompileToString(sequence);
             }
             catch (Exception ex)
@@ -159,7 +170,7 @@ public static partial class RoslynTools
 
             return Task.FromResult<object>(CreateSuccessResponse(new
             {
-                sharpOps = sharpOps.Trim(),
+                sharpOps = stats.Output.Trim(),
                 compiledCSharp,
                 compileError,
                 prompt = SharpOpsService.BuildPrompt(methodSignature, fields, description)

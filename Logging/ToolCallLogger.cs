@@ -83,13 +83,27 @@ public class ToolCallLogger
             TotalOutputChars = entries.Sum(e => e.OutputChars),
             ToolStats = entries
                 .GroupBy(e => e.Tool)
-                .Select(g => new ToolStats
+                .Select(g =>
                 {
-                    Tool = g.Key,
-                    Calls = g.Count(),
-                    SuccessRate = g.Count() > 0 ? (double)g.Count(e => e.Success) / g.Count() * 100 : 0,
-                    AvgDurationMs = g.Count() > 0 ? (long)g.Average(e => e.DurationMs) : 0,
-                    TotalDurationMs = g.Sum(e => e.DurationMs)
+                    var stats = new ToolStats
+                    {
+                        Tool = g.Key,
+                        Calls = g.Count(),
+                        SuccessRate = g.Count() > 0 ? (double)g.Count(e => e.Success) / g.Count() * 100 : 0,
+                        AvgDurationMs = g.Count() > 0 ? (long)g.Average(e => e.DurationMs) : 0,
+                        TotalDurationMs = g.Sum(e => e.DurationMs)
+                    };
+
+                    // Add inference stats if present
+                    var withTokens = g.Where(e => e.OutputTokens.HasValue).ToList();
+                    if (withTokens.Count > 0)
+                    {
+                        stats.TotalInputTokens = withTokens.Sum(e => e.InputTokens ?? 0);
+                        stats.TotalOutputTokens = withTokens.Sum(e => e.OutputTokens ?? 0);
+                        stats.AvgTokensPerSecond = Math.Round(withTokens.Average(e => e.TokensPerSecond ?? 0), 1);
+                    }
+
+                    return stats;
                 })
                 .OrderByDescending(s => s.Calls)
                 .ToList()

@@ -61,7 +61,7 @@ public static partial class RoslynTools
         else
             md.AppendLine("**Period:** All time");
         md.AppendLine();
-        
+
         md.AppendLine("## Summary");
         md.AppendLine();
         md.AppendLine($"| Metric | Value |");
@@ -80,13 +80,29 @@ public static partial class RoslynTools
         md.AppendLine();
         md.AppendLine("| Tool | Calls | Success % | Avg (ms) | Total (ms) |");
         md.AppendLine("|------|------:|----------:|---------:|-----------:|");
-        
+
         foreach (var stat in report.ToolStats)
         {
             var toolName = stat.Tool.Replace("roslyn_", "");
             md.AppendLine($"| {toolName} | {stat.Calls} | {stat.SuccessRate:F1}% | {stat.AvgDurationMs} | {stat.TotalDurationMs} |");
         }
         md.AppendLine();
+
+        // Add model inference stats if present
+        var inferenceStats = report.ToolStats.Where(s => s.AvgTokensPerSecond.HasValue).ToList();
+        if (inferenceStats.Count > 0)
+        {
+            md.AppendLine("## Model Inference Statistics");
+            md.AppendLine();
+            md.AppendLine("| Tool | Calls | In Tokens | Out Tokens | Avg tok/s |");
+            md.AppendLine("|------|------:|----------:|-----------:|----------:|");
+            foreach (var stat in inferenceStats)
+            {
+                var toolName = stat.Tool.Replace("roslyn_", "");
+                md.AppendLine($"| {toolName} | {stat.Calls} | {stat.TotalInputTokens:N0} | {stat.TotalOutputTokens:N0} | {stat.AvgTokensPerSecond:F1} |");
+            }
+            md.AppendLine();
+        }
 
         // Write to file
         var reportsDir = Path.Combine(AppContext.BaseDirectory, "reports");

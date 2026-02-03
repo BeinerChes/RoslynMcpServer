@@ -29,4 +29,13 @@ public class ToolCallEntry
 
 
     public int OutputChars { get; set; }
+
+
+    public int? InputTokens { get; set; }
+
+
+    public int? OutputTokens { get; set; }
+
+
+    public double? TokensPerSecond { get; set; }
 }

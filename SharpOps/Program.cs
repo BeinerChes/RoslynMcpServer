@@ -40,6 +40,11 @@ public static class Program
             return TokenizerTest(args.Skip(1).ToArray());
         }
 
+        if (args.Length >= 1 && args[0] == "benchmark")
+        {
+            return RunBenchmark(args.Skip(1).ToArray());
+        }
+
         if (args.Length < 2)
         {
             Console.Error.WriteLine("Usage:");
@@ -50,6 +55,7 @@ public static class Program
             Console.Error.WriteLine("  SharpOps export-tokens <output-file>");
             Console.Error.WriteLine("  SharpOps generate <method-signature> [--model <path>] [--tokenizer <path>]");
             Console.Error.WriteLine("  SharpOps tokenize <text> [--tokenizer <path>]");
+            Console.Error.WriteLine("  SharpOps benchmark [--model <path>] [--tokenizer <path>]");
             Console.Error.WriteLine();
             Console.Error.WriteLine("Input can be: .sln, .slnx, .csproj, or directory with .csproj files");
             Console.Error.WriteLine("Output folder will contain ProjectName.jsonl for each project");
@@ -489,6 +495,41 @@ public static class Program
         Console.WriteLine($"Decoded: {decoded}");
         Console.WriteLine($"Match: {text == decoded}");
 
+        return 0;
+    }
+
+
+    private static int RunBenchmark(string[] args)
+    {
+        var modelPath = Path.Combine(AppContext.BaseDirectory, "sharptinycoder.onnx");
+        var tokenizerPath = Path.Combine(AppContext.BaseDirectory, "tokenizer.json");
+
+        for (int i = 0; i < args.Length; i++)
+        {
+            switch (args[i])
+            {
+                case "--model" when i + 1 < args.Length:
+                    modelPath = args[++i];
+                    break;
+                case "--tokenizer" when i + 1 < args.Length:
+                    tokenizerPath = args[++i];
+                    break;
+            }
+        }
+
+        if (!File.Exists(modelPath))
+        {
+            Console.Error.WriteLine($"Model not found: {modelPath}");
+            return 1;
+        }
+
+        if (!File.Exists(tokenizerPath))
+        {
+            Console.Error.WriteLine($"Tokenizer not found: {tokenizerPath}");
+            return 1;
+        }
+
+        Inference.SharpOpsInference.RunBenchmark(modelPath, tokenizerPath);
         return 0;
     }
 }
