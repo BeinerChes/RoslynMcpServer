@@ -298,8 +298,16 @@ public class SharpOpsExtractor : CSharpSyntaxWalker
             return new SharpOp(SyntaxKind.IdentifierName, identifier.Identifier.Text);
         }
 
-        // Use Roslyn's SymbolKind directly
-        return new SharpOp(SyntaxKind.IdentifierName, identifier.Identifier.Text, symbol.Kind);
+        // Use positional reference for trackable symbol kinds
+        var name = identifier.Identifier.Text;
+        if (IsTrackableSymbolKind(symbol.Kind))
+        {
+            var positionalRef = _sequence.GetOrAddSymbol(symbol.Kind, name);
+            return new SharpOp(SyntaxKind.IdentifierName, positionalRef, symbol.Kind);
+        }
+
+        // For other symbol kinds, use the name directly
+        return new SharpOp(SyntaxKind.IdentifierName, name, symbol.Kind);
     }
 
     private static string GetDesignationName(VariableDesignationSyntax designation)
@@ -325,4 +333,13 @@ public class SharpOpsExtractor : CSharpSyntaxWalker
         }
         return name.Identifier.Text;
     }
+
+
+    private static bool IsTrackableSymbolKind(SymbolKind kind) => kind is
+            SymbolKind.Local or
+            SymbolKind.Parameter or
+            SymbolKind.Field or
+            SymbolKind.Method or
+            SymbolKind.NamedType or
+            SymbolKind.Property;
 }

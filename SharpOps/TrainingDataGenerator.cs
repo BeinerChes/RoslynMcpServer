@@ -316,11 +316,20 @@ public class TrainingDataGenerator
         // Get line number
         var lineSpan = method.GetLocation().GetLineSpan();
 
+        // Build symbol table metadata
+        var tables = sequence.SymbolTables;
+
         var sample = new
         {
             input = context.Replace("\r\n", "\n"),
             output = sequence.SerializeOps(),
             strings = sequence.StringTable,
+            locals = tables[SymbolKind.Local],
+            parameters = tables[SymbolKind.Parameter],
+            fields = tables[SymbolKind.Field],
+            methods = tables[SymbolKind.Method],
+            namedTypes = tables[SymbolKind.NamedType],
+            properties = tables[SymbolKind.Property],
             sourceFile = filePath,
             line = lineSpan.StartLinePosition.Line + 1,
             method = symbol.ToDisplayString()

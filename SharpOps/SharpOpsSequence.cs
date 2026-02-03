@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using Microsoft.CodeAnalysis;
 
 namespace SharpOps;
 
@@ -18,6 +19,16 @@ public class SharpOpsSequence
     /// </summary>
     public List<string> StringTable { get; } = new();
 
+
+    public Dictionary<SymbolKind, List<string>> SymbolTables { get; } = new()
+    {
+        [SymbolKind.Local] = [],
+        [SymbolKind.Parameter] = [],
+        [SymbolKind.Field] = [],
+        [SymbolKind.Method] = [],
+        [SymbolKind.NamedType] = [],
+        [SymbolKind.Property] = [],
+    };
     /// <summary>
     /// Add an operation to the sequence.
     /// </summary>
@@ -106,5 +117,24 @@ public class SharpOpsSequence
         {
             WriteIndented = false
         });
+    }
+
+
+    public string GetOrAddSymbol(SymbolKind kind, string name)
+    {
+        if (!SymbolTables.TryGetValue(kind, out var table))
+        {
+            table = [];
+            SymbolTables[kind] = table;
+        }
+
+        var index = table.IndexOf(name);
+        if (index < 0)
+        {
+            index = table.Count;
+            table.Add(name);
+        }
+
+        return $"${index}";
     }
 }

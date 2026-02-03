@@ -137,13 +137,21 @@ public readonly struct SharpOp
 
     private static bool IsUpperCase(string token)
     {
-        if (token.Length == 0 || !char.IsLetter(token[0]))
+        // Too short to be a SyntaxKind (shortest is "AS", "DO", "IF", "IN", "IS")
+        if (token.Length < 2)
             return false;
+        if (!char.IsLetter(token[0]))
+            return false;
+        // Tokens with ':' are arguments (FIELD:$0, LOCAL:name), not SyntaxKinds
+        if (token.Contains(':'))
+            return false;
+        // Check if all letters are uppercase
         foreach (var c in token)
         {
             if (char.IsLetter(c) && !char.IsUpper(c))
                 return false;
         }
-        return true;
+        // Final check: must be a valid SyntaxKind
+        return Enum.TryParse<SyntaxKind>(token, ignoreCase: true, out _);
     }
 }
