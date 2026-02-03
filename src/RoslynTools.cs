@@ -85,6 +85,9 @@ public static partial class RoslynTools
         // Code generation tools
         RegisterGenerateMethodTool(server);
         RegisterSmartGenerateMethodTool(server);
+
+        // Usage reporting
+        RegisterUsageReportTool(server);
     }
 
     private static readonly string[] definitionArray11 = new[] { "message" };

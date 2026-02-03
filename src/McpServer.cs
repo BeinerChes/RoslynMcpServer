@@ -141,20 +141,44 @@ public class McpServer
         if (!_toolHandlers.TryGetValue(toolName, out var handler))
             return CreateErrorResponse(id, -32602, $"Unknown tool: {toolName}");
 
+        var logEntry = new Logging.ToolCallEntry
+        {
+            Tool = toolName,
+            Parameters = arguments?.ToDictionary(kv => kv.Key, kv => (object?)kv.Value?.ToString()) ?? [],
+            InputChars = arguments?.ToJsonString().Length ?? 0
+        };
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+
         try
         {
             var result = await handler(arguments);
+            sw.Stop();
+
+            logEntry.Success = true;
+            logEntry.DurationMs = sw.ElapsedMilliseconds;
+            logEntry.OutputChars = result is JsonNode jn ? jn.ToJsonString().Length : result?.ToString()?.Length ?? 0;
+            logEntry.ResultSummary = TruncateForLog(result);
+            Logging.ToolCallLogger.Log(logEntry);
+
             return CreateSuccessResponse(id, result);
         }
         catch (Exception ex)
         {
+            sw.Stop();
+
+            logEntry.Success = false;
+            logEntry.DurationMs = sw.ElapsedMilliseconds;
+            logEntry.Error = ex.Message;
+            Logging.ToolCallLogger.Log(logEntry);
+
             Console.Error.WriteLine($"Tool error: {ex.Message}");
             return CreateSuccessResponse(id, new
             {
                 content = new[]
                 {
-                    new { type = "text", text = $"Error: {ex.Message}" }
-                },
+                new { type = "text", text = $"Error: {ex.Message}" }
+            },
                 isError = true
             });
         }
@@ -173,6 +197,15 @@ public class McpServer
         id = id,
         error = new { code, message }
     };
+
+
+    private static string? TruncateForLog(object? result)
+    {
+        if (result == null) return null;
+        var str = result is JsonNode jn ? jn.ToJsonString() : result.ToString();
+        if (str == null) return null;
+        return str.Length > 100 ? str[..100] + "..." : str;
+    }
 }
 
 /// <summary>
