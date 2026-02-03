@@ -316,6 +316,11 @@ public class TrainingDataGenerator
         // Get line number
         var lineSpan = method.GetLocation().GetLineSpan();
 
+        // Get original C# body
+        var originalCSharp = method.Body != null
+            ? method.Body.NormalizeWhitespace().ToFullString()
+            : method.ExpressionBody!.NormalizeWhitespace().ToFullString();
+
         // Build symbol table metadata
         var tables = sequence.SymbolTables;
 
@@ -323,6 +328,7 @@ public class TrainingDataGenerator
         {
             input = context.Replace("\r\n", "\n"),
             output = sequence.SerializeOps(),
+            originalCSharp = originalCSharp.Replace("\r\n", "\n"),
             strings = sequence.StringTable,
             locals = tables[SymbolKind.Local],
             parameters = tables[SymbolKind.Parameter],

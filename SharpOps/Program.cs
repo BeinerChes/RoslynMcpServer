@@ -45,11 +45,17 @@ public static class Program
             return RunBenchmark(args.Skip(1).ToArray());
         }
 
+        if (args.Length >= 1 && args[0] == "roundtrip")
+        {
+            return RoundtripTest(args.Skip(1).ToArray());
+        }
+
         if (args.Length < 2)
         {
             Console.Error.WriteLine("Usage:");
             Console.Error.WriteLine("  SharpOps <input-path> <output-folder> [options]");
             Console.Error.WriteLine("  SharpOps compile <jsonl-file> [line-number]");
+            Console.Error.WriteLine("  SharpOps roundtrip <input-folder> <output-json> [--max <n>]");
             Console.Error.WriteLine("  SharpOps validate <validation_results.json>");
             Console.Error.WriteLine("  SharpOps debug <ops-string>");
             Console.Error.WriteLine("  SharpOps export-tokens <output-file>");
@@ -530,6 +536,109 @@ public static class Program
         }
 
         Inference.SharpOpsInference.RunBenchmark(modelPath, tokenizerPath);
+        return 0;
+    }
+
+
+    private static int RoundtripTest(string[] args)
+    {
+        if (args.Length < 2)
+        {
+            Console.Error.WriteLine("Usage: SharpOps roundtrip <input-folder> <output-json> [--max <n>]");
+            return 1;
+        }
+
+        var inputFolder = args[0];
+        var outputJson = args[1];
+        var maxSamples = 100;
+
+        for (int i = 2; i < args.Length; i++)
+        {
+            if (args[i] == "--max" && i + 1 < args.Length)
+                maxSamples = int.Parse(args[++i]);
+        }
+
+        var jsonlFiles = Directory.GetFiles(inputFolder, "*.jsonl");
+        var results = new List<object>();
+        var succeeded = 0;
+        var failed = 0;
+
+        foreach (var jsonlFile in jsonlFiles)
+        {
+            if (results.Count >= maxSamples) break;
+
+            var lines = File.ReadAllLines(jsonlFile);
+            foreach (var line in lines)
+            {
+                if (results.Count >= maxSamples) break;
+                if (string.IsNullOrWhiteSpace(line)) continue;
+
+                try
+                {
+                    using var doc = System.Text.Json.JsonDocument.Parse(line);
+                    var root = doc.RootElement;
+
+                    var input = root.GetProperty("input").GetString() ?? "";
+                    var sharpOps = root.GetProperty("output").GetString() ?? "";
+                    var originalCSharp = root.TryGetProperty("originalCSharp", out var origProp)
+                        ? origProp.GetString() ?? ""
+                        : "";
+                    var strings = root.TryGetProperty("strings", out var strProp)
+                        ? strProp.EnumerateArray().Select(x => x.GetString() ?? "").ToList()
+                        : new List<string>();
+
+                    // Try to compile back to C#
+                    string compiledCSharp;
+                    string? error = null;
+                    try
+                    {
+                        var sequence = SharpOpsSequence.ParseOps(sharpOps, strings);
+                        compiledCSharp = SharpOpsCompiler.CompileToString(sequence);
+                        succeeded++;
+                    }
+                    catch (Exception ex)
+                    {
+                        compiledCSharp = "";
+                        error = ex.Message;
+                        failed++;
+                    }
+
+                    results.Add(new
+                    {
+                        input,
+                        originalCSharp,
+                        sharpOps,
+                        compiledCSharp,
+                        error,
+                        source = Path.GetFileName(jsonlFile)
+                    });
+                }
+                catch (Exception ex)
+                {
+                    Console.Error.WriteLine($"Error parsing line: {ex.Message}");
+                    failed++;
+                }
+            }
+        }
+
+        var output = new
+        {
+            totalSamples = results.Count,
+            succeeded,
+            failed,
+            samples = results
+        };
+
+        var options = new System.Text.Json.JsonSerializerOptions
+        {
+            WriteIndented = true,
+            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+        };
+        File.WriteAllText(outputJson, System.Text.Json.JsonSerializer.Serialize(output, options));
+
+        Console.WriteLine($"Roundtrip complete: {succeeded} succeeded, {failed} failed");
+        Console.WriteLine($"Output: {outputJson}");
+
         return 0;
     }
 }
