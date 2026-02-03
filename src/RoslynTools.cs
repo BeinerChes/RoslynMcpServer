@@ -81,6 +81,10 @@ public static partial class RoslynTools
         RegisterKnowledgeDeleteTool(server);
         RegisterKnowledgeGetTool(server);
         RegisterKnowledgeForSymbolTool(server);
+
+        // Code generation tools
+        RegisterGenerateMethodTool(server);
+        RegisterSmartGenerateMethodTool(server);
     }
 
     private static readonly string[] definitionArray11 = new[] { "message" };

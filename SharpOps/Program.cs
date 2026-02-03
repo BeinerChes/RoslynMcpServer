@@ -30,6 +30,16 @@ public static class Program
             return ExportTokens(args.Skip(1).ToArray());
         }
 
+        if (args.Length >= 1 && args[0] == "generate")
+        {
+            return GenerateTest(args.Skip(1).ToArray());
+        }
+
+        if (args.Length >= 1 && args[0] == "tokenize")
+        {
+            return TokenizerTest(args.Skip(1).ToArray());
+        }
+
         if (args.Length < 2)
         {
             Console.Error.WriteLine("Usage:");
@@ -38,6 +48,8 @@ public static class Program
             Console.Error.WriteLine("  SharpOps validate <validation_results.json>");
             Console.Error.WriteLine("  SharpOps debug <ops-string>");
             Console.Error.WriteLine("  SharpOps export-tokens <output-file>");
+            Console.Error.WriteLine("  SharpOps generate <method-signature> [--model <path>] [--tokenizer <path>]");
+            Console.Error.WriteLine("  SharpOps tokenize <text> [--tokenizer <path>]");
             Console.Error.WriteLine();
             Console.Error.WriteLine("Input can be: .sln, .slnx, .csproj, or directory with .csproj files");
             Console.Error.WriteLine("Output folder will contain ProjectName.jsonl for each project");
@@ -342,6 +354,140 @@ public static class Program
             }
             Console.WriteLine($"Total: {tokens.Count} tokens");
         }
+
+        return 0;
+    }
+
+
+    private static int GenerateTest(string[] args)
+    {
+        if (args.Length < 1)
+        {
+            Console.Error.WriteLine("Usage: SharpOps generate <method-signature> [--model <path>] [--tokenizer <path>] [--debug] [--nobos]");
+            return 1;
+        }
+
+        var methodSignature = args[0];
+        var modelPath = Path.Combine(AppContext.BaseDirectory, "Models", "sharptinycoder.onnx");
+        var tokenizerPath = Path.Combine(AppContext.BaseDirectory, "Models", "tokenizer", "tokenizer.json");
+        var debug = false;
+        var noBos = false;
+
+        for (int i = 1; i < args.Length; i++)
+        {
+            switch (args[i])
+            {
+                case "--model" when i + 1 < args.Length:
+                    modelPath = args[++i];
+                    break;
+                case "--tokenizer" when i + 1 < args.Length:
+                    tokenizerPath = args[++i];
+                    break;
+                case "--debug":
+                    debug = true;
+                    break;
+                case "--nobos":
+                    noBos = true;
+                    break;
+            }
+        }
+
+        Console.Error.WriteLine($"Model: {modelPath}");
+        Console.Error.WriteLine($"Tokenizer: {tokenizerPath}");
+        Console.Error.WriteLine($"NoBos: {noBos}");
+        Console.Error.WriteLine();
+
+        var prompt = SharpOps.Inference.SharpOpsService.BuildPrompt(methodSignature);
+        Console.Error.WriteLine("=== PROMPT ===");
+        Console.Error.WriteLine(prompt.Replace("\n", "\\n").Replace("\r", "\\r"));
+        Console.Error.WriteLine();
+
+        try
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+
+            using var inference = new SharpOps.Inference.SharpOpsInference(modelPath, tokenizerPath);
+            var loadTime = sw.ElapsedMilliseconds;
+
+            sw.Restart();
+            string sharpOps;
+            if (noBos)
+                sharpOps = inference.GenerateNoBos(prompt);
+            else if (debug)
+                sharpOps = inference.GenerateDebug(prompt);
+            else
+                sharpOps = inference.Generate(prompt);
+            var genTime = sw.ElapsedMilliseconds;
+
+            Console.WriteLine("=== GENERATED SHARPOPS ===");
+            Console.WriteLine(sharpOps);
+            Console.WriteLine();
+
+            try
+            {
+                var sequence = SharpOpsSequence.ParseOps(sharpOps, null);
+                var compiled = SharpOpsCompiler.Compile(sequence);
+
+                Console.WriteLine("=== COMPILED C# ===");
+                Console.WriteLine(compiled);
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"Compilation failed: {ex.Message}");
+            }
+
+            Console.Error.WriteLine();
+            Console.Error.WriteLine($"Load time: {loadTime}ms");
+            Console.Error.WriteLine($"Generation time: {genTime}ms");
+
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Error: {ex.Message}");
+            return 1;
+        }
+    }
+
+
+    private static int TokenizerTest(string[] args)
+    {
+        if (args.Length < 1)
+        {
+            Console.Error.WriteLine("Usage: SharpOps tokenize <text> [--tokenizer <path>]");
+            return 1;
+        }
+
+        var text = args[0];
+        var tokenizerPath = Path.Combine(AppContext.BaseDirectory, "Models", "tokenizer", "tokenizer.json");
+
+        for (int i = 1; i < args.Length; i++)
+        {
+            if (args[i] == "--tokenizer" && i + 1 < args.Length)
+                tokenizerPath = args[++i];
+        }
+
+        var tokenizer = new SharpOps.Inference.SharpOpsTokenizer(tokenizerPath);
+
+        Console.WriteLine($"Text: {text}");
+        Console.WriteLine($"VocabSize: {tokenizer.VocabSize}");
+        Console.WriteLine();
+
+        var ids = tokenizer.Encode(text);
+        Console.WriteLine($"Token IDs ({ids.Length}): {string.Join(", ", ids)}");
+        Console.WriteLine();
+
+        Console.WriteLine("Tokens:");
+        foreach (var id in ids)
+        {
+            var token = tokenizer.GetToken(id);
+            Console.WriteLine($"  {id}: '{token}'");
+        }
+        Console.WriteLine();
+
+        var decoded = tokenizer.Decode(ids);
+        Console.WriteLine($"Decoded: {decoded}");
+        Console.WriteLine($"Match: {text == decoded}");
 
         return 0;
     }

@@ -8,7 +8,7 @@
     <RootNamespace>RoslynMcpServer</RootNamespace>
     <Version>1.0.7</Version>
     <!-- Exclude sub-projects from compilation -->
-    <DefaultItemExcludes>$(DefaultItemExcludes);RoslynMcpServer.Tests\**;RoslynMcpServer.Graph\**;RoslynMcpServer.Web\**;SharpTinyCoder.DataExtractor\**;SharpOps\**</DefaultItemExcludes>
+    <DefaultItemExcludes>$(DefaultItemExcludes);RoslynMcpServer.Tests\**;RoslynMcpServer.Graph\**;RoslynMcpServer.Web\**;SharpTinyCoder.DataExtractor\**;SharpOps\**;SharpOps.Examples\**</DefaultItemExcludes>
   </PropertyGroup>
 
   <!-- Single-file publish settings -->
@@ -22,6 +22,12 @@
 
   <ItemGroup>
     <ProjectReference Include="RoslynMcpServer.Graph\RoslynMcpServer.Graph.csproj" />
+    <ProjectReference Include="SharpOps\SharpOps.csproj" />
+  </ItemGroup>
+
+  <!-- Copy SharpTinyCoder model files to output directory -->
+  <ItemGroup>
+    <Content Include="SharpOps\Models\**\*" CopyToOutputDirectory="PreserveNewest" Link="Models\%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
 
   <!-- Copy instruction files to output directory -->
