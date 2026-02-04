@@ -381,7 +381,7 @@ public static class Program
         }
 
         var methodSignature = args[0];
-        var modelPath = Path.Combine(AppContext.BaseDirectory, "Models", "sharptinycoder.onnx");
+        var modelPath = Path.Combine(AppContext.BaseDirectory, "Models", "checkpoint.pt");
         var tokenizerPath = Path.Combine(AppContext.BaseDirectory, "Models", "tokenizer", "tokenizer.json");
         var debug = false;
         var noBos = false;
@@ -529,7 +529,7 @@ public static class Program
 
     private static int RunBenchmark(string[] args)
     {
-        var modelPath = Path.Combine(AppContext.BaseDirectory, "sharptinycoder.onnx");
+        var modelPath = Path.Combine(AppContext.BaseDirectory, "checkpoint.pt");
         var tokenizerPath = Path.Combine(AppContext.BaseDirectory, "tokenizer.json");
 
         for (int i = 0; i < args.Length; i++)
@@ -557,7 +557,28 @@ public static class Program
             return 1;
         }
 
-        Inference.SharpOpsInference.RunBenchmark(modelPath, tokenizerPath);
+        var testPrompt = "Add two numbers\n\npublic int Add(int a, int b)\n\n<|output|>";
+        Console.WriteLine("SharpTinyCoder TorchSharp Benchmark");
+        Console.WriteLine("===================================");
+        Console.WriteLine($"Model: {Path.GetFileName(modelPath)}");
+
+        using var inference = new Inference.SharpOpsInference(modelPath, tokenizerPath);
+
+        // Warmup
+        Console.Write("Warming up...");
+        for (int w = 0; w < 2; w++)
+            inference.GenerateWithStats(testPrompt, maxTokens: 50);
+        Console.WriteLine(" done");
+
+        // Benchmark
+        var results = new List<Inference.SharpOpsInference.GenerationStats>();
+        for (int r = 0; r < 5; r++)
+            results.Add(inference.GenerateWithStats(testPrompt, maxTokens: 50));
+
+        var avgTokSec = results.Average(s => s.TokensPerSecond);
+        var avgMs = results.Average(s => s.ElapsedMs);
+        var avgTokens = results.Average(s => s.OutputTokens);
+        Console.WriteLine($"  {avgTokSec:F1} tok/s  ({avgMs:F0} ms, {avgTokens:F0} tokens)");
         return 0;
     }
 

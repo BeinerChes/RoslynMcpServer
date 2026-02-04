@@ -7,4 +7,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\SharpOps\SharpOps.csproj" />
+  </ItemGroup>
+
 </Project>

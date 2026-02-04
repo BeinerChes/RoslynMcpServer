@@ -17,7 +17,7 @@ public static partial class RoslynTools
         {
             // Look for model files relative to exe
             var baseDir = AppContext.BaseDirectory;
-            var modelPath = Path.Combine(baseDir, "Models", "sharptinycoder.onnx");
+            var modelPath = Path.Combine(baseDir, "Models", "checkpoint.pt");
             var tokenizerPath = Path.Combine(baseDir, "Models", "tokenizer", "tokenizer.json");
 
             if (!File.Exists(modelPath))

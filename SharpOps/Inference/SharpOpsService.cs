@@ -9,7 +9,7 @@ public class SharpOpsService : IDisposable
 
     public SharpOpsService()
         : this(
-            Path.Combine(AppContext.BaseDirectory, "Models", "sharptinycoder.onnx"),
+            Path.Combine(AppContext.BaseDirectory, "Models", "checkpoint.pt"),
             Path.Combine(AppContext.BaseDirectory, "Models", "tokenizer", "tokenizer.json"))
     {
     }

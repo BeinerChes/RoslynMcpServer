@@ -5,4 +5,5 @@
   <Project Path="RoslynMcpServer.Web\RoslynMcpServer.Web.csproj" />
   <Project Path="SharpOps.Examples/SharpOps.Examples.csproj" />
   <Project Path="SharpOps/SharpOps.csproj" />
+  <Project Path="SharpOps.Torch/SharpOps.Torch.csproj" />
 </Solution>
