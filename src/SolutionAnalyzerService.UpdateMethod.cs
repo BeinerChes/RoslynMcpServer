@@ -8,16 +8,13 @@ namespace RoslynMcpServer;
 
 public partial class SolutionAnalyzerService
 {
-    /// <summary>
-    /// Updates a method's source code in place.
-    /// </summary>
     public static async Task<UpdateMethodResult> UpdateMethodAsync(
-        string solutionPath,
-        string typeName,
-        string methodName,
-        string newSourceCode,
-        string? parameterTypes = null,
-        string? comment = null)
+    string solutionPath,
+    string typeName,
+    string methodName,
+    string newSourceCode,
+    string? parameterTypes = null,
+    string? comment = null)
     {
         EnsureMSBuildRegistered();
 
@@ -249,6 +246,13 @@ public partial class SolutionAnalyzerService
             else if (newMethodNode is ConstructorDeclarationSyntax newCtor)
             {
                 newSignature = $"{newCtor.Identifier}({string.Join(", ", newCtor.ParameterList.Parameters)})";
+            }
+
+            // Collect fine-tune training data for methods
+            if (newMethodNode is MethodDeclarationSyntax)
+            {
+                _ = Task.Run(() => Services.FinetuneCollector.CollectAsync(
+                    solutionPath, filePath, typeName, targetMethod.Name, comment, parameterTypes));
             }
 
             return new UpdateMethodResult

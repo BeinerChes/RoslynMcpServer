@@ -78,9 +78,7 @@ public partial class SolutionAnalyzerService
         {
             Console.Error.WriteLine($"Workspace warning: {args.Diagnostic.Message}");
         }, null);
-    }     /// <summary>
-          /// Adds a new member (method, property, field, etc.) to a type.
-          /// </summary>
+    }
     public static async Task<AddMemberResult> AddMemberAsync(
         string solutionPath,
         string typeName,
@@ -207,6 +205,13 @@ public partial class SolutionAnalyzerService
             var insertedLine = insertedInNewRoot?.GetLocation().GetLineSpan().StartLinePosition.Line + 1;
 
             Console.Error.WriteLine($"Added {memberKind} '{memberName}' to {typeName} at {filePath}:{insertedLine}");
+
+            // Collect fine-tune training data for methods
+            if (insertedMember is MethodDeclarationSyntax)
+            {
+                _ = Task.Run(() => Services.FinetuneCollector.CollectAsync(
+                    solutionPath, filePath, typeName, memberName, comment));
+            }
 
             return new AddMemberResult
             {
