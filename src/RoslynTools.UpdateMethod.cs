@@ -38,6 +38,11 @@ public static partial class RoslynTools
                         {
                             type = "string",
                             description = "Parameter types to identify a specific overload, e.g. 'string, int'. Required if multiple overloads exist."
+                        },
+                        comment = new
+                        {
+                            type = "string",
+                            description = "Plain text description of the method. Generates XML doc comment with <summary>, <param>, and <returns> tags, replacing any existing XML doc."
                         }
                     },
                     required = new[] { "typeName", "methodName", "newSourceCode" }
@@ -57,6 +62,7 @@ public static partial class RoslynTools
                 var methodName = args?["methodName"]?.GetValue<string>();
                 var newSourceCode = args?["newSourceCode"]?.GetValue<string>();
                 var parameterTypes = args?["parameterTypes"]?.GetValue<string>();
+                var comment = args?["comment"]?.GetValue<string>();
 
                 if (string.IsNullOrWhiteSpace(typeName))
                     return CreateToolError("Error: typeName is required");
@@ -72,7 +78,8 @@ public static partial class RoslynTools
                     typeName,
                     methodName,
                     newSourceCode,
-                    parameterTypes);
+                    parameterTypes,
+                    comment);
 
                 if (!result.Success)
                 {

@@ -16,7 +16,8 @@ public partial class SolutionAnalyzerService
         string typeName,
         string methodName,
         string newSourceCode,
-        string? parameterTypes = null)
+        string? parameterTypes = null,
+        string? comment = null)
     {
         EnsureMSBuildRegistered();
 
@@ -193,6 +194,12 @@ public partial class SolutionAnalyzerService
                 };
             }
 
+            // Add XML doc comment if comment is provided
+            if (comment != null && newMethodNode is MemberDeclarationSyntax newMemberDecl)
+            {
+                newMethodNode = AddXmlDocComment(newMemberDecl, comment, newSourceCode);
+            }
+
             // Get the old signature for reporting
             var oldSignature = GetMethodSignature(targetMethod);
             var oldSpan = methodNode.GetLocation().GetLineSpan();
@@ -200,6 +207,14 @@ public partial class SolutionAnalyzerService
             // Replace the old node with the new one, preserving leading trivia
             var leadingTrivia = methodNode.GetLeadingTrivia();
             var trailingTrivia = methodNode.GetTrailingTrivia();
+
+            // If comment was provided, strip old XML doc trivia (new doc is already on the node)
+            if (comment != null)
+            {
+                leadingTrivia = new SyntaxTriviaList(leadingTrivia
+                    .Where(t => !t.IsKind(SyntaxKind.SingleLineDocumentationCommentTrivia) &&
+                                !t.IsKind(SyntaxKind.MultiLineDocumentationCommentTrivia)));
+            }
 
             var newMethodWithTrivia = newMethodNode
                 .WithLeadingTrivia(leadingTrivia)
@@ -210,7 +225,7 @@ public partial class SolutionAnalyzerService
             // Format the code
             var formattedRoot = Formatter.Format(newRootNode, workspace);
 
-            // Write the updated file - use syntaxTree.FilePath to avoid null dereference
+            // Write the updated file
             var filePath = syntaxTree.FilePath;
             var newText = formattedRoot.ToFullString();
 

@@ -38,6 +38,11 @@ public static partial class RoslynTools
                             type = "string",
                             description = "Where to insert: 'start', 'end', 'after-fields', 'after-constructors', 'after-properties', 'before-methods'. Default: smart placement based on member type.",
                             @enum = new[] { "start", "end", "after-fields", "after-constructors", "after-properties", "before-methods" }
+                        },
+                        comment = new
+                        {
+                            type = "string",
+                            description = "Plain text description of the member. Generates XML doc comment with <summary>, <param>, and <returns> tags. Public members get stub XML docs even without this parameter."
                         }
                     },
                     required = new[] { "typeName", "memberCode" }
@@ -56,6 +61,7 @@ public static partial class RoslynTools
                 var typeName = args?["typeName"]?.GetValue<string>();
                 var memberCode = args?["memberCode"]?.GetValue<string>();
                 var insertionPoint = args?["insertionPoint"]?.GetValue<string>();
+                var comment = args?["comment"]?.GetValue<string>();
 
                 if (string.IsNullOrWhiteSpace(typeName))
                 {
@@ -85,7 +91,8 @@ public static partial class RoslynTools
                     solutionPath!,
                     typeName,
                     memberCode,
-                    insertionPoint);
+                    insertionPoint,
+                    comment);
 
                 return new
                 {

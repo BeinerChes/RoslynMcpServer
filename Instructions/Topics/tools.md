@@ -9,8 +9,8 @@ Hook blocks Read/Edit on .cs files. Use Roslyn tools instead.
 | Find symbol | `roslyn_find_symbol(pattern)` |
 | See class structure | `roslyn_get_type_members(typeName)` |
 | Read method | `roslyn_get_method_body(typeName, methodName)` |
-| Edit method | `roslyn_update_method(typeName, methodName, newSourceCode)` |
-| Add member | `roslyn_add_member(typeName, memberCode)` |
+| Edit method | `roslyn_update_method(typeName, methodName, newSourceCode, comment?)` |
+| Add member | `roslyn_add_member(typeName, memberCode, comment?)` |
 | Create type | `roslyn_add_type(projectName, typeName)` |
 | Delete member | `roslyn_delete_member(typeName, memberName)` |
 | Find usages | `roslyn_get_references(filePath, line, column)` |
@@ -38,8 +38,12 @@ roslyn_update_method(typeName, methodName, newCode)
 **Create new type with members:**
 ```
 roslyn_add_type(projectName, typeName, folder: "Services")
-roslyn_add_member(typeName, "public void DoThing() { }")
+roslyn_add_member(typeName, "public void DoThing() { }", comment: "Does the thing")
 ```
+
+**XML doc comments:**
+- `roslyn_add_member`: Pass `comment` for summary text. Public members get XML doc stubs automatically.
+- `roslyn_update_method`: Pass `comment` to replace/add XML doc on the method.
 
 **Impact before refactoring:**
 ```

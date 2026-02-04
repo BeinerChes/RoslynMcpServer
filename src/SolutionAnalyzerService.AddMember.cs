@@ -11,6 +11,67 @@ public partial class SolutionAnalyzerService
 {
 
 
+    private static bool IsPublicMember(MemberDeclarationSyntax member)
+    {
+        return member.Modifiers.Any(SyntaxKind.PublicKeyword);
+    }
+
+    private static MemberDeclarationSyntax AddXmlDocComment(MemberDeclarationSyntax member, string? comment, string originalMemberCode)
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("/// <summary>");
+
+        if (!string.IsNullOrWhiteSpace(comment))
+        {
+            foreach (var line in comment.Split('\n'))
+                sb.AppendLine($"/// {line.TrimEnd()}");
+        }
+
+        sb.AppendLine("/// </summary>");
+
+        // Add <param> tags for methods/constructors
+        var paramList = member switch
+        {
+            MethodDeclarationSyntax m => m.ParameterList,
+            ConstructorDeclarationSyntax c => c.ParameterList,
+            _ => null
+        };
+
+        if (paramList != null)
+        {
+            foreach (var param in paramList.Parameters)
+                sb.AppendLine($"/// <param name=\"{param.Identifier.Text}\"></param>");
+        }
+
+        // Add <returns> for non-void methods (skip void and bare Task)
+        if (member is MethodDeclarationSyntax method)
+        {
+            var returnType = method.ReturnType.ToString();
+            if (returnType != "void" && returnType != "Task")
+                sb.AppendLine("/// <returns></returns>");
+        }
+
+        // Re-parse member with doc comment on its own line so parser treats it as leading trivia
+        var docText = sb.ToString();
+        var wrappedCode = $"class _DocTemp {{\n{docText}{originalMemberCode}\n}}";
+        var tree = CSharpSyntaxTree.ParseText(wrappedCode);
+        var root = tree.GetRoot();
+        var tempClass = root.DescendantNodes().OfType<ClassDeclarationSyntax>().FirstOrDefault();
+        var reparsed = tempClass?.Members.FirstOrDefault();
+
+        if (reparsed != null)
+        {
+            // Strip leading whitespace-only trivia (newlines from temp class parse)
+            // so InsertMember's own spacing is the only separator
+            var trivia = reparsed.GetLeadingTrivia();
+            var trimmed = trivia.SkipWhile(t => t.IsKind(SyntaxKind.WhitespaceTrivia) ||
+                                                 t.IsKind(SyntaxKind.EndOfLineTrivia));
+            return reparsed.WithLeadingTrivia(trimmed);
+        }
+
+        return member;
+    }
+
     private static void RegisterFailureHandler(MSBuildWorkspace workspace)
     {
         workspace.RegisterWorkspaceFailedHandler(args =>
@@ -24,7 +85,8 @@ public partial class SolutionAnalyzerService
         string solutionPath,
         string typeName,
         string memberCode,
-        string? insertionPoint = null)
+        string? insertionPoint = null,
+        string? comment = null)
     {
         EnsureMSBuildRegistered();
 
@@ -114,6 +176,12 @@ public partial class SolutionAnalyzerService
                 };
             }
 
+            // Add XML doc comment if comment provided or member is public
+            if (comment != null || IsPublicMember(parsedMember))
+            {
+                parsedMember = AddXmlDocComment(parsedMember, comment, memberCode);
+            }
+
             // Determine insertion point and add the member
             var (newTypeDeclaration, insertedMember) = InsertMember(typeDeclaration, parsedMember, insertionPoint);
 
@@ -186,11 +254,12 @@ public partial class SolutionAnalyzerService
         MemberDeclarationSyntax newMember,
         string? insertionPoint)
     {
-        // Add a blank line before the member (Formatter will handle indentation)
-        var formattedMember = newMember
-            .WithLeadingTrivia(SyntaxFactory.TriviaList(
-                SyntaxFactory.CarriageReturnLineFeed,
-                SyntaxFactory.CarriageReturnLineFeed));
+        // Prepend a single blank line before the member, preserving any existing trivia (e.g. XML doc comments)
+        var existingTrivia = newMember.GetLeadingTrivia();
+        var blankLineTrivia = SyntaxFactory.TriviaList(
+            SyntaxFactory.CarriageReturnLineFeed);
+        var combinedTrivia = blankLineTrivia.AddRange(existingTrivia);
+        var formattedMember = newMember.WithLeadingTrivia(combinedTrivia);
 
         var members = typeDeclaration.Members;
         int insertIndex = members.Count; // Default: end
