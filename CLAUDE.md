@@ -83,13 +83,21 @@ dotnet test            # Run tests
 
 ### Rebuilding After Code Changes
 
-The MCP server runs as a background process and locks the exe. **Before rebuilding, kill it automatically:**
+This project uses itself as its own MCP server. After code changes, you MUST rebuild and redeploy:
 
 ```bash
+# 1. Kill running MCP server (it locks the exe)
 taskkill //F //IM RoslynMcpServer.exe
+
+# 2. Build
 dotnet build
+
+# 3. Deploy to .roslyn-mcp/ (where the MCP server runs from)
+cp -r bin/Debug/net10.0/* .roslyn-mcp/
+
+# 4. Tell the user to reconnect MCP
 ```
 
-After successful build, tell the user: "Reconnect MCP with `/mcp` → reconnect roslyn"
+After successful build + deploy, tell the user: **"Reconnect MCP with `/mcp` → reconnect roslyn"**
 
 **Do NOT ask the user to kill processes** - just do it.

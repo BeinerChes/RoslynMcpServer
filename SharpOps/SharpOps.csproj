@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -24,6 +24,9 @@
   <!-- Model files - copy to output -->
   <ItemGroup>
     <None Include="Models\**\*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\RoslynMcpServer.Web\RoslynMcpServer.Web.csproj" />
   </ItemGroup>
 
 </Project>

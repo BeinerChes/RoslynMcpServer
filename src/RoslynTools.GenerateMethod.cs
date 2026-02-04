@@ -76,7 +76,7 @@ public static partial class RoslynTools
                         temperature = new
                         {
                             type = "number",
-                            description = "Sampling temperature (0.0-2.0). Higher = more creative, lower = more deterministic. Default: 0.7",
+                            description = "Sampling temperature (0.0-2.0). Higher = more creative, lower = more deterministic. Default: 0.0 (greedy decoding)",
                             minimum = 0.0,
                             maximum = 2.0
                         },
@@ -93,7 +93,7 @@ public static partial class RoslynTools
                 Annotations = new ToolAnnotations
                 {
                     ReadOnlyHint = true,
-                    IdempotentHint = false // Output may vary due to sampling
+                    IdempotentHint = true // Greedy decoding is deterministic by default
                 }
             },
             HandleGenerateMethodAsync);
@@ -115,7 +115,7 @@ public static partial class RoslynTools
 
         // Get optional parameters
         var description = args?["description"]?.GetValue<string>();
-        var temperature = (float)GetOptionalDouble(args, "temperature", 0.7);
+        var temperature = (float)GetOptionalDouble(args, "temperature", 0.0);
         var maxTokens = GetOptionalInt(args, "maxTokens", 512);
 
         // Parse fields dictionary if provided

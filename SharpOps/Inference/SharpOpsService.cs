@@ -59,7 +59,7 @@ public class SharpOpsService : IDisposable
     string methodSignature,
     Dictionary<string, string>? fields = null,
     string? description = null,
-    float temperature = 0.7f,
+    float temperature = 0f,
     float topP = 0.9f,
     int maxTokens = 512)
     {
@@ -79,7 +79,7 @@ public class SharpOpsService : IDisposable
         string methodSignature,
         Dictionary<string, string>? fields = null,
         string? description = null,
-        float temperature = 0.7f,
+        float temperature = 0f,
         float topP = 0.9f,
         int maxTokens = 512)
     {

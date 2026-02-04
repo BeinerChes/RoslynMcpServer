@@ -37,7 +37,7 @@ public class SharpOpsInference : IDisposable
         _tokenizer = tokenizer;
     }
 
-    public string Generate(string input, float temperature = 0.7f, float topP = 0.9f, int maxTokens = 512)
+    public string Generate(string input, float temperature = 0f, float topP = 0.9f, int maxTokens = 512)
     {
         // Encode input with BOS token
         var inputIds = _tokenizer.EncodeWithBos(input);
@@ -87,13 +87,26 @@ public class SharpOpsInference : IDisposable
 
     private int SampleWithTemperatureAndTopP(float[] logits, float temperature, float topP)
     {
-        // Apply temperature
-        if (temperature > 0)
+        // Greedy decoding when temperature is 0 or negative
+        if (temperature <= 0)
         {
-            for (int i = 0; i < logits.Length; i++)
+            int bestIdx = 0;
+            float bestVal = logits[0];
+            for (int i = 1; i < logits.Length; i++)
             {
-                logits[i] /= temperature;
+                if (logits[i] > bestVal)
+                {
+                    bestVal = logits[i];
+                    bestIdx = i;
+                }
             }
+            return bestIdx;
+        }
+
+        // Apply temperature
+        for (int i = 0; i < logits.Length; i++)
+        {
+            logits[i] /= temperature;
         }
 
         // Convert to probabilities with softmax
@@ -155,7 +168,7 @@ public class SharpOpsInference : IDisposable
     }
 
 
-    public string GenerateDebug(string input, float temperature = 0.7f, float topP = 0.9f, int maxTokens = 512)
+    public string GenerateDebug(string input, float temperature = 0f, float topP = 0.9f, int maxTokens = 512)
     {
         // Encode input with BOS token
         var inputIds = _tokenizer.EncodeWithBos(input);
@@ -215,7 +228,7 @@ public class SharpOpsInference : IDisposable
     }
 
 
-    public string GenerateNoBos(string input, float temperature = 0.7f, float topP = 0.9f, int maxTokens = 512)
+    public string GenerateNoBos(string input, float temperature = 0f, float topP = 0.9f, int maxTokens = 512)
     {
         // Encode input WITHOUT BOS token
         var inputIds = _tokenizer.Encode(input);
@@ -257,7 +270,7 @@ public class SharpOpsInference : IDisposable
     }
 
 
-    public GenerationStats GenerateWithStats(string input, float temperature = 0.7f, float topP = 0.9f, int maxTokens = 512)
+    public GenerationStats GenerateWithStats(string input, float temperature = 0f, float topP = 0.9f, int maxTokens = 512)
     {
         var inputIds = _tokenizer.Encode(input);
         var currentIds = new List<int>(inputIds);

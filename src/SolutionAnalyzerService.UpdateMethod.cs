@@ -191,12 +191,6 @@ public partial class SolutionAnalyzerService
                 };
             }
 
-            // Add XML doc comment if comment is provided
-            if (comment != null && newMethodNode is MemberDeclarationSyntax newMemberDecl)
-            {
-                newMethodNode = AddXmlDocComment(newMemberDecl, comment, newSourceCode);
-            }
-
             // Get the old signature for reporting
             var oldSignature = GetMethodSignature(targetMethod);
             var oldSpan = methodNode.GetLocation().GetLineSpan();
@@ -205,7 +199,7 @@ public partial class SolutionAnalyzerService
             var leadingTrivia = methodNode.GetLeadingTrivia();
             var trailingTrivia = methodNode.GetTrailingTrivia();
 
-            // If comment was provided, strip old XML doc trivia (new doc is already on the node)
+            // Strip old XML doc trivia if comment is provided (will be re-added below)
             if (comment != null)
             {
                 leadingTrivia = new SyntaxTriviaList(leadingTrivia
@@ -213,9 +207,16 @@ public partial class SolutionAnalyzerService
                                 !t.IsKind(SyntaxKind.MultiLineDocumentationCommentTrivia)));
             }
 
+            // Apply old leading/trailing trivia first
             var newMethodWithTrivia = newMethodNode
                 .WithLeadingTrivia(leadingTrivia)
                 .WithTrailingTrivia(trailingTrivia);
+
+            // Add XML doc comment AFTER setting trivia, so it doesn't get overwritten
+            if (comment != null && newMethodWithTrivia is MemberDeclarationSyntax newMemberDecl)
+            {
+                newMethodWithTrivia = AddXmlDocComment(newMemberDecl, comment, newSourceCode);
+            }
 
             var newRootNode = root.ReplaceNode(methodNode, newMethodWithTrivia);
 

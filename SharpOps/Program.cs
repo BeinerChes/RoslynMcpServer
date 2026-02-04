@@ -439,7 +439,28 @@ public static class Program
             try
             {
                 var sequence = SharpOpsSequence.ParseOps(sharpOps, null);
-                var compiled = SharpOpsCompiler.Compile(sequence);
+
+                // Populate parameter names from signature
+                var parenStart = methodSignature.IndexOf('(');
+                var parenEnd = methodSignature.LastIndexOf(')');
+                if (parenStart >= 0 && parenEnd > parenStart)
+                {
+                    var paramSection = methodSignature[(parenStart + 1)..parenEnd].Trim();
+                    if (paramSection.Length > 0)
+                    {
+                        var paramTable = sequence.SymbolTables[Microsoft.CodeAnalysis.SymbolKind.Parameter];
+                        foreach (var param in paramSection.Split(','))
+                        {
+                            var parts = param.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                            if (parts.Length >= 2)
+                            {
+                                paramTable.Add(parts[^1]);
+                            }
+                        }
+                    }
+                }
+
+                var compiled = SharpOpsCompiler.CompileToString(sequence);
 
                 Console.WriteLine("=== COMPILED C# ===");
                 Console.WriteLine(compiled);
