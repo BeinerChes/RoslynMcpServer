@@ -94,8 +94,14 @@ public class SharpOpsExtractor : CSharpSyntaxWalker
             // Skip member binding name in conditional access - name is in MemberBindingExpression argument
             IdentifierNameSyntax id2 when id2.Parent is MemberBindingExpressionSyntax => true,
 
-            // Skip generic type names and type arguments - type is captured in member access argument
-            GenericNameSyntax => true,
+            // Skip generic type names in most contexts - type info is captured elsewhere
+            // Only emit GenericNameSyntax when it's a direct invocation target (e.g., DeserializeObject<int>())
+            GenericNameSyntax gn when gn.Parent is MemberAccessExpressionSyntax ma && ma.Name == gn => true,
+            GenericNameSyntax gn when gn.Parent is MemberBindingExpressionSyntax => true,
+            GenericNameSyntax gn when gn.Parent is VariableDeclarationSyntax => true, // Type in var decl
+            GenericNameSyntax gn when gn.Parent is TypeArgumentListSyntax => true, // Nested generic
+            GenericNameSyntax gn when gn.Parent is ArrayTypeSyntax => true, // Array element type
+            GenericNameSyntax gn when gn.Parent is ObjectCreationExpressionSyntax => true, // new List<T>()
             TypeArgumentListSyntax => true,
 
             // Skip identifiers that are type arguments in generic names
@@ -104,8 +110,8 @@ public class SharpOpsExtractor : CSharpSyntaxWalker
             // Skip type identifiers in object creation - type is in ObjectCreationExpression argument
             IdentifierNameSyntax id3 when id3.Parent is ObjectCreationExpressionSyntax => true,
 
-            // Skip type identifiers in cast expressions - type is in CastExpression argument
-            IdentifierNameSyntax id4 when id4.Parent is CastExpressionSyntax => true,
+            // Skip type identifiers in cast expressions - ONLY skip the Type, not the Expression being cast
+            IdentifierNameSyntax id4 when id4.Parent is CastExpressionSyntax cast && cast.Type == id4 => true,
 
             // Skip qualified names (e.g., System.String) - we just use the full name
             QualifiedNameSyntax => true,
@@ -116,10 +122,16 @@ public class SharpOpsExtractor : CSharpSyntaxWalker
             // Skip type identifier in foreach - type is in ForEachStatement argument
             IdentifierNameSyntax id5 when id5.Parent is ForEachStatementSyntax fe && fe.Type == id5 => true,
 
+            // Skip type identifier in variable declaration - type is in VariableDeclaration argument
+            IdentifierNameSyntax id10 when id10.Parent is VariableDeclarationSyntax => true,
+
             // Skip declaration expression/pattern children - captured in argument
             SingleVariableDesignationSyntax => true,
             IdentifierNameSyntax id6 when id6.Parent is DeclarationExpressionSyntax => true,
             IdentifierNameSyntax id8 when id8.Parent is DeclarationPatternSyntax => true,
+
+            // Skip LINQ structural containers - children are what matter
+            QueryBodySyntax => true,
 
             _ => false
         };
@@ -140,6 +152,9 @@ public class SharpOpsExtractor : CSharpSyntaxWalker
             // Identifiers - emit with symbol kind and name
             IdentifierNameSyntax identifier => CreateIdentifierOp(identifier),
 
+            // Generic names (e.g., DeserializeObject<int>) - emit as identifier with full name
+            GenericNameSyntax generic => new SharpOp(SyntaxKind.IdentifierName, GetMemberName(generic), SymbolKind.Method),
+
             // Invocation - emit with argument count
             InvocationExpressionSyntax invocation =>
                 new SharpOp(kind, invocation.ArgumentList.Arguments.Count.ToString()),
@@ -148,12 +163,20 @@ public class SharpOpsExtractor : CSharpSyntaxWalker
             ObjectCreationExpressionSyntax creation =>
                 new SharpOp(kind, $"{creation.Type}:{creation.ArgumentList?.Arguments.Count ?? 0}"),
 
+            // Implicit object creation (new()) - emit with argument count only
+            ImplicitObjectCreationExpressionSyntax implicitCreation =>
+                new SharpOp(kind, implicitCreation.ArgumentList.Arguments.Count.ToString()),
+
             // If statement - emit with branch count (1 = no else, 2 = has else)
             IfStatementSyntax ifStmt =>
                 new SharpOp(kind, (ifStmt.Else != null ? 2 : 1).ToString()),
 
-            // For/while - just emit kind
-            ForStatementSyntax or WhileStatementSyntax =>
+            // For statement - emit with incrementor count so compiler knows when body starts
+            ForStatementSyntax forStmt =>
+                new SharpOp(kind, forStmt.Incrementors.Count.ToString()),
+
+            // While - just emit kind
+            WhileStatementSyntax =>
                 new SharpOp(kind),
 
             // ForEach - emit with type:varname
@@ -171,7 +194,7 @@ public class SharpOpsExtractor : CSharpSyntaxWalker
             // Binary expressions - just emit kind (operands follow)
             BinaryExpressionSyntax => new SharpOp(kind),
 
-            // Unary expressions
+            // Unary expressions (includes SuppressNullableWarningExpression via PostfixUnary)
             PrefixUnaryExpressionSyntax or PostfixUnaryExpressionSyntax =>
                 new SharpOp(kind),
 
@@ -253,6 +276,14 @@ public class SharpOpsExtractor : CSharpSyntaxWalker
 
             // Throw expression (not statement)
             ThrowExpressionSyntax => new SharpOp(kind),
+
+            // LINQ query clauses
+            FromClauseSyntax from =>
+                new SharpOp(kind, from.Identifier.Text),
+            QueryContinuationSyntax cont =>
+                new SharpOp(kind, cont.Identifier.Text),
+            JoinClauseSyntax join =>
+                new SharpOp(kind, $"{join.Type}:{join.Identifier.Text}"),
 
             // Default/other nodes - just emit kind
             _ => new SharpOp(kind)

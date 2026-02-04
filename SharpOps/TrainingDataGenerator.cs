@@ -15,6 +15,8 @@ public class TrainingDataGenerator
     private static bool _msBuildRegistered;
     private static readonly object _lockObject = new();
 
+
+    private readonly HashSet<string> _specialTokens = new();
     /// <summary>
     /// Options for generation.
     /// </summary>
@@ -154,10 +156,18 @@ public class TrainingDataGenerator
         options ??= new GenerationOptions();
         EnsureMSBuildRegistered();
 
-        // Create output folder if needed
-        Directory.CreateDirectory(outputFolder);
+        // Create subfolder based on input name
+        var inputName = Path.GetFileNameWithoutExtension(inputPath);
+        if (string.IsNullOrEmpty(inputName))
+            inputName = new DirectoryInfo(inputPath).Name;
 
-        var result = new GenerationResult { OutputFile = outputFolder };
+        var subFolder = Path.Combine(outputFolder, inputName);
+        Directory.CreateDirectory(subFolder);
+
+        // Clear special tokens for this run
+        _specialTokens.Clear();
+
+        var result = new GenerationResult { OutputFile = subFolder };
         using var workspace = CreateWorkspace();
 
         // Determine input type and get projects
@@ -177,7 +187,7 @@ public class TrainingDataGenerator
                 continue;
             }
 
-            var projectResult = await ProcessProjectAsync(project, outputFolder, options, jsonOptions);
+            var projectResult = await ProcessProjectAsync(project, subFolder, options, jsonOptions);
 
             // Accumulate stats
             result.TotalMethods += projectResult.TotalMethods;
@@ -191,7 +201,10 @@ public class TrainingDataGenerator
             result.SkippedNoBody += projectResult.SkippedNoBody;
         }
 
-        Console.Error.WriteLine($"Extraction complete: {result.ExtractedMethods} samples in {outputFolder}");
+        // Write special tokens file for this dataset
+        WriteSpecialTokensFile(subFolder);
+
+        Console.Error.WriteLine($"Extraction complete: {result.ExtractedMethods} samples in {subFolder}");
 
         return result;
     }
@@ -234,6 +247,12 @@ public class TrainingDataGenerator
 
                 var (sample, sequence) = TryExtractSample(method, semanticModel, document.FilePath, options, result);
                 if (sample == null) continue;
+
+                // Collect special tokens for tokenizer
+                if (sequence != null)
+                {
+                    CollectSpecialTokens(sequence);
+                }
 
                 samples.Add(sample);
                 result.ExtractedMethods++;
@@ -372,5 +391,63 @@ public class TrainingDataGenerator
     {
         var name = project.Name.ToLower();
         return name.Contains("test") || name.Contains("spec");
+    }
+
+
+    private void CollectSpecialTokens(SharpOpsSequence sequence)
+    {
+        foreach (var op in sequence.Ops)
+        {
+            // Collect positional references like LOCAL:$0, FIELD:$1, PARAMETER:$0, etc.
+            if (op.SymbolKind.HasValue && op.Argument != null && op.Argument.StartsWith('$'))
+            {
+                var token = $"{op.SymbolKind.Value.ToString().ToUpperInvariant()}:{op.Argument}";
+                lock (_specialTokens)
+                {
+                    _specialTokens.Add(token);
+                }
+            }
+        }
+    }
+
+
+    private void WriteSpecialTokensFile(string outputFolder)
+    {
+        var specialTokensPath = Path.Combine(outputFolder, "special_tokens.txt");
+
+        // Start with standard special tokens
+        var allTokens = new HashSet<string>
+        {
+            "<|pad|>",
+            "<|unk|>",
+            "<|bos|>",
+            "<|eos|>",
+            "<|output|>"
+        };
+
+        // Read existing tokens if file exists (to accumulate across multiple runs)
+        if (File.Exists(specialTokensPath))
+        {
+            foreach (var line in File.ReadAllLines(specialTokensPath))
+            {
+                if (!string.IsNullOrWhiteSpace(line))
+                    allTokens.Add(line);
+            }
+        }
+
+        // Add collected positional reference tokens
+        foreach (var token in _specialTokens)
+        {
+            allTokens.Add(token);
+        }
+
+        // Sort: standard tokens first, then positional refs sorted alphabetically
+        var standardTokens = new[] { "<|pad|>", "<|unk|>", "<|bos|>", "<|eos|>", "<|output|>" };
+        var sortedTokens = standardTokens.Concat(
+            allTokens.Except(standardTokens).OrderBy(t => t)
+        ).ToList();
+
+        File.WriteAllLines(specialTokensPath, sortedTokens);
+        Console.Error.WriteLine($"  Special tokens: {sortedTokens.Count} tokens → special_tokens.txt");
     }
 }

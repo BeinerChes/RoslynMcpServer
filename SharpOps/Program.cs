@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
 namespace SharpOps;
@@ -587,12 +588,31 @@ public static class Program
                         ? strProp.EnumerateArray().Select(x => x.GetString() ?? "").ToList()
                         : new List<string>();
 
+                    // Load symbol tables
+                    List<string> GetList(string name) => root.TryGetProperty(name, out var prop)
+                        ? prop.EnumerateArray().Select(x => x.GetString() ?? "").ToList()
+                        : new List<string>();
+
+                    var locals = GetList("locals");
+                    var parameters = GetList("parameters");
+                    var fields = GetList("fields");
+                    var methods = GetList("methods");
+                    var namedTypes = GetList("namedTypes");
+                    var properties = GetList("properties");
+
                     // Try to compile back to C#
                     string compiledCSharp;
                     string? error = null;
                     try
                     {
                         var sequence = SharpOpsSequence.ParseOps(sharpOps, strings);
+                        // Populate symbol tables for resolving positional refs
+                        sequence.SymbolTables[SymbolKind.Local].AddRange(locals);
+                        sequence.SymbolTables[SymbolKind.Parameter].AddRange(parameters);
+                        sequence.SymbolTables[SymbolKind.Field].AddRange(fields);
+                        sequence.SymbolTables[SymbolKind.Method].AddRange(methods);
+                        sequence.SymbolTables[SymbolKind.NamedType].AddRange(namedTypes);
+                        sequence.SymbolTables[SymbolKind.Property].AddRange(properties);
                         compiledCSharp = SharpOpsCompiler.CompileToString(sequence);
                         succeeded++;
                     }
