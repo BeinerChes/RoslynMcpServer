@@ -1,3 +1,5 @@
+using RoslynSymbolKind = Microsoft.CodeAnalysis.SymbolKind;
+using Microsoft.CodeAnalysis;
 using System.Text.Json;
 using RoslynMcpServer.Graph;
 
@@ -438,5 +440,117 @@ public static partial class RoslynTools
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Populate symbol tables on a SharpOpsSequence from context available during generation. Parameters are extracted from the method signature, fields from the fields dictionary.
+    /// </summary>
+    /// <param name="sequence"></param>
+    /// <param name="methodSignature"></param>
+    /// <param name="fields"></param>
+
+    private static void PopulateSymbolTablesFromContext(
+        SharpOps.SharpOpsSequence sequence,
+        string methodSignature,
+        Dictionary<string, string>? fields)
+    {
+        // Extract parameter names from signature: "public int Add(int a, int b)" -> ["a", "b"]
+        var parenStart = methodSignature.IndexOf('(');
+        var parenEnd = methodSignature.LastIndexOf(')');
+        if (parenStart >= 0 && parenEnd > parenStart)
+        {
+            var paramSection = methodSignature[(parenStart + 1)..parenEnd].Trim();
+            if (paramSection.Length > 0)
+            {
+                var paramTable = sequence.SymbolTables[RoslynSymbolKind.Parameter];
+                foreach (var param in paramSection.Split(','))
+                {
+                    var parts = param.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    if (parts.Length >= 2)
+                    {
+                        paramTable.Add(parts[^1]);
+                    }
+                }
+            }
+        }
+
+        // Fields: ordered by name to match ContextExtractor.ExtractUsedFields ordering
+        if (fields != null && fields.Count > 0)
+        {
+            var fieldTable = sequence.SymbolTables[RoslynSymbolKind.Field];
+            foreach (var name in fields.Keys.OrderBy(k => k))
+            {
+                fieldTable.Add(name);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Populate symbol tables from a full type symbol (used by SmartGenerateMethod).
+    /// </summary>
+    /// <param name="sequence"></param>
+    /// <param name="methodSignature"></param>
+    /// <param name="typeSymbol"></param>
+
+    private static void PopulateSymbolTablesFromType(
+        SharpOps.SharpOpsSequence sequence,
+        string methodSignature,
+        INamedTypeSymbol typeSymbol)
+    {
+        // Parameters from signature
+        var parenStart = methodSignature.IndexOf('(');
+        var parenEnd = methodSignature.LastIndexOf(')');
+        if (parenStart >= 0 && parenEnd > parenStart)
+        {
+            var paramSection = methodSignature[(parenStart + 1)..parenEnd].Trim();
+            if (paramSection.Length > 0)
+            {
+                var paramTable = sequence.SymbolTables[RoslynSymbolKind.Parameter];
+                foreach (var param in paramSection.Split(','))
+                {
+                    var parts = param.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    if (parts.Length >= 2)
+                    {
+                        paramTable.Add(parts[^1]);
+                    }
+                }
+            }
+        }
+
+        // Fields: ordered by name to match ContextExtractor ordering
+        var fieldTable = sequence.SymbolTables[RoslynSymbolKind.Field];
+        foreach (var member in typeSymbol.GetMembers()
+            .OfType<IFieldSymbol>()
+            .Where(f => !f.IsImplicitlyDeclared)
+            .OrderBy(f => f.Name))
+        {
+            fieldTable.Add(member.Name);
+        }
+
+        // Properties: ordered by name
+        var propTable = sequence.SymbolTables[RoslynSymbolKind.Property];
+        foreach (var member in typeSymbol.GetMembers()
+            .OfType<IPropertySymbol>()
+            .Where(p => !p.IsImplicitlyDeclared)
+            .OrderBy(p => p.Name))
+        {
+            propTable.Add(member.Name);
+        }
+
+        // Methods: ordered by name
+        var methodTable = sequence.SymbolTables[RoslynSymbolKind.Method];
+        foreach (var name in typeSymbol.GetMembers()
+            .OfType<IMethodSymbol>()
+            .Where(m => m.MethodKind == Microsoft.CodeAnalysis.MethodKind.Ordinary && !m.IsImplicitlyDeclared)
+            .Select(m => m.Name)
+            .Distinct()
+            .OrderBy(n => n))
+        {
+            methodTable.Add(name);
+        }
+
+        // Named types: add containing type
+        var typeTable = sequence.SymbolTables[RoslynSymbolKind.NamedType];
+        typeTable.Add(typeSymbol.Name);
     }
 }

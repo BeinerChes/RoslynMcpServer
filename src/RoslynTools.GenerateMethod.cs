@@ -161,6 +161,10 @@ public static partial class RoslynTools
             try
             {
                 var sequence = SharpOps.SharpOpsSequence.ParseOps(stats.Output, null);
+
+                // Build symbol tables from available context
+                PopulateSymbolTablesFromContext(sequence, methodSignature, fields);
+
                 compiledCSharp = SharpOps.SharpOpsCompiler.CompileToString(sequence);
             }
             catch (Exception ex)
