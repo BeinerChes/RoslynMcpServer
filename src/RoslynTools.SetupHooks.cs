@@ -10,10 +10,10 @@ public static partial class RoslynTools
     private static void RegisterSetupHooksTool(McpServer server)
     {
         server.RegisterTool(
-            "roslyn_setup_hooks",
+            "SetupHooks",
             new ToolDefinition
             {
-                Description = "Sets up Claude hooks in a project to enforce calling roslyn_get_instructions before git and GitHub operations. Creates .claude/hooks/ directory and settings.json. Also creates or updates CLAUDE.md with the template content.",
+                Description = "Sets up Claude hooks in a project to enforce calling GetInstructions before git and GitHub operations. Creates .claude/hooks/ directory and settings.json. Also creates or updates CLAUDE.md with the template content.",
                 InputSchema = new
                 {
                     type = "object",
@@ -124,7 +124,7 @@ public static partial class RoslynTools
             {
                 // Prepend template to existing CLAUDE.md if not already present
                 var existingContent = File.ReadAllText(claudeMdFile);
-                if (!existingContent.Contains("roslyn_get_instructions"))
+                if (!existingContent.Contains("GetInstructions"))
                 {
                     // Add separator and prepend
                     var newContent = templateContent + "\n\n---\n\n# Original CLAUDE.md Content\n\n" + existingContent;
@@ -250,10 +250,10 @@ public static partial class RoslynTools
             },
             instructions = new[]
             {
-                "The git hook requires calling roslyn_get_instructions(topic: \"git\") before any git commit or push.",
-                "The plan hook requires calling roslyn_get_instructions(topic: \"plan\") before GitHub issue/PR operations.",
-                "The C# edit hook requires calling roslyn_get_instructions(topic: \"tools\") before Edit/Write on .cs files.",
-                "The C# read hook requires calling roslyn_get_instructions(topic: \"tools\") before Read on .cs files."
+                "The git hook requires calling GetInstructions(topic: \"git\") before any git commit or push.",
+                "The plan hook requires calling GetInstructions(topic: \"plan\") before GitHub issue/PR operations.",
+                "The C# edit hook requires calling GetInstructions(topic: \"tools\") before Edit/Write on .cs files.",
+                "The C# read hook requires calling GetInstructions(topic: \"tools\") before Read on .cs files."
             }
         };
     }

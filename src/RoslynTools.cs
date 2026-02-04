@@ -98,7 +98,7 @@ public static partial class RoslynTools
     private static void RegisterEchoTool(McpServer server)
     {
         server.RegisterTool(
-            "roslyn_echo",
+            "Echo",
             new ToolDefinition
             {
                 Description = "A simple echo tool for testing. Returns the message you send.",
@@ -158,7 +158,7 @@ public static partial class RoslynTools
     private static void RegisterGetServerInfoTool(McpServer server)
     {
         server.RegisterTool(
-            "roslyn_get_server_info",
+            "GetServerInfo",
             new ToolDefinition
             {
                 Description = "Returns information about the Roslyn MCP server, including version and available capabilities.",
@@ -207,7 +207,7 @@ public static partial class RoslynTools
     private static void RegisterGetProjectsInBuildOrderTool(McpServer server)
     {
         server.RegisterTool(
-            "roslyn_get_projects_in_build_order",
+            "GetProjectsInBuildOrder",
             new ToolDefinition
             {
                 Description = "Loads a .NET solution file and returns all projects in build order (dependencies first). Each project includes its name, file path, language, and direct dependencies.",

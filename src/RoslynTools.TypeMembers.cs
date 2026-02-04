@@ -13,7 +13,7 @@ public static partial class RoslynTools
     private static void RegisterGetTypeMembersTool(McpServer server)
     {
         server.RegisterTool(
-            "roslyn_get_type_members",
+            "GetTypeMembers",
             new ToolDefinition
             {
                 Description = "Gets all members of a type including methods, properties, fields, events, and constructors. Essential for understanding the structure of large classes without reading the entire file.",
@@ -37,11 +37,6 @@ public static partial class RoslynTools
                         {
                             type = "boolean",
                             description = "Include members inherited from base classes. Default: false"
-                        },
-                        compact = new
-                        {
-                            type = "boolean",
-                            description = "Return minimal fields only (name, kind, signature). Default: true. Set to false for detailed info (filePath, line, accessibility, isStatic, etc.)"
                         }
                     },
                     required = new[] { "typeName" }
@@ -74,7 +69,6 @@ public static partial class RoslynTools
                 // Parse optional parameters
                 var memberKindStr = args?["memberKind"]?.GetValue<string>() ?? "all";
                 var includeInherited = args?["includeInherited"]?.GetValue<bool>() ?? false;
-                var compact = args?["compact"]?.GetValue<bool>() ?? true;
 
                 var memberKind = memberKindStr.ToLowerInvariant() switch
                 {
@@ -90,8 +84,7 @@ public static partial class RoslynTools
                     solutionPath!,
                     typeName,
                     memberKind,
-                    includeInherited,
-                    compact);
+                    includeInherited);
 
                 // Track for visualization sync
                 if (result.Success)

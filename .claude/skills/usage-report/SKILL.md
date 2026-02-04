@@ -11,7 +11,7 @@ Generate a markdown report of Roslyn MCP tool usage statistics.
 
 ## Instructions
 
-1. Call the `roslyn_get_usage_report` tool with optional hours parameter
+1. Call the `GetUsageReport` tool with optional hours parameter
 2. Read the generated report file
 3. Display the report to the user
 
@@ -19,8 +19,8 @@ Generate a markdown report of Roslyn MCP tool usage statistics.
 
 <step>
 Call the usage report tool:
-- If user specified hours: `roslyn_get_usage_report(hours: <hours>)`
-- Otherwise: `roslyn_get_usage_report()`
+- If user specified hours: `GetUsageReport(hours: <hours>)`
+- Otherwise: `GetUsageReport()`
 </step>
 
 <step>

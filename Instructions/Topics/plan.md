@@ -15,7 +15,7 @@
 3+ steps? → TaskCreate
 Committing? → Need issue number
 Tried same thing twice? → Write it down
-Learned something? → roslyn_knowledge_add() NOW
+Learned something? → KnowledgeAdd() NOW
 Complex or multi-session? → Plan file
 ```
 
@@ -27,7 +27,7 @@ Complex or multi-session? → Plan file
 
 **Learned something non-obvious** → Add to knowledge base immediately:
 ```
-roslyn_knowledge_add(category: "lesson", title: "...", content: "...")
+KnowledgeAdd(category: "lesson", title: "...", content: "...")
 ```
 
 ## Plan File (when needed)
@@ -55,4 +55,4 @@ Location: `.claude/plans/issue-<number>.md`
 
 1. "What issue are we working on?"
 2. Check `.claude/plans/` for existing plan
-3. `roslyn_knowledge_search("<task>")` - someone may have documented this
+3. `KnowledgeSearch("<task>")` - someone may have documented this

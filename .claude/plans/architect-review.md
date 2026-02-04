@@ -185,7 +185,7 @@ public void Dispose()
 **Impact:** Unnecessary GC pressure on every tool registration
 
 **Implementation Steps:**
-1. Run `roslyn_batch_apply_code_fixes(diagnosticId: "CA1861", preview: true)` to review
+1. Run `BatchApplyCodeFixes(diagnosticId: "CA1861", preview: true)` to review
 2. Apply batch fix
 3. Review generated static fields for naming consistency
 
@@ -200,7 +200,7 @@ public void Dispose()
 **Impact:** Methods not using instance state should be static for clarity
 
 **Implementation Steps:**
-1. Run `roslyn_batch_apply_code_fixes(diagnosticId: "CA1822", preview: true)`
+1. Run `BatchApplyCodeFixes(diagnosticId: "CA1822", preview: true)`
 2. Review and apply fixes
 3. Verify no breaking changes to public API
 
@@ -213,7 +213,7 @@ public void Dispose()
 ### 7. Remove Unnecessary Usings (CS8019) - 41 occurrences
 
 **Implementation Steps:**
-1. Run `roslyn_batch_apply_code_fixes(diagnosticId: "CS8019")`
+1. Run `BatchApplyCodeFixes(diagnosticId: "CS8019")`
 
 **Acceptance Criteria:**
 - [ ] CS8019 count = 0

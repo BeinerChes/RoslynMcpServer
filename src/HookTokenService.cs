@@ -6,7 +6,7 @@ namespace RoslynMcpServer;
 
 /// <summary>
 /// Service for generating and validating hook tokens.
-/// Tokens are used to verify that roslyn_get_instructions was called before git operations.
+/// Tokens are used to verify that GetInstructions was called before git operations.
 /// </summary>
 public class HookTokenService
 {

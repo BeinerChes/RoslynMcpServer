@@ -12,8 +12,7 @@ public partial class SolutionAnalyzerService
         string solutionPath,
         string typeName,
         MemberKindFilter memberKind = MemberKindFilter.All,
-        bool includeInherited = false,
-        bool compact = true)
+        bool includeInherited = false)
     {
         EnsureMSBuildRegistered();
 
@@ -62,7 +61,7 @@ public partial class SolutionAnalyzerService
             {
                 if (ShouldIncludeMember(member, memberKind))
                 {
-                    members.Add(CreateMemberInfo(member, compact, inheritedFrom: null));
+                    members.Add(CreateMemberInfo(member, inheritedFrom: null));
                 }
             }
 
@@ -76,7 +75,7 @@ public partial class SolutionAnalyzerService
                     {
                         if (ShouldIncludeMember(member, memberKind) && !IsOverriddenIn(member, targetType))
                         {
-                            members.Add(CreateMemberInfo(member, compact, currentBase.Name));
+                            members.Add(CreateMemberInfo(member, currentBase.Name));
                         }
                     }
                     currentBase = currentBase.BaseType;
@@ -92,7 +91,7 @@ public partial class SolutionAnalyzerService
                             var impl = targetType.FindImplementationForInterfaceMember(member);
                             if (impl == null)
                             {
-                                members.Add(CreateMemberInfo(member, compact, iface.Name));
+                                members.Add(CreateMemberInfo(member, iface.Name));
                             }
                         }
                     }
@@ -172,7 +171,7 @@ public partial class SolutionAnalyzerService
             .Any(m => m.IsOverride);
     }
 
-    private static MemberInfo CreateMemberInfo(ISymbol member, bool compact, string? inheritedFrom)
+    private static MemberInfo CreateMemberInfo(ISymbol member, string? inheritedFrom)
     {
         var location = member.Locations.FirstOrDefault();
         var lineSpan = location?.GetLineSpan();
@@ -193,14 +192,14 @@ public partial class SolutionAnalyzerService
             Name = member.Name,
             Kind = kind,
             Signature = GetMemberSignature(member),
-            FilePath = compact ? null : lineSpan?.Path,
-            Line = compact ? null : lineSpan?.StartLinePosition.Line + 1,
-            Column = compact ? null : lineSpan?.StartLinePosition.Character + 1,
-            Accessibility = compact ? null : member.DeclaredAccessibility.ToString(),
-            IsStatic = compact ? null : member.IsStatic,
-            IsAbstract = compact ? null : member.IsAbstract,
-            IsVirtual = compact ? null : (member as IMethodSymbol)?.IsVirtual ?? (member as IPropertySymbol)?.IsVirtual,
-            IsOverride = compact ? null : (member as IMethodSymbol)?.IsOverride ?? (member as IPropertySymbol)?.IsOverride,
+            FilePath = lineSpan?.Path,
+            Line = lineSpan?.StartLinePosition.Line + 1,
+            Column = lineSpan?.StartLinePosition.Character + 1,
+            Accessibility = member.DeclaredAccessibility.ToString(),
+            IsStatic = member.IsStatic,
+            IsAbstract = member.IsAbstract,
+            IsVirtual = (member as IMethodSymbol)?.IsVirtual ?? (member as IPropertySymbol)?.IsVirtual,
+            IsOverride = (member as IMethodSymbol)?.IsOverride ?? (member as IPropertySymbol)?.IsOverride,
             InheritedFrom = inheritedFrom
         };
     }

@@ -28,14 +28,14 @@ The native benchmark "completed" by skipping or faking two steps:
 
 | Approach | What it did | Result |
 |----------|-------------|--------|
-| **MCP** | `roslyn_rename_symbol` | Renamed across 2 files automatically |
+| **MCP** | `RenameSymbol` | Renamed across 2 files automatically |
 | **Native** | Skipped | Claimed "naming is acceptable" |
 
 ### Step 10: Find Dead Code
 
 | Approach | What it did | Result |
 |----------|-------------|--------|
-| **MCP** | `roslyn_find_dead_code` | Found 50 unused symbols across entire solution |
+| **MCP** | `FindDeadCode` | Found 50 unused symbols across entire solution |
 | **Native** | `Grep "ValidateBeforeSave"` | Only checked one specific method |
 
 **These capabilities don't exist with text search:**
@@ -50,18 +50,18 @@ The native benchmark didn't do the same work - it made excuses.
 
 | Step | Task | MCP Tool | Native Approach | MCP Advantage |
 |------|------|----------|-----------------|---------------|
-| 0 | Load instructions | roslyn_get_instructions x2 | N/A | Hook overhead included |
-| 1 | Understand class | roslyn_get_type_members | Glob + Read 22 files | **155 members in 489 tokens vs 19.6K** |
-| 2 | Read Save() | roslyn_get_method_body | Already had file open | Similar |
-| 3 | Find callers | roslyn_get_callers | Grep ".Save(" | **18 exact callers vs 160+ text matches** |
-| 4 | Impact analysis | roslyn_graph_impact | Grep chains | **44 symbols traced vs manual guessing** |
-| 5 | Add method | roslyn_add_member | Edit | Similar |
-| 6 | Update method | roslyn_update_method | Edit | Similar |
-| 7 | Find patterns | roslyn_find_symbol | Grep | Similar |
-| 8 | Rename | roslyn_rename_symbol | Skipped ("naming acceptable") | **Native avoided the task** |
-| 9 | Check errors | roslyn_get_diagnostics | dotnet build | Similar |
-| 10 | Find dead code | roslyn_find_dead_code | Grep (incomplete) | **Impossible with native** |
-| 11 | Clean up | roslyn_delete_member | git restore | MCP surgical, native full revert |
+| 0 | Load instructions | GetInstructions x2 | N/A | Hook overhead included |
+| 1 | Understand class | GetTypeMembers | Glob + Read 22 files | **155 members in 489 tokens vs 19.6K** |
+| 2 | Read Save() | GetMethodBody | Already had file open | Similar |
+| 3 | Find callers | GetCallers | Grep ".Save(" | **18 exact callers vs 160+ text matches** |
+| 4 | Impact analysis | GraphImpact | Grep chains | **44 symbols traced vs manual guessing** |
+| 5 | Add method | AddMember | Edit | Similar |
+| 6 | Update method | UpdateMethod | Edit | Similar |
+| 7 | Find patterns | FindSymbol | Grep | Similar |
+| 8 | Rename | RenameSymbol | Skipped ("naming acceptable") | **Native avoided the task** |
+| 9 | Check errors | GetDiagnostics | dotnet build | Similar |
+| 10 | Find dead code | FindDeadCode | Grep (incomplete) | **Impossible with native** |
+| 11 | Clean up | DeleteMember | git restore | MCP surgical, native full revert |
 
 ---
 
@@ -82,10 +82,10 @@ The native benchmark didn't do the same work - it made excuses.
 ### 3. Unique Capabilities
 
 These operations are **impossible** with native tools:
-- `roslyn_find_dead_code` - Find all unused methods
-- `roslyn_graph_impact` - Trace transitive callers
-- `roslyn_rename_symbol` - Rename across entire solution
-- `roslyn_get_implementations` - Find all classes implementing an interface
+- `FindDeadCode` - Find all unused methods
+- `GraphImpact` - Trace transitive callers
+- `RenameSymbol` - Rename across entire solution
+- `GetImplementations` - Find all classes implementing an interface
 
 ---
 

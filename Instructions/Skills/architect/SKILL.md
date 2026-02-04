@@ -11,24 +11,24 @@ allowed-tools:
   - WebSearch
   - TodoWrite
   - AskUserQuestion
-  - mcp__roslyn__roslyn_get_projects_in_build_order
-  - mcp__roslyn__roslyn_find_symbol
-  - mcp__roslyn__roslyn_get_references
-  - mcp__roslyn__roslyn_get_callers
-  - mcp__roslyn__roslyn_get_implementations
-  - mcp__roslyn__roslyn_get_type_members
-  - mcp__roslyn__roslyn_get_method_body
-  - mcp__roslyn__roslyn_get_diagnostics
-  - mcp__roslyn__roslyn_graph_status
-  - mcp__roslyn__roslyn_graph_analyze
-  - mcp__roslyn__roslyn_query_graph
-  - mcp__roslyn__roslyn_graph_impact
-  - mcp__roslyn__roslyn_find_dead_code
-  - mcp__roslyn__roslyn_knowledge_add
-  - mcp__roslyn__roslyn_knowledge_search
-  - mcp__roslyn__roslyn_knowledge_list
-  - mcp__roslyn__roslyn_knowledge_get
-  - mcp__roslyn__roslyn_knowledge_for_symbol
+  - mcp__roslyn__GetProjectsInBuildOrder
+  - mcp__roslyn__FindSymbol
+  - mcp__roslyn__GetReferences
+  - mcp__roslyn__GetCallers
+  - mcp__roslyn__GetImplementations
+  - mcp__roslyn__GetTypeMembers
+  - mcp__roslyn__GetMethodBody
+  - mcp__roslyn__GetDiagnostics
+  - mcp__roslyn__GraphStatus
+  - mcp__roslyn__GraphAnalyze
+  - mcp__roslyn__QueryGraph
+  - mcp__roslyn__GraphImpact
+  - mcp__roslyn__FindDeadCode
+  - mcp__roslyn__KnowledgeAdd
+  - mcp__roslyn__KnowledgeSearch
+  - mcp__roslyn__KnowledgeList
+  - mcp__roslyn__KnowledgeGet
+  - mcp__roslyn__KnowledgeForSymbol
 ---
 
 # Principal Software Engineer - Solution Architecture Review
@@ -93,19 +93,19 @@ When analyzing a specific class, perform this focused deep dive:
 
 ```
 1. Get all members:
-   roslyn_get_type_members(solutionPath, typeName, compact: false, includeInherited: true)
+   GetTypeMembers(solutionPath, typeName, compact: false, includeInherited: true)
 
 2. Find all callers (who uses this class):
-   roslyn_get_references(solutionPath, filePath, line, column)
+   GetReferences(solutionPath, filePath, line, column)
 
 3. Analyze impact (what breaks if this changes):
-   roslyn_graph_impact(solutionPath, symbolName: "Namespace.ClassName")
+   GraphImpact(solutionPath, symbolName: "Namespace.ClassName")
 
 4. Check for implementations (if interface/base class):
-   roslyn_get_implementations(solutionPath, typeName)
+   GetImplementations(solutionPath, typeName)
 
 5. Get diagnostics for this type:
-   roslyn_get_diagnostics(solutionPath) - filter to files containing this type
+   GetDiagnostics(solutionPath) - filter to files containing this type
 ```
 
 **Output for Class Scope:**
@@ -122,19 +122,19 @@ When analyzing a specific method, perform this detailed analysis:
 
 ```
 1. Get method body:
-   roslyn_get_method_body(solutionPath, typeName, methodName)
+   GetMethodBody(solutionPath, typeName, methodName)
 
 2. Find all callers:
-   roslyn_get_callers(solutionPath, filePath, line, column)
+   GetCallers(solutionPath, filePath, line, column)
 
 3. Query call graph (what this method calls):
-   roslyn_query_graph(solutionPath, symbolName, direction: "callees", maxDepth: 3)
+   QueryGraph(solutionPath, symbolName, direction: "callees", maxDepth: 3)
 
 4. Analyze impact:
-   roslyn_graph_impact(solutionPath, symbolName)
+   GraphImpact(solutionPath, symbolName)
 
 5. Check for existing knowledge:
-   roslyn_knowledge_for_symbol(solutionPath, symbolName)
+   KnowledgeForSymbol(solutionPath, symbolName)
 ```
 
 **Output for Method Scope:**
@@ -154,20 +154,20 @@ When analyzing a specific method, perform this detailed analysis:
 ### 1.1 Load ALL Existing Knowledge
 
 ```
-roslyn_knowledge_list(solutionPath, limit: 500)
+KnowledgeList(solutionPath, limit: 500)
 ```
 
 Read every knowledge entry. Previous sessions documented critical insights. Don't rediscover what's already known.
 
 Search for architecture knowledge:
 ```
-roslyn_knowledge_search(solutionPath, query: "architecture overview structure")
+KnowledgeSearch(solutionPath, query: "architecture overview structure")
 ```
 
 ### 1.2 Understand Solution Structure
 
 ```
-roslyn_get_projects_in_build_order(solutionPath)
+GetProjectsInBuildOrder(solutionPath)
 ```
 
 Map the project dependency graph. Identify:
@@ -178,7 +178,7 @@ Map the project dependency graph. Identify:
 
 **WRITE KNOWLEDGE:**
 ```
-roslyn_knowledge_add(
+KnowledgeAdd(
     solutionPath,
     category: "architecture",
     title: "Solution Structure Overview",
@@ -190,8 +190,8 @@ roslyn_knowledge_add(
 ### 1.3 Build Complete Call Graph
 
 ```
-roslyn_graph_analyze(solutionPath, incremental: false)
-roslyn_graph_status(solutionPath)
+GraphAnalyze(solutionPath, incremental: false)
+GraphStatus(solutionPath)
 ```
 
 Ensure 100% coverage. Note any analysis failures.
@@ -199,7 +199,7 @@ Ensure 100% coverage. Note any analysis failures.
 ### 1.4 Get All Diagnostics
 
 ```
-roslyn_get_diagnostics(solutionPath, severityFilter: "all")
+GetDiagnostics(solutionPath, severityFilter: "all")
 ```
 
 Identify patterns:
@@ -209,7 +209,7 @@ Identify patterns:
 
 **WRITE KNOWLEDGE:**
 ```
-roslyn_knowledge_add(
+KnowledgeAdd(
     solutionPath,
     category: "lesson",
     title: "Diagnostic Patterns in Solution",
@@ -224,7 +224,7 @@ roslyn_knowledge_add(
 
 ### 2.1 Identify Core Types
 
-Use `roslyn_find_symbol` to locate:
+Use `FindSymbol` to locate:
 - Program/Startup/Host classes
 - Controllers, API endpoints, handlers
 - Key domain entities (Customer, Order, etc.)
@@ -234,7 +234,7 @@ Use `roslyn_find_symbol` to locate:
 
 For each entry point:
 ```
-roslyn_query_graph(solutionPath, symbolName: "<entry point>", direction: "callees", maxDepth: 5)
+QueryGraph(solutionPath, symbolName: "<entry point>", direction: "callees", maxDepth: 5)
 ```
 
 Understand:
@@ -244,7 +244,7 @@ Understand:
 
 **WRITE KNOWLEDGE** for each major flow:
 ```
-roslyn_knowledge_add(
+KnowledgeAdd(
     solutionPath,
     category: "architecture",
     title: "Flow: <FlowName>",
@@ -260,13 +260,13 @@ Look for problems:
 
 **God Classes** (too many responsibilities):
 ```
-roslyn_get_type_members(solutionPath, typeName: "<large class>", compact: false)
+GetTypeMembers(solutionPath, typeName: "<large class>", compact: false)
 ```
 Flag classes with 20+ methods or mixed concerns.
 
 **High Fan-In** (many callers = fragile):
 ```
-roslyn_graph_impact(solutionPath, symbolName: "<core method>")
+GraphImpact(solutionPath, symbolName: "<core method>")
 ```
 Identify methods where changes would have massive impact.
 
@@ -275,7 +275,7 @@ Check if services directly call 10+ other services.
 
 **WRITE KNOWLEDGE** for coupling concerns:
 ```
-roslyn_knowledge_add(
+KnowledgeAdd(
     solutionPath,
     category: "gotcha",
     title: "High coupling: <ClassName>",
@@ -292,7 +292,7 @@ roslyn_knowledge_add(
 ### 3.1 Find Dead Code
 
 ```
-roslyn_find_dead_code(solutionPath, includePrivate: true, maxResults: 500)
+FindDeadCode(solutionPath, includePrivate: true, maxResults: 500)
 ```
 
 Dead code indicates:
@@ -306,7 +306,7 @@ Group by namespace/project. Is dead code concentrated somewhere?
 
 For top 5 most frequent diagnostic IDs:
 ```
-roslyn_get_diagnostics(solutionPath, diagnosticId: "CS8618", maxResults: 100)
+GetDiagnostics(solutionPath, diagnosticId: "CS8618", maxResults: 100)
 ```
 
 Are issues clustered in specific files or namespaces?
@@ -315,12 +315,12 @@ Are issues clustered in specific files or namespaces?
 
 Note diagnostics with `fixAvailable: true`. These can be batch-fixed:
 ```
-roslyn_batch_apply_code_fixes(solutionPath, diagnosticId: "CS8618", preview: true)
+BatchApplyCodeFixes(solutionPath, diagnosticId: "CS8618", preview: true)
 ```
 
 **WRITE KNOWLEDGE:**
 ```
-roslyn_knowledge_add(
+KnowledgeAdd(
     solutionPath,
     category: "workaround",
     title: "Batch-fixable: <DiagnosticId>",
@@ -360,7 +360,7 @@ Evaluate against:
 
 **WRITE KNOWLEDGE** for each best practice insight:
 ```
-roslyn_knowledge_add(
+KnowledgeAdd(
     solutionPath,
     category: "pattern",
     title: "Best practice: <Topic>",
@@ -383,9 +383,9 @@ Grep(pattern: "Password|Secret|ApiKey|ConnectionString", path: solutionPath)
 
 Check security analyzers:
 ```
-roslyn_get_diagnostics(solutionPath, diagnosticId: "CA2100")  # SQL injection
-roslyn_get_diagnostics(solutionPath, diagnosticId: "CA3075")  # XML processing
-roslyn_get_diagnostics(solutionPath, diagnosticId: "CA5350")  # Weak crypto
+GetDiagnostics(solutionPath, diagnosticId: "CA2100")  # SQL injection
+GetDiagnostics(solutionPath, diagnosticId: "CA3075")  # XML processing
+GetDiagnostics(solutionPath, diagnosticId: "CA5350")  # Weak crypto
 ```
 
 Look for:
@@ -396,7 +396,7 @@ Look for:
 
 **WRITE KNOWLEDGE** (HIGH PRIORITY):
 ```
-roslyn_knowledge_add(
+KnowledgeAdd(
     solutionPath,
     category: "security",
     title: "SECURITY: <Issue>",
@@ -417,7 +417,7 @@ Look for:
 
 **WRITE KNOWLEDGE:**
 ```
-roslyn_knowledge_add(
+KnowledgeAdd(
     solutionPath,
     category: "performance",
     title: "Performance: <Issue>",
@@ -641,7 +641,7 @@ Date: <today>
 ### 7.1 Create Summary Entry
 
 ```
-roslyn_knowledge_add(
+KnowledgeAdd(
     solutionPath,
     category: "architecture",
     title: "Architecture Review Summary - <Date>",

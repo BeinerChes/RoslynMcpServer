@@ -9,7 +9,7 @@ public static partial class RoslynTools
     public static void RegisterUsageReportTool(McpServer server)
     {
         server.RegisterTool(
-            "roslyn_get_usage_report",
+            "GetUsageReport",
             new ToolDefinition
             {
                 Description = "Gets usage statistics for Roslyn MCP tools. Shows call counts, success rates, and performance metrics per tool.",

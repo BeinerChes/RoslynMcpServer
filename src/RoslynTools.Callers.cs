@@ -15,7 +15,7 @@ public static partial class RoslynTools
     private static void RegisterGetCallersTool(McpServer server)
     {
         server.RegisterTool(
-            "roslyn_get_callers",
+            "GetCallers",
             new ToolDefinition
             {
                 Description = "Finds all callers of a method/property at a given file position. Unlike get_references, this returns only actual call sites - not declarations, docs, or type references. Essential for understanding execution flow and impact analysis before refactoring.",

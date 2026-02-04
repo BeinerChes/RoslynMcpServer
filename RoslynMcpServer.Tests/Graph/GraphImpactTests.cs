@@ -3,7 +3,7 @@ using RoslynMcpServer.Graph;
 namespace RoslynMcpServer.Tests.Graph;
 
 /// <summary>
-/// Tests for GraphDatabase impact analysis (supporting roslyn_graph_impact tool).
+/// Tests for GraphDatabase impact analysis (supporting GraphImpact tool).
 /// Issue: #13
 /// </summary>
 public class GraphImpactAnalysisTests : IAsyncLifetime
@@ -141,7 +141,7 @@ public class GraphImpactAnalysisTests : IAsyncLifetime
 }
 
 /// <summary>
-/// Tests for dead code detection (supporting roslyn_find_dead_code tool).
+/// Tests for dead code detection (supporting FindDeadCode tool).
 /// Issue: #13
 /// </summary>
 public class DeadCodeDetectionTests : IAsyncLifetime

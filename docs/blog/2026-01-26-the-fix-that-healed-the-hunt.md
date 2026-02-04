@@ -84,8 +84,8 @@ Claude had arrived at this through a combination of:
 The removal of one boolean parameter might seem minor, but it represented a significant improvement in usability:
 
 ```
-Before: roslyn_find_dead_code(solutionPath, ..., excludePureModelClasses: true/false, excludeTypePatterns, excludeFilePatterns)
-After:  roslyn_find_dead_code(solutionPath, ..., excludeTypePatterns, excludeFilePatterns)
+Before: FindDeadCode(solutionPath, ..., excludePureModelClasses: true/false, excludeTypePatterns, excludeFilePatterns)
+After:  FindDeadCode(solutionPath, ..., excludeTypePatterns, excludeFilePatterns)
 ```
 
 Simpler. Cleaner. Better.
@@ -161,7 +161,7 @@ And in the knowledge base, the lesson was preserved:
 
 > *"Good defaults reduce cognitive load. When one approach is objectively superior, make it mandatory instead of optional."*
 
-The case was closed. The tool was improved. The next investigator who uses `roslyn_find_dead_code` will face a cleaner interface and better results.
+The case was closed. The tool was improved. The next investigator who uses `FindDeadCode` will face a cleaner interface and better results.
 
 That is the mark of a true detective—not just solving today's mystery, but making tomorrow's investigations easier.
 
@@ -236,7 +236,7 @@ if (isPureModel) continue;
 
 ### Commits Made
 ```
-56eb6ce Fix: Improve roslyn_find_dead_code with structural DTO detection
+56eb6ce Fix: Improve FindDeadCode with structural DTO detection
 ad4e0b4 Refactor: Remove excludePureModelClasses parameter - always enable
 ```
 

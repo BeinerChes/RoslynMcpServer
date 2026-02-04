@@ -31,12 +31,12 @@ public static partial class RoslynTools
     }
 
     /// <summary>
-    /// Registers the roslyn_knowledge_add tool.
+    /// Registers the KnowledgeAdd tool.
     /// </summary>
     internal static void RegisterKnowledgeAddTool(McpServer server)
     {
         server.RegisterTool(
-            "roslyn_knowledge_add",
+            "KnowledgeAdd",
             new ToolDefinition
             {
                 Description = "Adds a new knowledge entry about code patterns, gotchas, or insights. Knowledge entries can be linked to specific symbols for automatic retrieval.",
@@ -158,12 +158,12 @@ public static partial class RoslynTools
     }
 
     /// <summary>
-    /// Registers the roslyn_knowledge_search tool.
+    /// Registers the KnowledgeSearch tool.
     /// </summary>
     internal static void RegisterKnowledgeSearchTool(McpServer server)
     {
         server.RegisterTool(
-            "roslyn_knowledge_search",
+            "KnowledgeSearch",
             new ToolDefinition
             {
                 Description = "Searches the knowledge base using semantic search. Combines symbol links (exact match), full-text search (keywords), and vector similarity (semantic meaning).",
@@ -242,12 +242,12 @@ public static partial class RoslynTools
     }
 
     /// <summary>
-    /// Registers the roslyn_knowledge_list tool.
+    /// Registers the KnowledgeList tool.
     /// </summary>
     internal static void RegisterKnowledgeListTool(McpServer server)
     {
         server.RegisterTool(
-            "roslyn_knowledge_list",
+            "KnowledgeList",
             new ToolDefinition
             {
                 Description = "Lists all knowledge entries with optional filtering by category or tag.",
@@ -332,12 +332,12 @@ public static partial class RoslynTools
     }
 
     /// <summary>
-    /// Registers the roslyn_knowledge_delete tool.
+    /// Registers the KnowledgeDelete tool.
     /// </summary>
     internal static void RegisterKnowledgeDeleteTool(McpServer server)
     {
         server.RegisterTool(
-            "roslyn_knowledge_delete",
+            "KnowledgeDelete",
             new ToolDefinition
             {
                 Description = "Deletes a knowledge entry by ID.",
@@ -396,12 +396,12 @@ public static partial class RoslynTools
     }
 
     /// <summary>
-    /// Registers the roslyn_knowledge_get tool.
+    /// Registers the KnowledgeGet tool.
     /// </summary>
     internal static void RegisterKnowledgeGetTool(McpServer server)
     {
         server.RegisterTool(
-            "roslyn_knowledge_get",
+            "KnowledgeGet",
             new ToolDefinition
             {
                 Description = "Gets a single knowledge entry by ID with full content. Use this after searching or listing to fetch complete details.",
@@ -469,12 +469,12 @@ public static partial class RoslynTools
     }
 
     /// <summary>
-    /// Registers the roslyn_knowledge_for_symbol tool.
+    /// Registers the KnowledgeForSymbol tool.
     /// </summary>
     internal static void RegisterKnowledgeForSymbolTool(McpServer server)
     {
         server.RegisterTool(
-            "roslyn_knowledge_for_symbol",
+            "KnowledgeForSymbol",
             new ToolDefinition
             {
                 Description = "Gets all knowledge entries linked to a specific symbol. Use this when working on a method/class to get relevant gotchas and patterns.",

@@ -14,7 +14,7 @@ public static partial class RoslynTools
     private static void RegisterAddMemberTool(McpServer server)
     {
         server.RegisterTool(
-            "roslyn_add_member",
+            "AddMember",
             new ToolDefinition
             {
                 Description = "Adds a new member (method, property, field, constructor, event) to a type. Uses Roslyn to parse and insert the member with proper formatting. Smart insertion places members with their peers (fields together, methods together, etc.).",

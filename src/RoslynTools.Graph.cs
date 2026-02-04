@@ -9,13 +9,13 @@ namespace RoslynMcpServer;
 public static partial class RoslynTools
 {
     /// <summary>
-    /// Registers the roslyn_graph_status tool.
+    /// Registers the GraphStatus tool.
     /// </summary>
     internal static void RegisterGraphStatusTool(McpServer server)
     {
         // Test change v14
         server.RegisterTool(
-            "roslyn_graph_status",
+            "GraphStatus",
             new ToolDefinition
             {
                 Description = "Gets the status of the call graph database for a solution. Returns whether a graph exists, symbol counts, edge counts, and coverage statistics.",
@@ -43,7 +43,7 @@ public static partial class RoslynTools
                     return CreateJsonResponse(new
                     {
                         exists = false,
-                        message = result.Message ?? "No graph database found. Run roslyn_graph_analyze first."
+                        message = result.Message ?? "No graph database found. Run GraphAnalyze first."
                     });
                 }
 
@@ -61,12 +61,12 @@ public static partial class RoslynTools
     }
 
     /// <summary>
-    /// Registers the roslyn_graph_analyze tool.
+    /// Registers the GraphAnalyze tool.
     /// </summary>
     internal static void RegisterGraphAnalyzeTool(McpServer server)
     {
         server.RegisterTool(
-            "roslyn_graph_analyze",
+            "GraphAnalyze",
             new ToolDefinition
             {
                 Description = "Analyzes a solution and builds/updates the call graph. Can perform full analysis or incremental update for changed files only.",
@@ -122,12 +122,12 @@ public static partial class RoslynTools
     }
 
     /// <summary>
-    /// Registers the roslyn_query_graph tool.
+    /// Registers the QueryGraph tool.
     /// </summary>
     internal static void RegisterQueryGraphTool(McpServer server)
     {
         server.RegisterTool(
-            "roslyn_query_graph",
+            "QueryGraph",
             new ToolDefinition
             {
                 Description = "Queries the call graph for a symbol. Returns callers and/or callees with optional recursive depth.",
@@ -213,7 +213,7 @@ public static partial class RoslynTools
                 Success = true,
                 SolutionPath = solutionPath,
                 GraphExists = false,
-                Message = "No graph database exists for this solution. Use roslyn_graph_analyze to build one."
+                Message = "No graph database exists for this solution. Use GraphAnalyze to build one."
             };
         }
 
@@ -325,7 +325,7 @@ public static partial class RoslynTools
             return new GraphQueryResult
             {
                 Success = false,
-                Error = "No graph database exists. Use roslyn_graph_analyze first."
+                Error = "No graph database exists. Use GraphAnalyze first."
             };
         }
 
@@ -472,8 +472,7 @@ public static partial class RoslynTools
                 symbolName,
                 SymbolKindFilter.TypeAndMember,
                 MatchType.Contains,
-                maxResults: 10,
-                compact: true);
+                maxResults: 10);
 
             if (!roslynResult.Success || roslynResult.Symbols == null || roslynResult.Symbols.Count == 0)
             {

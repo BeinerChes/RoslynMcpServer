@@ -1,7 +1,7 @@
 namespace RoslynMcpServer.Tests.Services;
 
 /// <summary>
-/// Tests for the roslyn_setup_hooks tool.
+/// Tests for the SetupHooks tool.
 /// Issue: #81
 /// </summary>
 public class SetupHooksTests : IDisposable

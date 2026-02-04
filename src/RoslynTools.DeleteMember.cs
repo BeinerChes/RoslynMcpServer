@@ -14,10 +14,10 @@ public static partial class RoslynTools
     private static void RegisterDeleteMemberTool(McpServer server)
     {
         server.RegisterTool(
-            "roslyn_delete_member",
+            "DeleteMember",
             new ToolDefinition
             {
-                Description = "Deletes a member (method, property, field) from a type. Uses Roslyn to precisely locate and remove the member including its attributes and XML documentation. Essential for cleaning up dead code identified by roslyn_find_dead_code.",
+                Description = "Deletes a member (method, property, field) from a type. Uses Roslyn to precisely locate and remove the member including its attributes and XML documentation. Essential for cleaning up dead code identified by FindDeadCode.",
                 InputSchema = new
                 {
                     type = "object",

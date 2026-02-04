@@ -20,7 +20,7 @@ Save this MARK number for all subsequent `since` calls.
 Before starting the task, call these instructions (as hooks would normally trigger):
 
 ```
-roslyn_get_instructions(topic: "tools")
+GetInstructions(topic: "tools")
 ```
 
 Track this as Step 0 in results.
@@ -41,8 +41,8 @@ After each tool call, append to results_mcp.md:
 
 Example:
 ```
-| 0 | roslyn_get_instructions x2 | 2 | 12K | $0.22 | Loaded tools + code instructions |
-| 1 | roslyn_get_type_members | 1 | 45K | $0.85 | 155 members found |
+| 0 | GetInstructions x2 | 2 | 12K | $0.22 | Loaded tools + code instructions |
+| 1 | GetTypeMembers | 1 | 45K | $0.85 | 155 members found |
 ```
 
 ## After All Steps

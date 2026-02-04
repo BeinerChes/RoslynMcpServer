@@ -11,8 +11,7 @@ public partial class SolutionAnalyzerService
         string pattern,
         SymbolKindFilter kindFilter = SymbolKindFilter.All,
         MatchType matchType = MatchType.Contains,
-        int maxResults = 100,
-        bool compact = true)
+        int maxResults = 100)
     {
         EnsureMSBuildRegistered();
 
@@ -34,7 +33,7 @@ public partial class SolutionAnalyzerService
 
             // Delegate to SymbolSearchService
             var symbolSearchService = new Services.SymbolSearchService();
-            var result = await symbolSearchService.SearchSymbolsAsync(solution, solutionPath, pattern, kindFilter, matchType, maxResults, compact);
+            var result = await symbolSearchService.SearchSymbolsAsync(solution, solutionPath, pattern, kindFilter, matchType, maxResults);
 
             return result;
         }

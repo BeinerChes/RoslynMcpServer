@@ -48,7 +48,7 @@ public static partial class RoslynTools
     private static void RegisterGenerateMethodTool(McpServer server)
     {
         server.RegisterTool(
-            "roslyn_generate_method",
+            "GenerateMethod",
             new ToolDefinition
             {
                 Description = "Generate a C# method body from a method signature using SharpTinyCoder (4.3M parameter model trained on C# code). Returns SharpOps intermediate format that can be compiled to C#.",

@@ -12,7 +12,7 @@ public static partial class RoslynTools
     private static void RegisterGetImplementationsTool(McpServer server)
     {
         server.RegisterTool(
-            "roslyn_get_implementations",
+            "GetImplementations",
             new ToolDefinition
             {
                 Description = "Finds all implementations of an interface or all classes derived from a base class. Essential for understanding inheritance hierarchies and finding all variants of a pattern.",

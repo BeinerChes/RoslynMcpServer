@@ -10,7 +10,7 @@ public static partial class RoslynTools
     private static void RegisterUpdateMethodTool(McpServer server)
     {
         server.RegisterTool(
-            "roslyn_update_method",
+            "UpdateMethod",
             new ToolDefinition
             {
                 Description = "Replaces a method's implementation with new source code. Uses Roslyn to precisely locate and replace the method while preserving surrounding code. Essential for making targeted changes to large classes.",

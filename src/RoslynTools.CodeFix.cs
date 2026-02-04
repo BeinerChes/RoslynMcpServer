@@ -7,16 +7,16 @@ public static partial class RoslynTools
     private static readonly string[] definitionArray10 = new[] { "filePath", "line", "column" };
 
     /// <summary>
-    /// Registers the roslyn_apply_code_fix tool.
+    /// Registers the ApplyCodeFix tool.
     /// </summary>
     private static void RegisterApplyCodeFixTool(McpServer server)
     {
         server.RegisterTool(
-            "roslyn_apply_code_fix",
+            "ApplyCodeFix",
             new ToolDefinition
             {
                 Description = "Applies a Roslyn code fix for a diagnostic at a specific file location. " +
-                    "First use roslyn_get_diagnostics to find issues, then use this tool to automatically fix them. " +
+                    "First use GetDiagnostics to find issues, then use this tool to automatically fix them. " +
                     "Supports preview mode to see what would change before applying. " +
                     "If multiple fixes are available, returns the list so you can select one.",
                 InputSchema = new

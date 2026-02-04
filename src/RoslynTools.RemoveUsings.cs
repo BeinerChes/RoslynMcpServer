@@ -10,7 +10,7 @@ public static partial class RoslynTools
     private static void RegisterRemoveUnnecessaryUsingsTool(McpServer server)
     {
         server.RegisterTool(
-            "roslyn_remove_unnecessary_usings",
+            "RemoveUnnecessaryUsings",
             new ToolDefinition
             {
                 Description = "Removes unnecessary using directives (CS8019) from C# files. This is a dedicated tool because the standard code fix provider for CS8019 requires IDE services that aren't available in batch mode. Skips generated files in obj/ folders.",

@@ -13,7 +13,7 @@ public static partial class RoslynTools
     private static void RegisterExtractMethodTool(McpServer server)
     {
         server.RegisterTool(
-            "roslyn_extract_method",
+            "ExtractMethod",
             new ToolDefinition
             {
                 Description = "Extracts a code block into a new method using Roslyn data flow analysis. Automatically detects parameters (variables that flow in) and return values (variables that flow out). Handles async methods and multiple return values via tuples.",

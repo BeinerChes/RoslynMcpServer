@@ -1,7 +1,7 @@
 namespace RoslynMcpServer.Tests.Services;
 
 /// <summary>
-/// Tests for the roslyn_get_callers functionality.
+/// Tests for the GetCallers functionality.
 /// </summary>
 public class GetCallersTests
 {

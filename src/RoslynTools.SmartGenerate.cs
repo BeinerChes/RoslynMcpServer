@@ -10,7 +10,7 @@ public static partial class RoslynTools
     private static void RegisterSmartGenerateMethodTool(McpServer server)
     {
         server.RegisterTool(
-            "roslyn_smart_generate_method",
+            "SmartGenerateMethod",
             new ToolDefinition
             {
                 Description = "Generate and insert a C# method body using AI. Automatically extracts class fields for context, generates code with SharpTinyCoder, and inserts/updates the method. Returns success or asks Claude to do it manually if generation fails.",

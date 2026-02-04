@@ -204,7 +204,7 @@ Given no external users yet, the priority is:
 
 1. [ ] Remove enforce hooks from default setup
 2. [ ] Simplify install to: download, run, done
-3. [ ] Create 60-second demo video (grep vs roslyn_get_callers)
+3. [ ] Create 60-second demo video (grep vs GetCallers)
 4. [ ] Post to r/dotnet asking about Claude + C# pain points
 5. [ ] Find 5 beta users, get real feedback
 

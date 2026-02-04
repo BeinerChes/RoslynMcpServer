@@ -9,7 +9,7 @@ public static partial class RoslynTools
     private static void RegisterRenameSymbolTool(McpServer server)
     {
         server.RegisterTool(
-            "roslyn_rename_symbol",
+            "RenameSymbol",
             new ToolDefinition
             {
                 Description = "Renames a symbol (type, method, property, field, parameter, variable) at a specific file position across the entire solution. " +

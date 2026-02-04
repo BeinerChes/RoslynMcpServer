@@ -13,7 +13,7 @@ public static partial class RoslynTools
     private static void RegisterGetDiagnosticsTool(McpServer server)
     {
         server.RegisterTool(
-            "roslyn_get_diagnostics",
+            "GetDiagnostics",
             new ToolDefinition
             {
                 Description = "Compiles a .NET solution and returns diagnostics (errors, warnings). Without diagnosticId, returns summary (counts by diagnostic code). With diagnosticId, returns detailed entries with file/line/method info for targeted fixing.",

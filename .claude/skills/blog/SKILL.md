@@ -2,7 +2,7 @@
 name: blog
 description: Write a developer blog post about today's session. Creates a detective/humor style retrospective of work done, issues solved, and lessons learned.
 model: claude-haiku-4-5-20251001
-allowed-tools: Read, Write, Edit, Glob, Grep, Bash, mcp__roslyn__roslyn_knowledge_list, mcp__roslyn__roslyn_knowledge_get
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash, mcp__roslyn__KnowledgeList, mcp__roslyn__KnowledgeGet
 ---
 
 # Watson's Chronicle - Session Retrospective
@@ -42,7 +42,7 @@ gh issue list --state closed --limit 10 --json number,title,closedAt | head -20
 
 ### 3. Get Knowledge Entries Created Today
 ```
-roslyn_knowledge_list(solutionPath, limit: 50)
+KnowledgeList(solutionPath, limit: 50)
 ```
 Filter for entries created today.
 

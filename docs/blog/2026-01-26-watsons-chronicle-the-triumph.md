@@ -19,7 +19,7 @@ The epic had been set in motion long before this session: **Epic #87: Public Rel
 - **Issue #96**: Clean up dead code (214 items flagged)
 - **Issue #97**: Reduce tool registration complexity
 
-The user's directive was pointed: *"Do it. And while you're at it, observe how the roslyn_find_dead_code tool works—maybe it needs to be optimized or fixed."*
+The user's directive was pointed: *"Do it. And while you're at it, observe how the FindDeadCode tool works—maybe it needs to be optimized or fixed."*
 
 A deceptively simple request. Claude would soon discover it contained depths.
 
@@ -30,8 +30,8 @@ A deceptively simple request. Claude would soon discover it contained depths.
 With characteristic precision, Claude proceeded to deploy his favored instruments. First, the call graph analysis:
 
 ```bash
-roslyn_graph_analyze(solutionPath, incremental: true)
-roslyn_find_dead_code(solutionPath, maxResults: 300, includePrivate: true)
+GraphAnalyze(solutionPath, incremental: true)
+FindDeadCode(solutionPath, maxResults: 300, includePrivate: true)
 ```
 
 **Result: 227 items flagged as dead across 31 files.**
@@ -49,7 +49,7 @@ Something, as they say, did not smell right.
 
 ## The Investigation Unfolds: A Twist in the Tale
 
-What happened next demonstrated precisely why Claude is considered among the finest analytical minds. Rather than accept the tool's verdict wholesale, he verified each target manually using `roslyn_get_references`.
+What happened next demonstrated precisely why Claude is considered among the finest analytical minds. Rather than accept the tool's verdict wholesale, he verified each target manually using `GetReferences`.
 
 The first five confirmed kills were swift:
 
@@ -91,7 +91,7 @@ Rather than dismiss this as a minor inconvenience, Claude did what only the fine
 
 ```markdown
 Category: lesson
-Title: roslyn_find_dead_code has ~75% false positive rate due to DTO properties
+Title: FindDeadCode has ~75% false positive rate due to DTO properties
 Confidence: 0.95
 Tags: dead-code, dto, false-positives, json-serialization, tool-improvement
 ```
@@ -100,7 +100,7 @@ The entry captured:
 - Why the false positives occur (JSON serialization uses reflection)
 - Which patterns are affected (*Result, *Info, *Entry, *State, *Detail classes)
 - Suggested improvements to the tool
-- A workaround: always verify with `roslyn_get_references`
+- A workaround: always verify with `GetReferences`
 
 **GitHub Issue #106** was created with enhancement suggestions:
 - Add `excludeModelClasses` parameter
@@ -157,7 +157,7 @@ Yet more than this, Claude had created a pattern for future work: *when you find
 
 I have documented many of Claude's cases, but today revealed something I had not fully appreciated before: the greatest detective is not the one who solves every problem perfectly, but the one who notices when tools fail, learns why, and leaves better tools for the next investigator.
 
-The 75% false positive rate in `roslyn_find_dead_code` could have been a frustration. Instead, it became a lesson. The dead code cleanup could have been a rote task. Instead, it became an opportunity to improve future practice.
+The 75% false positive rate in `FindDeadCode` could have been a frustration. Instead, it became a lesson. The dead code cleanup could have been a rote task. Instead, it became an opportunity to improve future practice.
 
 And perhaps most importantly: the completion of an epic could have been celebrated and forgotten. Instead, Claude created the `/blog` skill so that others—future developers, future Claude instances, future Watsons—could understand not just *what* was done, but *how* and *why*.
 
@@ -197,21 +197,21 @@ For those curious about Claude's methods:
 
 ### Phase 1: Analysis
 ```bash
-roslyn_graph_analyze(solutionPath, incremental: true)
-roslyn_find_dead_code(solutionPath, maxResults: 300, includePrivate: true)
+GraphAnalyze(solutionPath, incremental: true)
+FindDeadCode(solutionPath, maxResults: 300, includePrivate: true)
 # Result: 227 items across 31 files
 ```
 
 ### Phase 2: Verification (Each Target)
 ```bash
-roslyn_get_references(solutionPath, filePath, line, column, maxResults: 10)
+GetReferences(solutionPath, filePath, line, column, maxResults: 10)
 # If totalFound == 0 → Confirmed dead
 # If totalFound > 0 → False positive (likely reflection-based)
 ```
 
 ### Phase 3: Deletion (Confirmed Targets)
 ```bash
-roslyn_delete_member(solutionPath, typeName, memberName, memberKind: "method")
+DeleteMember(solutionPath, typeName, memberName, memberKind: "method")
 # Deleted 5 methods across 4 files, 147 lines total
 ```
 
@@ -224,9 +224,9 @@ dotnet test --no-build
 
 ### Phase 5: Knowledge Capture
 ```bash
-roslyn_knowledge_add(
+KnowledgeAdd(
     category: "lesson",
-    title: "roslyn_find_dead_code has ~75% false positive rate...",
+    title: "FindDeadCode has ~75% false positive rate...",
     content: "<detailed analysis>",
     symbolLinks: ["RoslynMcpServer.Graph.GraphDatabase.FindDeadCodeAsync"],
     tags: ["dead-code", "dto", "false-positives"],
