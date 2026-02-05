@@ -183,6 +183,13 @@ public partial class SolutionAnalyzerService
             if (oldText != null && newText != null)
             {
                 var currentSource = methodNode.ToFullString();
+
+                // Normalize line endings for cross-platform compatibility
+                // MCP JSON transport sends \n but source files may have \r\n on Windows
+                currentSource = currentSource.Replace("\r\n", "\n");
+                oldText = oldText.Replace("\r\n", "\n");
+                newText = newText.Replace("\r\n", "\n");
+
                 var occurrences = 0;
                 var idx = -1;
                 var searchFrom = 0;
