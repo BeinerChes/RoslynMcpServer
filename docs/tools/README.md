@@ -55,7 +55,6 @@ This directory contains detailed documentation for each Roslyn MCP tool. Each to
 
 | Tool | In tools.md? | Documentation | Status |
 |------|--------------|---------------|--------|
-| **GenerateMethod** | ✅ | *Coming soon* | Pending |
 | **Finetune** | ✅ | *Coming soon* | Pending |
 
 ### Knowledge Base
@@ -80,17 +79,17 @@ This directory contains detailed documentation for each Roslyn MCP tool. Each to
 
 ## Tool Count
 
-**Total: 33 tools** across 7 categories
+**Total: 32 tools** across 7 categories
 
 ## Documentation Progress
 
 ### Detailed Documentation
-- ✅ **14/33** tools have detailed docs (UpdateMethod, AddMember, AddType, DeleteMember, AddUsing, RemoveUnnecessaryUsings, ExtractMethod, RenameSymbol, FindSymbol, GetTypeMembers, GetMethodBody, GetReferences, GetCallers, ApplyCodeFix)
-- ⏳ **19/33** remaining
+- ✅ **14/32** tools have detailed docs (UpdateMethod, AddMember, AddType, DeleteMember, AddUsing, RemoveUnnecessaryUsings, ExtractMethod, RenameSymbol, FindSymbol, GetTypeMembers, GetMethodBody, GetReferences, GetCallers, ApplyCodeFix)
+- ⏳ **18/32** remaining
 
 ### Claude Code Integration (Instructions/Topics/tools.md)
-- ✅ **19/33** tools documented in quick reference (ApplyCodeFix already in)
-- ❌ **14/33** tools missing from Claude Code docs
+- ✅ **18/32** tools documented in quick reference (ApplyCodeFix already in)
+- ❌ **14/32** tools missing from Claude Code docs
 
 ## Documentation Algorithm
 
