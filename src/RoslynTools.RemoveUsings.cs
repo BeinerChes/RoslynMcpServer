@@ -28,11 +28,6 @@ public static partial class RoslynTools
                         {
                             type = "string",
                             description = "Optional: filter by file name or path (partial match)"
-                        },
-                        preview = new
-                        {
-                            type = "boolean",
-                            description = "If true, shows what would be removed without making changes. Default: false"
                         }
                     },
                     required = Array.Empty<string>()
@@ -50,13 +45,11 @@ public static partial class RoslynTools
 
                 var projectFilter = args?["projectFilter"]?.GetValue<string>();
                 var fileFilter = args?["fileFilter"]?.GetValue<string>();
-                var preview = args?["preview"]?.GetValue<bool>() ?? false;
 
                 var result = await SolutionAnalyzerService.RemoveUnnecessaryUsingsAsync(
                     solutionPath!,
                     projectFilter,
-                    fileFilter,
-                    preview);
+                    fileFilter);
 
                 return new
                 {

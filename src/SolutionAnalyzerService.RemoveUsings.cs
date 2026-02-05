@@ -13,8 +13,7 @@ public partial class SolutionAnalyzerService
     public static async Task<RemoveUnnecessaryUsingsResult> RemoveUnnecessaryUsingsAsync(
         string solutionPath,
         string? projectFilter = null,
-        string? fileFilter = null,
-        bool preview = false)
+        string? fileFilter = null)
     {
         EnsureMSBuildRegistered();
 
@@ -35,7 +34,6 @@ public partial class SolutionAnalyzerService
             var solution = await workspace.OpenSolutionAsync(solutionPath);
 
             var filesModified = new List<string>();
-            var usingsRemoved = new List<RemovedUsingInfo>();
             int totalUsingsRemoved = 0;
 
             foreach (var project in solution.Projects)
@@ -94,37 +92,19 @@ public partial class SolutionAnalyzerService
 
                     if (usingsToRemove.Count == 0) continue;
 
-                    // Track what we're removing
-                    foreach (var usingDirective in usingsToRemove)
-                    {
-                        usingsRemoved.Add(new RemovedUsingInfo
-                        {
-                            FilePath = filePath,
-                            UsingDirective = usingDirective.Name?.ToString() ?? usingDirective.ToString().Trim(),
-                            Line = usingDirective.GetLocation().GetLineSpan().StartLinePosition.Line + 1
-                        });
-                    }
-
                     totalUsingsRemoved += usingsToRemove.Count;
 
-                    if (!preview)
+                    // Remove the using directives
+                    var newRoot = root.RemoveNodes(usingsToRemove, SyntaxRemoveOptions.KeepLeadingTrivia);
+                    if (newRoot != null)
                     {
-                        // Remove the using directives
-                        var newRoot = root.RemoveNodes(usingsToRemove, SyntaxRemoveOptions.KeepLeadingTrivia);
-                        if (newRoot != null)
-                        {
-                            // Clean up any double blank lines that may result
-                            var newSource = newRoot.ToFullString();
-                            newSource = CleanupExtraBlankLines(newSource);
+                        // Clean up any double blank lines that may result
+                        var newSource = newRoot.ToFullString();
+                        newSource = CleanupExtraBlankLines(newSource);
 
-                            await File.WriteAllTextAsync(filePath, newSource);
-                            filesModified.Add(filePath);
-                            Console.Error.WriteLine($"Removed {usingsToRemove.Count} usings from: {filePath}");
-                        }
-                    }
-                    else
-                    {
+                        await File.WriteAllTextAsync(filePath, newSource);
                         filesModified.Add(filePath);
+                        Console.Error.WriteLine($"Removed {usingsToRemove.Count} usings from: {filePath}");
                     }
                 }
             }
@@ -135,9 +115,7 @@ public partial class SolutionAnalyzerService
                 SolutionPath = solutionPath,
                 TotalUsingsRemoved = totalUsingsRemoved,
                 FilesModified = filesModified.Count,
-                ModifiedFiles = filesModified,
-                RemovedUsings = usingsRemoved.Count <= 100 ? usingsRemoved : null,
-                IsPreview = preview
+                ModifiedFiles = filesModified
             };
         }
         catch (Exception ex)
@@ -188,16 +166,4 @@ public class RemoveUnnecessaryUsingsResult
     public int TotalUsingsRemoved { get; init; }
     public int FilesModified { get; init; }
     public List<string> ModifiedFiles { get; init; } = [];
-    public List<RemovedUsingInfo>? RemovedUsings { get; init; }
-    public bool IsPreview { get; init; }
-}
-
-/// <summary>
-/// Information about a removed using directive.
-/// </summary>
-public class RemovedUsingInfo
-{
-    public required string FilePath { get; init; }
-    public required string UsingDirective { get; init; }
-    public int Line { get; init; }
 }
