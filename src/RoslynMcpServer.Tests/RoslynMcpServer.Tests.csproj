@@ -15,8 +15,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\RoslynMcpServer.csproj" />
-    <ProjectReference Include="..\RoslynMcpServer.Graph\RoslynMcpServer.Graph.csproj" />
+    <ProjectReference Include="..\RoslynMcpServer\RoslynMcpServer.csproj" />
   </ItemGroup>
 
   <ItemGroup>

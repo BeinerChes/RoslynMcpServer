@@ -22,6 +22,7 @@
     <PackageVersion Include="Microsoft.Build.Tasks.Core" Version="18.0.2" />
     <!-- Inference packages -->
     <PackageVersion Include="Microsoft.ML.Tokenizers" Version="1.0.3" />
+    <PackageVersion Include="System.Text.Json" Version="8.0.5" />
     <!-- TorchSharp packages (inference + LoRA fine-tuning) -->
     <PackageVersion Include="TorchSharp" Version="0.105.2" />
     <PackageVersion Include="libtorch-cpu-win-x64" Version="2.7.1" />
