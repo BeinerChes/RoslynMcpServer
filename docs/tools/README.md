@@ -37,7 +37,7 @@ This directory contains detailed documentation for each Roslyn MCP tool. Each to
 
 | Tool | In tools.md? | Documentation | Status |
 |------|--------------|---------------|--------|
-| **GetDiagnostics** | ✅ | *Coming soon* | Pending |
+| **GetDiagnostics** | ✅ | [GetDiagnostics.md](GetDiagnostics.md) | Complete |
 | **ApplyCodeFix** | ✅ | [ApplyCodeFix.md](ApplyCodeFix.md) | Complete |
 | **BatchApplyCodeFixes** | ✅ | [BatchApplyCodeFixes.md](BatchApplyCodeFixes.md) | Complete |
 | **FindDeadCode** | ❌ | *Coming soon* | Pending |
@@ -84,8 +84,8 @@ This directory contains detailed documentation for each Roslyn MCP tool. Each to
 ## Documentation Progress
 
 ### Detailed Documentation
-- ✅ **15/32** tools have detailed docs (UpdateMethod, AddMember, AddType, DeleteMember, AddUsing, RemoveUnnecessaryUsings, ExtractMethod, RenameSymbol, FindSymbol, GetTypeMembers, GetMethodBody, GetReferences, GetCallers, ApplyCodeFix, BatchApplyCodeFixes)
-- ⏳ **17/32** remaining
+- ✅ **16/32** tools have detailed docs (UpdateMethod, AddMember, AddType, DeleteMember, AddUsing, RemoveUnnecessaryUsings, ExtractMethod, RenameSymbol, FindSymbol, GetTypeMembers, GetMethodBody, GetReferences, GetCallers, ApplyCodeFix, BatchApplyCodeFixes, GetDiagnostics)
+- ⏳ **16/32** remaining
 
 ### Claude Code Integration (Instructions/Topics/tools.md)
 - ✅ **18/32** tools documented in quick reference (ApplyCodeFix already in)
