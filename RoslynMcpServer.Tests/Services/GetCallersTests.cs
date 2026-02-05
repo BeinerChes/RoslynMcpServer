@@ -19,9 +19,7 @@ public class GetCallersTests
         // Act
         var result = await SolutionAnalyzerService.GetCallersAsync(
             fakePath,
-            @"C:\some\file.cs",
-            line: 10,
-            column: 5);
+            "SomeMethod");
 
         // Assert
         Assert.False(result.Success);
@@ -33,7 +31,7 @@ public class GetCallersTests
     /// Issue: #7
     /// </summary>
     [Fact]
-    public async Task GetCallersAsync_WithInvalidFile_ReturnsError()
+    public async Task GetCallersAsync_WithNonExistentSymbol_ReturnsEmpty()
     {
         // Arrange
         var service = new SolutionAnalyzerService();
@@ -43,13 +41,11 @@ public class GetCallersTests
         // Act
         var result = await SolutionAnalyzerService.GetCallersAsync(
             solutionPath,
-            @"C:\nonexistent\file.cs",
-            line: 10,
-            column: 5);
+            "NonExistentMethodXyz123");
 
         // Assert
-        Assert.False(result.Success);
-        Assert.Contains("not found", result.Error, StringComparison.OrdinalIgnoreCase);
+        Assert.True(result.Success);
+        Assert.Equal(0, result.TotalCallers);
     }
 
     /// <summary>

@@ -11,9 +11,7 @@ public partial class SolutionAnalyzerService
     /// </summary>
     public static async Task<GetCallersResult> GetCallersAsync(
         string solutionPath,
-        string filePath,
-        int line,
-        int column,
+        string symbolName,
         int maxResults = 100,
         int offset = 0,
         string? projectFilter = null,
@@ -30,15 +28,6 @@ public partial class SolutionAnalyzerService
             };
         }
 
-        if (!File.Exists(filePath))
-        {
-            return new GetCallersResult
-            {
-                Success = false,
-                Error = $"Source file not found: {filePath}"
-            };
-        }
-
         using var workspace = CreateWorkspace();
 
         try
@@ -46,65 +35,65 @@ public partial class SolutionAnalyzerService
             Console.Error.WriteLine($"Loading solution: {solutionPath}");
             var solution = await workspace.OpenSolutionAsync(solutionPath);
 
-            // Find the document
-            var normalizedPath = Path.GetFullPath(filePath);
-            var document = solution.Projects
-                .SelectMany(p => p.Documents)
-                .FirstOrDefault(d => string.Equals(
-                    Path.GetFullPath(d.FilePath ?? ""),
-                    normalizedPath,
-                    StringComparison.OrdinalIgnoreCase));
+            // Parse symbolName: could be "Method", "Type.Method", or "Namespace.Type.Method"
+            // Extract the short name for SymbolFinder (last segment before any parentheses)
+            var nameWithoutParams = symbolName.Contains('(')
+                ? symbolName[..symbolName.IndexOf('(')]
+                : symbolName;
+            var segments = nameWithoutParams.Split('.');
+            var shortName = segments[^1];
 
-            if (document == null)
+            // Find declarations matching the short name across all projects
+            var declarations = new List<ISymbol>();
+            foreach (var project in solution.Projects)
+            {
+                var projectDecls = await SymbolFinder.FindDeclarationsAsync(
+                    project, shortName, ignoreCase: false);
+                declarations.AddRange(projectDecls);
+            }
+
+            // Filter to callable symbols (methods, properties, events)
+            var callables = declarations
+                .Where(s => s is IMethodSymbol or IPropertySymbol or IEventSymbol)
+                .ToList();
+
+            if (callables.Count == 0)
             {
                 return new GetCallersResult
                 {
-                    Success = false,
-                    Error = $"File not found in solution: {filePath}"
+                    Success = true,
+                    Symbol = symbolName,
+                    TotalCallers = 0,
+                    ReturnedCount = 0,
+                    Callers = []
                 };
             }
 
-            // Get semantic model and find symbol at position
-            var semanticModel = await document.GetSemanticModelAsync();
-            if (semanticModel == null)
+            // Match against the full symbolName for precision
+            ISymbol? targetSymbol = null;
+            foreach (var sym in callables)
             {
-                return new GetCallersResult
+                var qualifiedName = sym.ContainingType != null
+                    ? $"{sym.ContainingType.Name}.{sym.Name}"
+                    : sym.Name;
+                var fullQualifiedName = sym.ToDisplayString();
+
+                if (string.Equals(qualifiedName, nameWithoutParams, StringComparison.Ordinal) ||
+                    string.Equals(fullQualifiedName, nameWithoutParams, StringComparison.Ordinal) ||
+                    string.Equals(sym.Name, nameWithoutParams, StringComparison.Ordinal))
                 {
-                    Success = false,
-                    Error = "Failed to get semantic model"
-                };
+                    targetSymbol = sym;
+                    break;
+                }
             }
 
-            // Convert 1-based line/column to 0-based position
-            var text = await document.GetTextAsync();
-            var position = text.Lines[line - 1].Start + (column - 1);
+            // If no exact match, take first callable
+            targetSymbol ??= callables[0];
 
-            // Use tolerant symbol finder (Issue #68)
-            var symbol = await FindSymbolAtPositionWithToleranceAsync(semanticModel, position, workspace);
-
-            if (symbol == null)
-            {
-                return new GetCallersResult
-                {
-                    Success = false,
-                    Error = $"No symbol found at {filePath}:{line}:{column}"
-                };
-            }
-
-            // Only methods, properties, and events can have callers
-            if (symbol is not (IMethodSymbol or IPropertySymbol or IEventSymbol))
-            {
-                return new GetCallersResult
-                {
-                    Success = false,
-                    Error = $"Symbol '{symbol.Name}' is a {symbol.Kind}, not a method/property/event. Only callable symbols have callers."
-                };
-            }
-
-            Console.Error.WriteLine($"Finding callers of: {symbol.ToDisplayString()}");
+            Console.Error.WriteLine($"Finding callers of: {targetSymbol.ToDisplayString()}");
 
             // Find all callers
-            var callers = await SymbolFinder.FindCallersAsync(symbol, solution);
+            var callers = await SymbolFinder.FindCallersAsync(targetSymbol, solution);
             var callerList = callers.ToList();
 
             // Flatten to individual call locations
@@ -177,11 +166,11 @@ public partial class SolutionAnalyzerService
             Console.Error.WriteLine($"Found {totalAfterFilters} callers (returning {results.Count})");
 
             // Build symbol signature
-            var symbolSignature = symbol.ContainingType != null
-                ? $"{symbol.ContainingType.Name}.{symbol.Name}"
-                : symbol.Name;
+            var symbolSignature = targetSymbol.ContainingType != null
+                ? $"{targetSymbol.ContainingType.Name}.{targetSymbol.Name}"
+                : targetSymbol.Name;
 
-            if (symbol is IMethodSymbol method)
+            if (targetSymbol is IMethodSymbol method)
             {
                 var paramTypes = string.Join(", ", method.Parameters.Select(p => p.Type.Name));
                 symbolSignature += $"({paramTypes})";
