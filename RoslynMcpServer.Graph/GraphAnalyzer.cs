@@ -55,6 +55,19 @@ public sealed class GraphAnalyzer
         }
 
         // Find all type declarations
+        // Track file in Files table (even for files with no type declarations)
+        if (fileHash != null)
+        {
+            await _db.UpsertFileAsync(new FileRecord
+            {
+                SolutionId = solutionId,
+                FilePath = filePath,
+                LastModified = !string.IsNullOrEmpty(document.FilePath) ? new FileInfo(document.FilePath).LastWriteTimeUtc : DateTime.UtcNow,
+                ContentHash = fileHash,
+                LastAnalyzed = DateTime.UtcNow
+            });
+        }
+
         var types = root.DescendantNodes().OfType<TypeDeclarationSyntax>();
 
         foreach (var typeDecl in types)

@@ -249,7 +249,13 @@ public static partial class RoslynTools
             RefreshedFiles = freshnessResult.ReanalyzedFiles
         };
     }
-
+    /// <summary>
+    /// Analyzes a solution and builds/updates the call graph. When incremental=true, skips files whose content hash matches the graph. Also cleans up symbols from deleted files.
+    /// </summary>
+    /// <param name="solutionPath"></param>
+    /// <param name="incremental"></param>
+    /// <param name="projectFilter"></param>
+    /// <returns></returns>
     private static async Task<GraphAnalyzeResult> AnalyzeGraphAsync(
         string solutionPath, bool incremental, string? projectFilter)
     {
@@ -271,7 +277,21 @@ public static partial class RoslynTools
             };
         }
 
+        // In incremental mode, build a lookup of known file hashes from the graph
+        Dictionary<string, string>? knownHashes = null;
+        if (incremental && !string.IsNullOrEmpty(solutionDir))
+        {
+            var allSymbols = await db.GetAllSymbolsAsync(solution.Id, projectFilter);
+            knownHashes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var sym in allSymbols)
+            {
+                if (sym.FilePath != "external" && sym.FileHash != null)
+                    knownHashes.TryAdd(sym.FilePath, sym.FileHash);
+            }
+        }
+
         var documentsAnalyzed = 0;
+        var skippedDocuments = 0;
 
         foreach (var project in roslynSolution.Projects)
         {
@@ -284,14 +304,70 @@ public static partial class RoslynTools
             foreach (var document in project.Documents)
             {
                 if (document.FilePath == null) continue;
-                // Skip generated files
                 if (document.FilePath.EndsWith(".g.cs") || document.FilePath.EndsWith(".designer.cs"))
                     continue;
+
+                // Incremental: skip files whose hash hasn't changed
+                if (knownHashes != null && !string.IsNullOrEmpty(solutionDir))
+                {
+                    var relativePath = document.FilePath;
+                    if (document.FilePath.StartsWith(solutionDir, StringComparison.OrdinalIgnoreCase))
+                    {
+                        relativePath = document.FilePath.Substring(solutionDir.Length)
+                            .TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                            .Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
+                    }
+
+                    try
+                    {
+                        var currentHash = GraphDatabase.ComputeFileHash(document.FilePath);
+
+                        // Check Symbols table first, then Files table (for files with no type declarations)
+                        if (knownHashes.TryGetValue(relativePath, out var storedHash))
+                        {
+                            if (currentHash == storedHash)
+                            {
+                                skippedDocuments++;
+                                continue;
+                            }
+                            // Stale: delete old symbols first
+                            await db.DeleteSymbolsByFileAsync(solution.Id, relativePath);
+                        }
+                        else
+                        {
+                            // Not in Symbols — check Files table (covers files with no type declarations)
+                            var fileRecord = await db.GetFileAsync(solution.Id, relativePath);
+                            if (fileRecord != null && fileRecord.ContentHash == currentHash)
+                            {
+                                skippedDocuments++;
+                                continue;
+                            }
+                        }
+                    }
+                    catch { /* can't read → re-analyze */ }
+                }
 
                 await analyzer.AnalyzeDocumentAsync(document, solution.Id, solutionDir);
                 documentsAnalyzed++;
             }
         }
+
+        // Clean up symbols from files no longer in the solution
+        var analyzedRelativePaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var project in roslynSolution.Projects)
+        {
+            foreach (var doc in project.Documents)
+            {
+                if (doc.FilePath != null && !string.IsNullOrEmpty(solutionDir) &&
+                    doc.FilePath.StartsWith(solutionDir, StringComparison.OrdinalIgnoreCase))
+                {
+                    analyzedRelativePaths.Add(doc.FilePath.Substring(solutionDir.Length)
+                        .TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                        .Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar));
+                }
+            }
+        }
+        await db.CleanupSymbolsFromDeletedFilesAsync(solution.Id, analyzedRelativePaths);
 
         await db.UpdateSolutionAnalyzedAsync(solution.Id);
 
