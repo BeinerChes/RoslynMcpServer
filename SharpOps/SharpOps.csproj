@@ -28,6 +28,11 @@
     <None Include="Models\**\*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Remove="SharpOps\**" />
+    <EmbeddedResource Remove="SharpOps\**" />
+    <None Remove="SharpOps\**" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\RoslynMcpServer.Web\RoslynMcpServer.Web.csproj" />
   </ItemGroup>
 

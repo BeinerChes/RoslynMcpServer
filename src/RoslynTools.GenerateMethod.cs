@@ -177,7 +177,15 @@ public static partial class RoslynTools
                 sharpOps = stats.Output.Trim(),
                 compiledCSharp,
                 compileError,
-                prompt = SharpOpsService.BuildPrompt(methodSignature, fields, description)
+                prompt = SharpOpsService.BuildPrompt(methodSignature, fields, description),
+                inference = new
+                {
+                    inputTokens = stats.InputTokens,
+                    outputTokens = stats.OutputTokens,
+                    elapsedMs = Math.Round(stats.ElapsedMs, 1),
+                    tokensPerSecond = Math.Round(stats.TokensPerSecond, 1),
+                    msPerToken = Math.Round(stats.MsPerToken, 1)
+                }
             }));
         }
         catch (Exception ex)

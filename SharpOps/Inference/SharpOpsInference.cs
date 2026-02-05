@@ -19,9 +19,12 @@ public class SharpOpsInference : IDisposable
     private readonly SharpOpsTokenizer _tokenizer;
     private readonly Random _random = new();
 
+    private readonly torch.Device _device;
     public SharpOpsInference(string modelPath, string tokenizerPath)
     {
         _tokenizer = new SharpOpsTokenizer(tokenizerPath);
+
+        _device = torch.cuda.is_available() ? torch.CUDA : torch.CPU;
 
         var config = new ModelConfig
         {
@@ -38,6 +41,7 @@ public class SharpOpsInference : IDisposable
 
         _model = new SharpTinyCoder(config);
         LoadModel(_model, modelPath);
+        _model.to(_device);
         _model.eval();
     }
 
@@ -148,13 +152,13 @@ public class SharpOpsInference : IDisposable
     private float[] RunForward(List<int> currentIds)
     {
         var seqLen = currentIds.Count;
-        var inputTensor = torch.tensor(currentIds.Select(id => (long)id).ToArray(), dtype: torch.ScalarType.Int64)
+        var inputTensor = torch.tensor(currentIds.Select(id => (long)id).ToArray(), dtype: torch.ScalarType.Int64, device: _device)
             .reshape(1, seqLen);
 
         var (logits, _) = _model.forward(inputTensor, null, null);
 
         // Get logits for last position [vocab_size]
-        var lastLogits = logits[0, seqLen - 1];
+        var lastLogits = logits[0, seqLen - 1].cpu();
         var result = new float[lastLogits.shape[0]];
         var data = lastLogits.data<float>();
         for (int v = 0; v < result.Length; v++)
