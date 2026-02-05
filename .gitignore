@@ -376,3 +376,4 @@ FodyWeavers.xsd
 /.claude/settings.local.json
 *.zip
 /publish-test
+.claude/
