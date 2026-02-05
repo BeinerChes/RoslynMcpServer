@@ -10,7 +10,7 @@
 
   <ItemGroup>
     <PackageReference Include="TorchSharp" />
-    <PackageReference Include="libtorch-cpu-win-x64" />
+    <PackageReference Include="libtorch-cuda-12.8-win-x64" />
     <PackageReference Include="TorchSharp.PyBridge" />
   </ItemGroup>
 
@@ -19,7 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="Models\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Models\**\*" CopyToOutputDirectory="PreserveNewest" Pack="false" CopyToPublishDirectory="Never" />
   </ItemGroup>
 
 </Project>

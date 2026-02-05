@@ -22,7 +22,7 @@ public sealed class LoRALinear : Module<Tensor, Tensor>
     public readonly Parameter lora_B;
     private readonly Module<Tensor, Tensor> _dropout;
 
-    public LoRALinear(Linear baseLayer, int rank = 8, float alpha = 16.0f, float dropout = 0.0f)
+    public LoRALinear(Linear baseLayer, int rank = 8, float alpha = 32.0f, float dropout = 0.0f)
         : base("LoRALinear")
     {
         BaseLayer = baseLayer;

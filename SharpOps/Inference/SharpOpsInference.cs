@@ -1,4 +1,5 @@
 using SharpOps.Model;
+using System.Diagnostics;
 using TorchSharp;
 using TorchSharp.PyBridge;
 
@@ -36,7 +37,7 @@ public class SharpOpsInference : IDisposable
         };
 
         _model = new SharpTinyCoder(config);
-        _model.load_py(modelPath, strict: false);
+        LoadModel(_model, modelPath);
         _model.eval();
     }
 
@@ -246,5 +247,56 @@ public class SharpOpsInference : IDisposable
     public void Dispose()
     {
         _model.Dispose();
+    }
+    /// <summary>
+    /// Loads model weights from a Python-format .pt checkpoint. Handles both flat state_dict and container format (with model_state_dict key).
+    /// </summary>
+    /// <param name="model"></param>
+    /// <param name="modelPath"></param>
+    private static void LoadModel(SharpTinyCoder model, string modelPath)
+    {
+        try
+        {
+            // Try Python-format checkpoint first (flat state_dict)
+            model.load_py(modelPath, strict: false);
+        }
+        catch (InvalidCastException)
+        {
+            // Container format (e.g., {"model_state_dict": ..., "epoch": ...}) - extract state_dict via Python
+            var tempPath = Path.Combine(Path.GetTempPath(), $"statedict_{Guid.NewGuid():N}.pt");
+            try
+            {
+                var checkpointDir = Path.GetDirectoryName(modelPath) ?? ".";
+                var parentDir = Path.GetDirectoryName(checkpointDir) ?? checkpointDir;
+
+                var script = $"import sys; sys.path.insert(0, r'{parentDir}'); sys.path.insert(0, r'{checkpointDir}'); " +
+                             $"import torch; ckpt = torch.load(r'{modelPath}', map_location='cpu', weights_only=False); " +
+                             $"sd = ckpt['model_state_dict'] if 'model_state_dict' in ckpt else ckpt; " +
+                             $"torch.save(sd, r'{tempPath}')";
+
+                var psi = new ProcessStartInfo
+                {
+                    FileName = "python",
+                    Arguments = $"-c \"{script}\"",
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+
+                using var proc = Process.Start(psi)!;
+                proc.WaitForExit();
+                if (proc.ExitCode != 0)
+                {
+                    var err = proc.StandardError.ReadToEnd();
+                    throw new Exception($"Python state_dict extraction failed: {err}");
+                }
+
+                model.load_py(tempPath, strict: false);
+            }
+            finally
+            {
+                if (File.Exists(tempPath)) File.Delete(tempPath);
+            }
+        }
     }
 }

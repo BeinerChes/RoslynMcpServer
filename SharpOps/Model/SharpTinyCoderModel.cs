@@ -105,8 +105,16 @@ public sealed class RotaryPositionEmbedding : Module
     {
         if (seqLen > _maxSeqLen)
         {
+            _invFreq = _invFreq.to(x.device);
             BuildCache(seqLen);
             _maxSeqLen = seqLen;
+        }
+
+        // Move cached tensors to input device if needed
+        if (_cosCached.device != x.device)
+        {
+            _cosCached = _cosCached.to(x.device);
+            _sinCached = _sinCached.to(x.device);
         }
 
         return (
@@ -320,6 +328,12 @@ public sealed class SharpTinyCoder : Module
 
         var (cos, sin) = _rope.Forward(hiddenStates, seqLen);
 
+        // Move causal mask to input device if needed
+        if (_causalMask.device != input_ids.device)
+        {
+            _causalMask = _causalMask.to(input_ids.device);
+        }
+
         var causalMask = _causalMask[TensorIndex.Slice(stop: seqLen), TensorIndex.Slice(stop: seqLen)];
 
         if (attention_mask is not null)
@@ -367,4 +381,9 @@ public sealed class SharpTinyCoder : Module
             return parameters().Where(p => p.requires_grad).Sum(p => p.numel());
         return parameters().Sum(p => p.numel());
     }
+
+    /// <summary>
+    /// Re-registers all sub-modules after external modification (e.g., LoRA merge). Fixes save_py producing empty files when module tree is stale.
+    /// </summary>
+    public void ReRegisterComponents() => RegisterComponents();
 }

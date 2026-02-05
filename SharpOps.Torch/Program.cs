@@ -1,3 +1,4 @@
+using static TorchSharp.torch;
 using SharpOps.Torch.Training;
 using TorchSharp.PyBridge;
 
@@ -23,6 +24,33 @@ public static class Program
         else if (args[0] == "smoke-test")
         {
             RunSmokeTest(args[1..]);
+        }
+        else if (args[0] == "cuda-check")
+        {
+            var nativeDir = Path.Combine(AppContext.BaseDirectory, "runtimes", "win-x64", "native");
+            Console.WriteLine($"Native dir: {nativeDir}");
+
+            // Add native dir to DLL search path
+            var added = SetDllDirectory(nativeDir);
+            Console.WriteLine($"SetDllDirectory: {added}");
+
+            // Try loading key DLLs in dependency order
+            foreach (var dll in new[] { "cudart64_12.dll", "c10.dll", "c10_cuda.dll", "torch_cpu.dll", "torch.dll", "torch_cuda.dll" })
+            {
+                try
+                {
+                    var path = Path.Combine(nativeDir, dll);
+                    var handle = System.Runtime.InteropServices.NativeLibrary.Load(path);
+                    Console.WriteLine($"  {dll}: OK");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"  {dll}: FAILED - {ex.Message}");
+                }
+            }
+
+            Console.WriteLine($"torch.cuda.is_available(): {TorchSharp.torch.cuda.is_available()}");
+            Console.WriteLine($"torch.cuda.device_count(): {TorchSharp.torch.cuda.device_count()}");
         }
         else
         {
@@ -176,6 +204,7 @@ public static class Program
     {
         string checkpointPath = DefaultCheckpoint;
         string tokenizerPath = DefaultTokenizer;
+        string? dataPath = null;
 
         for (int i = 0; i < args.Length; i++)
         {
@@ -183,65 +212,58 @@ public static class Program
             {
                 case "--checkpoint": checkpointPath = args[++i]; break;
                 case "--tokenizer": tokenizerPath = args[++i]; break;
+                case "--data": dataPath = args[++i]; break;
             }
         }
 
         Console.WriteLine("=== Smoke Test ===");
-
-        // 1. Load tokenizer
-        Console.WriteLine("\n[1/4] Loading tokenizer...");
         var tokenizer = new SharpOps.Inference.SharpOpsTokenizer(tokenizerPath);
-        Console.WriteLine($"  Vocab size: {tokenizer.VocabSize}");
 
-        // 2. Create model
-        Console.WriteLine("\n[2/4] Creating model...");
-        var config = new SharpOps.Model.ModelConfig
+        if (dataPath != null)
         {
-            VocabSize = tokenizer.VocabSize,
-            ContextLength = SharpOps.Model.ModelConfig.ConfigTiny.ContextLength,
-            EmbeddingDim = SharpOps.Model.ModelConfig.ConfigTiny.EmbeddingDim,
-            NumLayers = SharpOps.Model.ModelConfig.ConfigTiny.NumLayers,
-            NumHeads = SharpOps.Model.ModelConfig.ConfigTiny.NumHeads,
-            NumKvHeads = SharpOps.Model.ModelConfig.ConfigTiny.NumKvHeads,
-            FfHiddenDim = SharpOps.Model.ModelConfig.ConfigTiny.FfHiddenDim,
-            Dropout = 0.0f,
-            TieEmbeddings = SharpOps.Model.ModelConfig.ConfigTiny.TieEmbeddings,
-        };
-        var model = new SharpOps.Model.SharpTinyCoder(config);
-        var totalParams = model.NumParameters(trainableOnly: false);
-        Console.WriteLine($"  Parameters: {totalParams:N0}");
+            var examples = Training.DataLoader.LoadData(dataPath);
+            Console.WriteLine($"Examples: {examples.Count}");
 
-        // 3. Load checkpoint (handles both raw state_dict and container format)
-        Console.WriteLine($"\n[3/4] Loading checkpoint from {checkpointPath}...");
-        try
-        {
-            LoadCheckpointWithFallback(model, checkpointPath);
-            Console.WriteLine("  Checkpoint loaded successfully");
-        }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine($"  ERROR loading checkpoint: {ex.Message}");
-            Environment.ExitCode = 1;
-            return;
-        }
+            var inputText = examples[0]["input"].GetString() ?? "";
+            var outputText = examples[0]["output"].GetString() ?? "";
 
-        // 4. Forward pass
-        Console.WriteLine("\n[4/4] Running forward pass...");
-        model.eval();
-        using (TorchSharp.torch.no_grad())
-        {
-            var inputIds = TorchSharp.torch.randint(0, config.VocabSize, new long[] { 1, 32 }, dtype: TorchSharp.torch.ScalarType.Int64);
-            var labels = inputIds.clone();
+            var inputIds = tokenizer.Encode(inputText);
+            var outputIds = tokenizer.Encode(outputText);
 
-            var (logits, loss) = model.forward(inputIds, null, labels);
+            Console.WriteLine($"Input tokens: {inputIds.Length}");
+            Console.WriteLine($"Output tokens: {outputIds.Length}");
+            Console.WriteLine($"Python expected: input=74, output=53");
 
-            Console.WriteLine($"  Input shape:  [{inputIds.shape[0]}, {inputIds.shape[1]}]");
-            Console.WriteLine($"  Logits shape: [{logits.shape[0]}, {logits.shape[1]}, {logits.shape[2]}]");
-            Console.WriteLine($"  Loss: {loss!.item<float>():F4}");
-            Console.WriteLine($"  Loss finite: {float.IsFinite(loss.item<float>())}");
+            // Print all output token IDs
+            Console.Write("C#     output ids: [");
+            Console.Write(string.Join(", ", outputIds));
+            Console.WriteLine("]");
+            Console.WriteLine("Python output ids: [369, 539, 409, 395, 403, 181, 172, 394, 1250, 1113, 401, 550, 1292, 1539, 181, 171, 1765, 487, 276, 251, 143, 1174, 276, 251, 5, 487, 276, 251, 144, 276, 251, 129, 487, 276, 251, 150, 276, 251, 130, 310, 306, 299, 723, 276, 251, 6, 276, 251, 38, 523, 276, 251, 38]");
+
+            // Find first difference
+            var pyIds = new[] { 369, 539, 409, 395, 403, 181, 172, 394, 1250, 1113, 401, 550, 1292, 1539, 181, 171, 1765, 487, 276, 251, 143, 1174, 276, 251, 5, 487, 276, 251, 144, 276, 251, 129, 487, 276, 251, 150, 276, 251, 130, 310, 306, 299, 723, 276, 251, 6, 276, 251, 38, 523, 276, 251, 38 };
+            int maxLen = Math.Max(outputIds.Length, pyIds.Length);
+            for (int j = 0; j < maxLen; j++)
+            {
+                int csId = j < outputIds.Length ? outputIds[j] : -1;
+                int pyId = j < pyIds.Length ? pyIds[j] : -1;
+                if (csId != pyId)
+                {
+                    Console.WriteLine($"FIRST DIFF at position {j}: C#={csId}, Python={pyId}");
+                    // Print surrounding context
+                    for (int k = Math.Max(0, j - 2); k < Math.Min(maxLen, j + 5); k++)
+                    {
+                        int cs = k < outputIds.Length ? outputIds[k] : -1;
+                        int py = k < pyIds.Length ? pyIds[k] : -1;
+                        var marker = cs != py ? " <---" : "";
+                        Console.WriteLine($"  [{k}] C#={cs}, Py={py}{marker}");
+                    }
+                    break;
+                }
+            }
         }
 
-        Console.WriteLine("\n=== Smoke Test PASSED ===");
+        Console.WriteLine("\n=== Smoke Test DONE ===");
     }
 
     /// <summary>
@@ -304,4 +326,7 @@ public static class Program
             throw new Exception($"Python state_dict extraction failed: {err}");
         }
     }
+
+    [System.Runtime.InteropServices.DllImport("kernel32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode, SetLastError = true)]
+    private static extern bool SetDllDirectory(string lpPathName);
 }

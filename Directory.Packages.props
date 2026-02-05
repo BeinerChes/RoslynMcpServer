@@ -25,6 +25,7 @@
     <!-- TorchSharp packages (inference + LoRA fine-tuning) -->
     <PackageVersion Include="TorchSharp" Version="0.105.2" />
     <PackageVersion Include="libtorch-cpu-win-x64" Version="2.7.1" />
+    <PackageVersion Include="libtorch-cuda-12.8-win-x64" Version="2.7.1" />
     <PackageVersion Include="TorchSharp.PyBridge" Version="1.4.3" />
     <!-- Test packages -->
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />

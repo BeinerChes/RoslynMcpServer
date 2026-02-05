@@ -652,17 +652,17 @@ public static partial class RoslynTools
             Dictionary<string, string>? fields = null;
             if (typeSymbol != null)
             {
+                // Sort alphabetically to match ContextExtractor and PopulateSymbolTablesFromType ordering
                 fields = new Dictionary<string, string>();
-                foreach (var member in typeSymbol.GetMembers())
+                foreach (var member in typeSymbol.GetMembers()
+                    .Where(m => (m is IFieldSymbol f && !f.IsImplicitlyDeclared) ||
+                                (m is IPropertySymbol p && !p.IsImplicitlyDeclared))
+                    .OrderBy(m => m.Name))
                 {
-                    if (member is IFieldSymbol field && !field.IsImplicitlyDeclared)
-                    {
+                    if (member is IFieldSymbol field)
                         fields[field.Name] = field.Type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
-                    }
-                    else if (member is IPropertySymbol prop && !prop.IsImplicitlyDeclared)
-                    {
+                    else if (member is IPropertySymbol prop)
                         fields[prop.Name] = prop.Type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
-                    }
                 }
             }
 

@@ -64,22 +64,25 @@ public class SharpOpsTokenizer
         // Create the BPE tokenizer
         _tokenizer = BpeTokenizer.Create(vocabStream, mergesStream);
 
-        // Get special token IDs
+        // Load ALL added_tokens from tokenizer.json (sorted by length descending for proper matching)
+        _specialTokens = new List<(string token, int id)>();
+        if (root.TryGetProperty("added_tokens", out var addedTokens))
+        {
+            foreach (var tok in addedTokens.EnumerateArray())
+            {
+                var content = tok.GetProperty("content").GetString()!;
+                var id = tok.GetProperty("id").GetInt32();
+                _specialTokens.Add((content, id));
+            }
+        }
+        _specialTokens.Sort((a, b) => b.token.Length.CompareTo(a.token.Length));
+
+        // Set well-known special token IDs
         PadId = GetTokenId("<|pad|>");
         UnkId = GetTokenId("<|unk|>");
         BosId = GetTokenId("<|bos|>");
         EosId = GetTokenId("<|eos|>");
         OutputId = GetTokenId("<|output|>");
-
-        // Build special tokens list (sorted by length descending for proper matching)
-        _specialTokens = new List<(string token, int id)>
-    {
-        ("<|output|>", OutputId),
-        ("<|pad|>", PadId),
-        ("<|unk|>", UnkId),
-        ("<|bos|>", BosId),
-        ("<|eos|>", EosId)
-    };
     }
 
 

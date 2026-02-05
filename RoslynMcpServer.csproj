@@ -23,6 +23,7 @@
   <ItemGroup>
     <ProjectReference Include="RoslynMcpServer.Graph\RoslynMcpServer.Graph.csproj" />
     <ProjectReference Include="SharpOps\SharpOps.csproj" />
+    <ProjectReference Include="SharpOps.Torch\SharpOps.Torch.csproj" />
   </ItemGroup>
 
   <!-- Copy SharpTinyCoder model files to output directory -->

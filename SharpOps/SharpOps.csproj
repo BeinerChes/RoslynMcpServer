@@ -18,7 +18,7 @@
     <PackageReference Include="Microsoft.Build.Tasks.Core" ExcludeAssets="runtime" PrivateAssets="all" />
     <!-- Inference dependencies -->
     <PackageReference Include="TorchSharp" />
-    <PackageReference Include="libtorch-cpu-win-x64" />
+    <PackageReference Include="libtorch-cuda-12.8-win-x64" />
     <PackageReference Include="TorchSharp.PyBridge" />
     <PackageReference Include="Microsoft.ML.Tokenizers" />
   </ItemGroup>

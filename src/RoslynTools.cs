@@ -85,7 +85,6 @@ public static partial class RoslynTools
 
         // Code generation tools
         RegisterGenerateMethodTool(server);
-        RegisterSmartGenerateMethodTool(server);
 
         // Training tools
         RegisterFinetuneTool(server);

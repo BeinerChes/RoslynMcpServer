@@ -10,7 +10,7 @@ Hook blocks Read/Edit on .cs files. Use Roslyn tools instead.
 | See class structure | `GetTypeMembers(typeName)` |
 | Read method | `GetMethodBody(typeName, methodName)` |
 | Edit method | `UpdateMethod(typeName, methodName, newSourceCode, comment?)` |
-| Add member | `AddMember(typeName, memberCode, comment?)` |
+| Add member | `AddMember(typeName, memberCode, auto?, comment?)` |
 | Create type | `AddType(projectName, typeName)` |
 | Delete member | `DeleteMember(typeName, memberName)` |
 | Find usages | `GetReferences(filePath, line, column)` |
@@ -19,6 +19,8 @@ Hook blocks Read/Edit on .cs files. Use Roslyn tools instead.
 | Rename | `RenameSymbol(filePath, line, column, newName)` |
 | Check errors | `GetDiagnostics()` |
 | Fix warnings | `BatchApplyCodeFixes(diagnosticId)` |
+| Generate method | `GenerateMethod(methodSignature, description?, fields?)` |
+| Fine-tune model | `Finetune(dataPath?)` |
 
 ## Native Tools OK For
 
@@ -44,6 +46,20 @@ When you correct bad model output via `UpdateMethod`, your correction becomes a 
 example that improves the model over time. Always let the model try first, then fix.
 
 Only use `auto=false` for non-method members (fields, properties, events).
+
+## Fine-Tuning the Model
+
+When enough corrections accumulate, call `Finetune()` to improve the model:
+```
+Finetune()  # Uses default dataset path, runs in background
+```
+
+The model trains on your corrections using LoRA (200 epochs, rank=8, alpha=32). After training:
+- Weights are merged into the base model
+- Model hot-reloads automatically (no MCP restart needed)
+- Training data is archived
+
+Call `Finetune()` again to check status. See [SharpOps/WORKFLOW.md](../../../SharpOps/WORKFLOW.md) for technical details.
 
 ## Patterns
 

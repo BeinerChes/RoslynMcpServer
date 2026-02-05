@@ -23,7 +23,7 @@ public sealed class LoRAModel : Module
     public LoRAModel(
         SharpTinyCoder baseModel,
         int rank = 8,
-        float alpha = 16.0f,
+        float alpha = 32.0f,
         float dropout = 0.0f,
         string[]? targetModules = null) : base("LoRAModel")
     {
@@ -79,6 +79,8 @@ public sealed class LoRAModel : Module
                         }
                         var name = $"layers.{layerIdx}.attention.{moduleName}";
                         _loraLayers.Add((name, loraLayer));
+                        // Explicitly register so .to(device) moves LoRA parameters
+                        register_module($"lora_{layerIdx}_{moduleName}", loraLayer);
                     }
                 }
 
@@ -103,6 +105,8 @@ public sealed class LoRAModel : Module
                         }
                         var name = $"layers.{layerIdx}.ffn.{moduleName}";
                         _loraLayers.Add((name, loraLayer));
+                        // Explicitly register so .to(device) moves LoRA parameters
+                        register_module($"lora_{layerIdx}_ffn_{moduleName}", loraLayer);
                     }
                 }
             }

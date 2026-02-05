@@ -1,18 +1,26 @@
-using System.Diagnostics;
-using System.Text;
 using System.Text.Json.Nodes;
+using SharpOps.Torch.Training;
 
 namespace RoslynMcpServer;
 
 public static partial class RoslynTools
 {
+    private static Task<TrainingResult>? _trainingTask;
+    private static string? _trainingLogPath;
+    private static readonly object _trainingLock = new();
+
     private static void RegisterFinetuneTool(McpServer server)
     {
         server.RegisterTool(
             "Finetune",
             new ToolDefinition
             {
-                Description = "Fine-tune the SharpTinyCoder model using LoRA. Loads a checkpoint, attaches LoRA adapters, trains on JSONL data from the finetune collector, merges LoRA weights back, and saves the result. Runs as a subprocess.",
+                Description = """
+                    Fine-tune the SharpTinyCoder model using LoRA. Runs in background — returns immediately
+                    with a log file path. Call again to check status. After training completes, the model is
+                    automatically reloaded for inference. Uses sensible defaults (rank=8, qv modules,
+                    lr=1e-4, auto-stop on train loss plateau).
+                    """,
                 InputSchema = new
                 {
                     type = "object",
@@ -22,54 +30,6 @@ public static partial class RoslynTools
                         {
                             type = "string",
                             description = "Path to JSONL file or folder with training data. Default: .roslyn-mcp/Models/finetune/dataset/"
-                        },
-                        epochs = new
-                        {
-                            type = "integer",
-                            description = "Number of training epochs. Default: 50",
-                            minimum = 1
-                        },
-                        rank = new
-                        {
-                            type = "integer",
-                            description = "LoRA rank. Default: 16",
-                            minimum = 1
-                        },
-                        alpha = new
-                        {
-                            type = "number",
-                            description = "LoRA alpha scaling factor. Default: 32"
-                        },
-                        lr = new
-                        {
-                            type = "number",
-                            description = "Learning rate. Default: 1e-4"
-                        },
-                        targetModules = new
-                        {
-                            type = "string",
-                            description = "LoRA target modules: 'qv', 'attention', 'ffn', or 'all'. Default: all"
-                        },
-                        batchSize = new
-                        {
-                            type = "integer",
-                            description = "Batch size. Default: 4",
-                            minimum = 1
-                        },
-                        valSplit = new
-                        {
-                            type = "number",
-                            description = "Validation split fraction (0.0-1.0). Default: 0.0"
-                        },
-                        checkpoint = new
-                        {
-                            type = "string",
-                            description = @"Path to input checkpoint. Default: D:\RMS\CSharpRobot\checkpoints\checkpoint.pt"
-                        },
-                        output = new
-                        {
-                            type = "string",
-                            description = "Path to save merged checkpoint. Default: <checkpoint>_lora.pt"
                         }
                     },
                     required = Array.Empty<string>()
@@ -84,152 +44,208 @@ public static partial class RoslynTools
             HandleFinetuneAsync);
     }
 
-    private static async Task<object> HandleFinetuneAsync(JsonObject? args)
+    private static Task<object> HandleFinetuneAsync(JsonObject? args)
     {
+        lock (_trainingLock)
+        {
+            // Check if training is already running
+            if (_trainingTask is not null && !_trainingTask.IsCompleted)
+            {
+                return Task.FromResult<object>(CreateSuccessResponse(new
+                {
+                    status = "running",
+                    message = "Training is already in progress.",
+                    logFile = _trainingLogPath
+                }));
+            }
+
+            // If completed, return results
+            if (_trainingTask is not null && _trainingTask.IsCompleted)
+            {
+                var completedResult = GetTrainingResult();
+                _trainingTask = null;
+                return Task.FromResult<object>(completedResult);
+            }
+        }
+
         // Resolve data path
         var dataPath = args?["dataPath"]?.GetValue<string>();
         if (string.IsNullOrEmpty(dataPath))
         {
-            // Default: finetune collector output
             dataPath = Path.Combine(AppContext.BaseDirectory, "Models", "finetune", "dataset");
         }
 
         if (!File.Exists(dataPath) && !Directory.Exists(dataPath))
         {
-            return CreateErrorResponse($"Data path not found: {dataPath}");
+            return Task.FromResult<object>(CreateErrorResponse($"Data path not found: {dataPath}"));
         }
 
-        // Build CLI arguments
-        var cliArgs = new List<string> { "finetune", "--data", dataPath };
+        // Resolve model paths
+        var baseDir = AppContext.BaseDirectory;
+        var checkpointPath = Path.Combine(baseDir, "Models", "checkpoint.pt");
+        var tokenizerPath = Path.Combine(baseDir, "Models", "tokenizer", "tokenizer.json");
 
-        if (args?["epochs"] is not null)
-            cliArgs.AddRange(["--epochs", args["epochs"]!.GetValue<int>().ToString()]);
-
-        if (args?["rank"] is not null)
-            cliArgs.AddRange(["--rank", args["rank"]!.GetValue<int>().ToString()]);
-
-        if (args?["alpha"] is not null)
-            cliArgs.AddRange(["--alpha", args["alpha"]!.GetValue<double>().ToString()]);
-
-        if (args?["lr"] is not null)
-            cliArgs.AddRange(["--lr", args["lr"]!.GetValue<double>().ToString()]);
-
-        if (args?["targetModules"] is not null)
-            cliArgs.AddRange(["--target-modules", args["targetModules"]!.GetValue<string>()]);
-
-        if (args?["batchSize"] is not null)
-            cliArgs.AddRange(["--batch-size", args["batchSize"]!.GetValue<int>().ToString()]);
-
-        if (args?["valSplit"] is not null)
-            cliArgs.AddRange(["--val-split", args["valSplit"]!.GetValue<double>().ToString()]);
-
-        if (args?["checkpoint"] is not null)
-            cliArgs.AddRange(["--checkpoint", args["checkpoint"]!.GetValue<string>()]);
-
-        if (args?["output"] is not null)
-            cliArgs.AddRange(["--output", args["output"]!.GetValue<string>()]);
-
-        // Find SharpOps.Torch project
-        var trainingProjectDir = FindTrainingProject();
-        if (trainingProjectDir == null)
+        if (!File.Exists(checkpointPath))
         {
-            return CreateErrorResponse("Could not find SharpOps.Torch project directory");
+            return Task.FromResult<object>(CreateErrorResponse($"Checkpoint not found: {checkpointPath}"));
         }
 
+        // Set up log file
+        var logDir = Path.Combine(baseDir, "Models", "finetune");
+        Directory.CreateDirectory(logDir);
+        var logPath = Path.Combine(logDir, $"training_{DateTime.Now:yyyyMMdd_HHmmss}.log");
+
+        var config = new TrainingConfig
+        {
+            DataPath = dataPath,
+            CheckpointPath = checkpointPath,
+            TokenizerPath = tokenizerPath,
+            // Output overwrites the active checkpoint so model reload picks it up
+            OutputPath = checkpointPath,
+        };
+
+        lock (_trainingLock)
+        {
+            _trainingLogPath = logPath;
+
+            _trainingTask = Task.Run(() =>
+            {
+                using var logWriter = new StreamWriter(logPath, append: false) { AutoFlush = true };
+                // Tee to both log file and stderr (for MCP server console)
+                var teeWriter = new TeeTextWriter(logWriter, Console.Error);
+                var trainer = new LoRATrainer(config, teeWriter);
+                var result = trainer.Run();
+
+                // Auto-reload the model after successful training
+                if (!float.IsNaN(result.BestLoss))
+                {
+                    ReloadSharpOpsModel();
+                    teeWriter.WriteLine("[Finetune] Model reloaded for inference.");
+                    ArchiveDataset(dataPath, logPath, teeWriter);
+                }
+
+                return result;
+            });
+        }
+
+        return Task.FromResult<object>(CreateSuccessResponse(new
+        {
+            status = "started",
+            message = "Fine-tuning started in background. Call Finetune again to check status.",
+            logFile = logPath,
+            config = new
+            {
+                dataPath,
+                config.Rank,
+                config.Alpha,
+                config.TargetModules,
+                config.Epochs,
+                config.LearningRate,
+                config.Patience,
+                earlyStopMinDelta = config.MinDelta
+            }
+        }));
+    }
+
+    private static object GetTrainingResult()
+    {
+        if (_trainingTask == null)
+            return CreateErrorResponse("No training task found");
+
+        if (_trainingTask.IsFaulted)
+        {
+            var ex = _trainingTask.Exception?.InnerException ?? _trainingTask.Exception;
+            var details = ex?.ToString() ?? "Unknown error";
+            return CreateErrorResponse($"Training failed: {details}");
+        }
+
+        var result = _trainingTask.Result;
+
+        if (float.IsNaN(result.BestLoss))
+            return CreateErrorResponse("Training failed: no training examples found");
+
+        // Handle infinity (no validation split) - report as -1 since JSON doesn't support infinity
+        var bestLoss = float.IsPositiveInfinity(result.BestLoss) ? -1f : result.BestLoss;
+
+        return CreateSuccessResponse(new
+        {
+            status = "completed",
+            message = "Fine-tuning completed. Model has been reloaded.",
+            bestLoss,
+            epochsRun = result.EpochsRun,
+            earlyStopped = result.EarlyStopped,
+            outputPath = result.OutputPath,
+            logFile = _trainingLogPath
+        });
+    }
+
+    private static void ReloadSharpOpsModel()
+    {
+        // Dispose current model and null out so next GetSharpOpsService() reloads
+        var old = _sharpOpsService;
+        _sharpOpsService = null;
+        _sharpOpsError = null;
+        old?.Dispose();
+    }
+
+    private static void ArchiveDataset(string dataPath, string logPath, TextWriter log)
+    {
         try
         {
-            var argString = string.Join(" ", cliArgs.Select(a => a.Contains(' ') ? $"\"{a}\"" : a));
-            Console.Error.WriteLine($"[Finetune] Running: dotnet run --project {trainingProjectDir} -- {argString}");
+            // dataPath is either a file or directory
+            var dataDir = File.Exists(dataPath) ? Path.GetDirectoryName(dataPath)! : dataPath;
+            var files = Directory.GetFiles(dataDir, "*.jsonl");
+            if (files.Length == 0) return;
 
-            var psi = new ProcessStartInfo
-            {
-                FileName = "dotnet",
-                Arguments = $"run --project \"{trainingProjectDir}\" -- {argString}",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
+            // Use the log file timestamp for the archive folder name
+            var logName = Path.GetFileNameWithoutExtension(logPath); // training_20260204_141952
+            var timestamp = logName.Replace("training_", "");
+            var archiveDir = Path.Combine(Path.GetDirectoryName(dataDir)!, "archive", timestamp);
+            Directory.CreateDirectory(archiveDir);
 
-            using var process = Process.Start(psi);
-            if (process == null)
+            foreach (var file in files)
             {
-                return CreateErrorResponse("Failed to start training process");
+                var dest = Path.Combine(archiveDir, Path.GetFileName(file));
+                File.Move(file, dest);
             }
 
-            var stdoutTask = process.StandardOutput.ReadToEndAsync();
-            var stderrTask = process.StandardError.ReadToEndAsync();
-
-            await process.WaitForExitAsync();
-
-            var stdout = new StringBuilder(await stdoutTask);
-            var stderr = new StringBuilder(await stderrTask);
-
-            // Log output
-            foreach (var line in stdout.ToString().Split('\n'))
-            {
-                if (!string.IsNullOrWhiteSpace(line))
-                    Console.Error.WriteLine($"[Finetune] {line.TrimEnd()}");
-            }
-
-            if (process.ExitCode != 0)
-            {
-                return CreateErrorResponse(
-                    $"Training failed (exit code {process.ExitCode}):\n{stderr}\n{stdout}");
-            }
-
-            // Parse output for final loss
-            var output = stdout.ToString();
-            var bestLoss = ParseBestLoss(output);
-
-            return CreateSuccessResponse(new
-            {
-                message = "Fine-tuning completed successfully",
-                bestLoss,
-                output = output.Length > 2000 ? output[^2000..] : output,
-            });
+            log.WriteLine($"[Finetune] Dataset archived to {archiveDir} ({files.Length} file(s))");
         }
         catch (Exception ex)
         {
-            return CreateErrorResponse($"Finetune error: {ex.Message}");
+            log.WriteLine($"[Finetune] Warning: failed to archive dataset: {ex.Message}");
         }
     }
+}
 
-    private static string? FindTrainingProject()
+/// <summary>
+/// TextWriter that writes to two underlying writers (tee).
+/// </summary>
+internal sealed class TeeTextWriter(TextWriter primary, TextWriter secondary) : TextWriter
+{
+    public override System.Text.Encoding Encoding => primary.Encoding;
+
+    public override void Write(char value)
     {
-        // Look relative to solution directory
-        if (!string.IsNullOrEmpty(_solutionDir))
-        {
-            var path = Path.Combine(_solutionDir, "SharpOps.Torch");
-            if (Directory.Exists(path)) return path;
-        }
-
-        // Look relative to the MCP server base directory
-        var baseDir = AppContext.BaseDirectory;
-        // Walk up to find SharpOps.Torch
-        var current = baseDir;
-        for (int i = 0; i < 5; i++)
-        {
-            var candidate = Path.Combine(current, "SharpOps.Torch");
-            if (Directory.Exists(candidate)) return candidate;
-            current = Path.GetDirectoryName(current) ?? current;
-        }
-
-        return null;
+        primary.Write(value);
+        secondary.Write(value);
     }
 
-    private static string? ParseBestLoss(string output)
+    public override void Write(string? value)
     {
-        // Look for "Best loss: X.XXXXXX" in the output
-        var lines = output.Split('\n');
-        foreach (var line in lines.Reverse())
-        {
-            var trimmed = line.Trim();
-            if (trimmed.StartsWith("Best loss:"))
-            {
-                return trimmed["Best loss:".Length..].Trim();
-            }
-        }
-        return null;
+        primary.Write(value);
+        secondary.Write(value);
+    }
+
+    public override void WriteLine(string? value)
+    {
+        primary.WriteLine(value);
+        secondary.WriteLine(value);
+    }
+
+    public override void Flush()
+    {
+        primary.Flush();
+        secondary.Flush();
     }
 }

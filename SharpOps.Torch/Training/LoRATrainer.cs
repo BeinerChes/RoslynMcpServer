@@ -20,11 +20,11 @@ public sealed class TrainingConfig
     public string CheckpointPath { get; init; } = Path.Combine(AppContext.BaseDirectory, "Models", "checkpoint.pt");
     public string? OutputPath { get; init; }
     public string TokenizerPath { get; init; } = Path.Combine(AppContext.BaseDirectory, "Models", "tokenizer.json");
-    public int Rank { get; init; } = 16;
+    public int Rank { get; init; } = 8;
     public float Alpha { get; init; } = 32.0f;
     public float LoRADropout { get; init; } = 0.0f;
-    public string TargetModules { get; init; } = "all";
-    public int Epochs { get; init; } = 50;
+    public string TargetModules { get; init; } = "qv";
+    public int Epochs { get; init; } = 200;
     public int BatchSize { get; init; } = 4;
     public float LearningRate { get; init; } = 1e-4f;
     public float WeightDecay { get; init; } = 0.01f;
@@ -32,7 +32,16 @@ public sealed class TrainingConfig
     public float ValSplit { get; init; } = 0.0f;
     public int Patience { get; init; } = 10;
     public bool NoEarlyStopping { get; init; } = false;
+    /// <summary>
+    /// Minimum improvement in train loss to reset patience counter. Default: 0.001
+    /// </summary>
+    public float MinDelta { get; init; } = 0.001f;
 }
+
+/// <summary>
+/// Result of a LoRA fine-tuning run.
+/// </summary>
+public sealed record TrainingResult(float BestLoss, string OutputPath, int EpochsRun, bool EarlyStopped);
 
 /// <summary>
 /// LoRA fine-tuning trainer. Ports finetune.py training loop.
@@ -40,28 +49,32 @@ public sealed class TrainingConfig
 public sealed class LoRATrainer
 {
     private readonly TrainingConfig _config;
+    private readonly TextWriter _log;
 
-    public LoRATrainer(TrainingConfig config)
+    public LoRATrainer(TrainingConfig config, TextWriter? log = null)
     {
         _config = config;
+        _log = log ?? Console.Out;
     }
 
-    public void Run()
+    public TrainingResult Run()
     {
-        Console.WriteLine(new string('=', 60));
-        Console.WriteLine("SharpTinyCoder LoRA Fine-Tuning (C#/TorchSharp)");
-        Console.WriteLine(new string('=', 60));
+        int actualEpochs = 0;
+        bool earlyStopped = false;
+        _log.WriteLine(new string('=', 60));
+        _log.WriteLine("SharpTinyCoder LoRA Fine-Tuning (C#/TorchSharp)");
+        _log.WriteLine(new string('=', 60));
 
         var device = torch.cuda.is_available() ? torch.CUDA : torch.CPU;
-        Console.WriteLine($"Device: {device}");
+        _log.WriteLine($"Device: {device}");
 
         // 1. Load tokenizer
-        Console.WriteLine($"\n[1/6] Loading tokenizer from {_config.TokenizerPath}...");
+        _log.WriteLine($"\n[1/6] Loading tokenizer from {_config.TokenizerPath}...");
         var tokenizer = new SharpOpsTokenizer(_config.TokenizerPath);
-        Console.WriteLine($"  Vocab size: {tokenizer.VocabSize}");
+        _log.WriteLine($"  Vocab size: {tokenizer.VocabSize}");
 
         // 2. Load base model
-        Console.WriteLine($"\n[2/6] Loading base model from {_config.CheckpointPath}...");
+        _log.WriteLine($"\n[2/6] Loading base model from {_config.CheckpointPath}...");
         var modelConfig = new ModelConfig
         {
             VocabSize = tokenizer.VocabSize,
@@ -78,11 +91,11 @@ public sealed class LoRATrainer
 
         // Load checkpoint via PyBridge
         LoadCheckpoint(model, _config.CheckpointPath);
-        Console.WriteLine($"  Base model parameters: {model.NumParameters(trainableOnly: false):N0}");
+        _log.WriteLine($"  Base model parameters: {model.NumParameters(trainableOnly: false):N0}");
 
         // 3. Attach LoRA
         var targetModules = LoRAModel.ResolveTargetModules(_config.TargetModules);
-        Console.WriteLine($"\n[3/6] Attaching LoRA (rank={_config.Rank}, alpha={_config.Alpha}, modules={_config.TargetModules})...");
+        _log.WriteLine($"\n[3/6] Attaching LoRA (rank={_config.Rank}, alpha={_config.Alpha}, modules={_config.TargetModules})...");
         var loraModel = new LoRAModel(
             model,
             rank: _config.Rank,
@@ -95,17 +108,17 @@ public sealed class LoRATrainer
 
         var trainableParams = loraModel.NumLoRAParameters();
         var totalParams = model.NumParameters(trainableOnly: false);
-        Console.WriteLine($"  Trainable: {trainableParams:N0} ({100.0 * trainableParams / totalParams:F2}%)");
+        _log.WriteLine($"  Trainable: {trainableParams:N0} ({100.0 * trainableParams / totalParams:F2}%)");
 
         // 4. Load data
-        Console.WriteLine($"\n[4/6] Loading fine-tune data from {_config.DataPath}...");
+        _log.WriteLine($"\n[4/6] Loading fine-tune data from {_config.DataPath}...");
         var allExamples = DataLoader.LoadData(_config.DataPath);
-        Console.WriteLine($"  Total examples: {allExamples.Count}");
+        _log.WriteLine($"  Total examples: {allExamples.Count}");
 
         if (allExamples.Count == 0)
         {
-            Console.Error.WriteLine("ERROR: No training examples found!");
-            return;
+            _log.WriteLine("ERROR: No training examples found!");
+            return new TrainingResult(float.NaN, "", 0, false);
         }
 
         // Shuffle and split
@@ -126,7 +139,7 @@ public sealed class LoRATrainer
             trainExamples = shuffled;
             valExamples = [];
         }
-        Console.WriteLine($"  Train: {trainExamples.Count}, Val: {valExamples.Count}");
+        _log.WriteLine($"  Train: {trainExamples.Count}, Val: {valExamples.Count}");
 
         // Create datasets
         var trainDataset = new FinetuneDataset(trainExamples, tokenizer, _config.MaxLength);
@@ -144,18 +157,21 @@ public sealed class LoRATrainer
         // Training loop
         var esInfo = _config.NoEarlyStopping ? "disabled" : $"patience={_config.Patience}";
         var stepsPerEpoch = (trainDataset.Count + _config.BatchSize - 1) / _config.BatchSize;
-        Console.WriteLine($"\n[5/6] Training for {_config.Epochs} epochs ({esInfo})...");
-        Console.WriteLine($"  Batch size: {_config.BatchSize}");
-        Console.WriteLine($"  Learning rate: {_config.LearningRate}");
-        Console.WriteLine($"  Steps per epoch: {stepsPerEpoch}");
-        Console.WriteLine();
+        _log.WriteLine($"\n[5/6] Training for {_config.Epochs} epochs ({esInfo})...");
+        _log.WriteLine($"  Batch size: {_config.BatchSize}");
+        _log.WriteLine($"  Learning rate: {_config.LearningRate}");
+        _log.WriteLine($"  Steps per epoch: {stepsPerEpoch}");
+        _log.WriteLine();
 
         float bestValLoss = float.PositiveInfinity;
         int patienceCounter = 0;
         Dictionary<string, Tensor>? bestState = null;
 
+
         for (int epoch = 0; epoch < _config.Epochs; epoch++)
         {
+            actualEpochs = epoch + 1;
+
             // Training
             loraModel.train();
             var trainLosses = new List<float>();
@@ -164,13 +180,18 @@ public sealed class LoRATrainer
             for (int step = 0; step < batches.Count; step++)
             {
                 var (inputIds, labels, attentionMask) = trainDataset.GetBatch(batches[step]);
-                inputIds = inputIds.to(device);
-                labels = labels.to(device);
-                attentionMask = attentionMask.to(device);
+
+                // Move to device, disposing CPU tensors
+                var gpuInputIds = inputIds.to(device);
+                var gpuLabels = labels.to(device);
+                var gpuMask = attentionMask.to(device);
+                inputIds.Dispose();
+                labels.Dispose();
+                attentionMask.Dispose();
 
                 optimizer.zero_grad();
 
-                var (_, loss) = loraModel.forward(inputIds, attentionMask, labels);
+                var (logits, loss) = loraModel.forward(gpuInputIds, gpuMask, gpuLabels);
                 loss!.backward();
 
                 // Gradient clipping
@@ -181,22 +202,28 @@ public sealed class LoRATrainer
                 var lossVal = loss.item<float>();
                 trainLosses.Add(lossVal);
 
-                // Dispose tensors to free memory
-                inputIds.Dispose();
-                labels.Dispose();
-                attentionMask.Dispose();
+                // Dispose all tensors immediately
+                logits.Dispose();
                 loss.Dispose();
+                gpuInputIds.Dispose();
+                gpuLabels.Dispose();
+                gpuMask.Dispose();
+
+                // Force cleanup of TorchSharp C# wrappers holding native GPU tensor references
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+
 
                 // Progress every 10 steps
                 if ((step + 1) % 10 == 0 || step == batches.Count - 1)
                 {
-                    Console.Write($"\r  Epoch {epoch + 1,3}/{_config.Epochs} | Step {step + 1}/{batches.Count} | Loss: {lossVal:F4}");
+                    _log.Write($"\r  Epoch {epoch + 1,3}/{_config.Epochs} | Step {step + 1}/{batches.Count} | Loss: {lossVal:F4}");
                 }
             }
 
             var avgTrainLoss = trainLosses.Average();
 
-            // Validation
+            // Validation + early stopping (only when val split is configured)
             if (valDataset is not null)
             {
                 loraModel.eval();
@@ -208,28 +235,32 @@ public sealed class LoRATrainer
                     foreach (var batch in valBatches)
                     {
                         var (inputIds, labels, attentionMask) = valDataset.GetBatch(batch);
-                        inputIds = inputIds.to(device);
-                        labels = labels.to(device);
-                        attentionMask = attentionMask.to(device);
 
-                        var (_, loss) = loraModel.forward(inputIds, attentionMask, labels);
-                        valLosses.Add(loss!.item<float>());
-
+                        var gpuInputIds = inputIds.to(device);
+                        var gpuLabels = labels.to(device);
+                        var gpuMask = attentionMask.to(device);
                         inputIds.Dispose();
                         labels.Dispose();
                         attentionMask.Dispose();
+
+                        var (logits, loss) = loraModel.forward(gpuInputIds, gpuMask, gpuLabels);
+                        valLosses.Add(loss!.item<float>());
+
+                        logits.Dispose();
                         loss.Dispose();
+                        gpuInputIds.Dispose();
+                        gpuLabels.Dispose();
+                        gpuMask.Dispose();
                     }
                 }
 
                 var avgValLoss = valLosses.Average();
 
-                // Early stopping check
-                if (avgValLoss < bestValLoss - 0.01f)
+                // Early stopping on val loss
+                if (avgValLoss < bestValLoss - _config.MinDelta)
                 {
                     bestValLoss = avgValLoss;
                     patienceCounter = 0;
-                    // Save best LoRA state
                     bestState = SaveLoRAState(loraModel);
                 }
                 else
@@ -237,62 +268,64 @@ public sealed class LoRATrainer
                     patienceCounter++;
                 }
 
-                Console.WriteLine($"\rEpoch {epoch + 1,3}/{_config.Epochs} | Train: {avgTrainLoss:F4} | Val: {avgValLoss:F4} | Best: {bestValLoss:F4} | Patience: {patienceCounter}/{_config.Patience}");
+                _log.WriteLine($"\rEpoch {epoch + 1,3}/{_config.Epochs} | Train: {avgTrainLoss:F4} | Val: {avgValLoss:F4} | Best: {bestValLoss:F4} | Patience: {patienceCounter}/{_config.Patience}");
 
                 if (!_config.NoEarlyStopping && patienceCounter >= _config.Patience)
                 {
-                    Console.WriteLine($"\nEarly stopping: val loss hasn't improved for {_config.Patience} epochs");
+                    _log.WriteLine($"\nEarly stopping: val loss hasn't improved for {_config.Patience} epochs");
+                    earlyStopped = true;
                     break;
                 }
             }
             else
             {
-                Console.WriteLine($"\rEpoch {epoch + 1,3}/{_config.Epochs} | Train: {avgTrainLoss:F4}                              ");
-
-                // Track train loss as "best" when no val split
-                if (avgTrainLoss < bestValLoss)
-                    bestValLoss = avgTrainLoss;
+                // No val split: just log train loss, no early stopping (matches Python)
+                _log.WriteLine($"\rEpoch {epoch + 1,3}/{_config.Epochs} | Train: {avgTrainLoss:F4}");
             }
         }
 
-        // Restore best LoRA weights if we have them
+        // Restore best LoRA weights if we have them (only set when val split is used)
         if (bestState is not null)
         {
             RestoreLoRAState(loraModel, bestState);
         }
 
         // 6. Merge LoRA weights
-        Console.WriteLine($"\n[6/6] Merging LoRA weights...");
+        _log.WriteLine($"\n[6/6] Merging LoRA weights...");
         var mergedModel = loraModel.MergeLoRA();
         mergedModel.to(torch.CPU);
 
         // Save merged checkpoint
         var outputPath = _config.OutputPath ?? GetDefaultOutputPath(_config.CheckpointPath);
-        Console.WriteLine($"\nSaving merged model to {outputPath}...");
+        _log.WriteLine($"\nSaving merged model to {outputPath}...");
         SaveCheckpoint(mergedModel, outputPath, bestValLoss);
-        Console.WriteLine("  Saved!");
 
-        Console.WriteLine($"\n{new string('=', 60)}");
-        Console.WriteLine("Fine-tuning complete!");
-        Console.WriteLine($"  Best loss: {bestValLoss:F6}");
-        Console.WriteLine($"  Merged checkpoint: {outputPath}");
-        Console.WriteLine(new string('=', 60));
+        _log.WriteLine($"\n{new string('=', 60)}");
+        _log.WriteLine("Fine-tuning complete!");
+        _log.WriteLine($"  Best loss: {bestValLoss:F6}");
+        _log.WriteLine($"  Merged checkpoint: {outputPath}");
+        _log.WriteLine($"  Epochs: {actualEpochs}{(earlyStopped ? " (early stopped)" : "")}");
+        _log.WriteLine(new string('=', 60));
+
+        return new TrainingResult(bestValLoss, outputPath, actualEpochs, earlyStopped);
     }
     /// <summary>
-    /// Loads a Python checkpoint, handling both raw state_dict and container dict formats. Falls back to Python subprocess extraction when PyBridge can't parse the container format.
+    /// Loads a checkpoint, trying Python format first, then container extraction, then TorchSharp native format for finetuned checkpoints.
     /// </summary>
     /// <param name="model"></param>
     /// <param name="checkpointPath"></param>
-    private static void LoadCheckpoint(SharpTinyCoder model, string checkpointPath)
+    private void LoadCheckpoint(SharpTinyCoder model, string checkpointPath)
     {
         try
         {
+            // Try Python-format checkpoint first
             model.load_py(checkpointPath, strict: false);
-            Console.Error.WriteLine($"  Loaded checkpoint from {checkpointPath}");
+            _log.WriteLine($"  Loaded checkpoint from {checkpointPath} (Python format)");
         }
         catch (InvalidCastException)
         {
-            Console.Error.WriteLine("  Checkpoint has container format, extracting state_dict via Python...");
+            // Container format - extract state_dict via Python
+            _log.WriteLine("  Checkpoint has container format, extracting state_dict via Python...");
             var tempPath = Path.Combine(Path.GetTempPath(), $"statedict_{Guid.NewGuid():N}.pt");
             try
             {
@@ -322,22 +355,115 @@ public sealed class LoRATrainer
                 }
 
                 model.load_py(tempPath, strict: false);
-                Console.Error.WriteLine($"  Loaded checkpoint from {checkpointPath} (via state_dict extraction)");
+                _log.WriteLine($"  Loaded checkpoint from {checkpointPath} (via state_dict extraction)");
             }
             finally
             {
                 if (File.Exists(tempPath)) File.Delete(tempPath);
             }
         }
-    }
+        catch (Exception) when (!checkpointPath.EndsWith("_py.pt"))
+        {
+            // Fall back to TorchSharp native format (LoRA finetuned output)
+            model.load(checkpointPath, strict: false);
+            _log.WriteLine($"  Loaded checkpoint from {checkpointPath} (TorchSharp native format)");
+        }
 
-    private static void SaveCheckpoint(SharpTinyCoder model, string outputPath, float bestLoss)
+        // Diagnostic: verify weights loaded
+        var namedParams = model.named_parameters().ToList();
+        _log.WriteLine($"  Model parameters: {namedParams.Count}");
+        if (namedParams.Count > 0)
+        {
+            var first = namedParams[0];
+            var data = first.parameter.data<float>();
+            _log.WriteLine($"  First param '{first.name}': shape={string.Join("x", first.parameter.shape)}, first5=[{data[0]:F6}, {data[1]:F6}, {data[2]:F6}, {data[3]:F6}, {data[4]:F6}]");
+        }
+    }
+    /// <summary>
+    /// Saves merged model checkpoint by serializing parameters as raw binary and using Python torch.save. Uses UseShellExecute=true to avoid process I/O deadlock.
+    /// </summary>
+    /// <param name="model"></param>
+    /// <param name="outputPath"></param>
+    /// <param name="bestLoss"></param>
+    private void SaveCheckpoint(SharpTinyCoder model, string outputPath, float bestLoss)
     {
-        // Save using PyBridge for Python compatibility
         var dir = Path.GetDirectoryName(outputPath);
         if (dir != null) Directory.CreateDirectory(dir);
 
-        model.save_py(outputPath);
+        var namedParams = model.named_parameters().ToList();
+        _log.WriteLine($"  Parameters to save: {namedParams.Count}");
+
+        // TorchSharp save_py is broken — manually serialize via Python
+        var tmpDir = Path.Combine(Path.GetTempPath(), $"ckpt_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tmpDir);
+        try
+        {
+            // Write each parameter as raw float32 binary + manifest
+            var manifest = new List<string>();
+            foreach (var (name, param) in namedParams)
+            {
+                var cpuParam = param.cpu().contiguous();
+                var data = cpuParam.data<float>().ToArray();
+                var binPath = Path.Combine(tmpDir, $"{manifest.Count}.bin");
+                var bytes = new byte[data.Length * 4];
+                Buffer.BlockCopy(data, 0, bytes, 0, bytes.Length);
+                File.WriteAllBytes(binPath, bytes);
+                manifest.Add($"{name}|{string.Join(",", cpuParam.shape)}");
+            }
+            File.WriteAllLines(Path.Combine(tmpDir, "manifest.txt"), manifest);
+
+            // Python script to assemble into torch checkpoint
+            var script = "import torch,struct,os,sys\n" +
+                "d=sys.argv[1]; o=sys.argv[2]\n" +
+                "sd={}\n" +
+                "for line in open(os.path.join(d,'manifest.txt')):\n" +
+                "  line=line.strip()\n" +
+                "  if not line: continue\n" +
+                "  idx=len(sd); name,sh=line.split('|')\n" +
+                "  shape=[int(x) for x in sh.split(',') if x]\n" +
+                "  data=open(os.path.join(d,f'{idx}.bin'),'rb').read()\n" +
+                "  n=len(data)//4\n" +
+                "  sd[name]=torch.tensor(struct.unpack(f'{n}f',data),dtype=torch.float32).reshape(shape) if shape else torch.tensor(struct.unpack(f'{n}f',data),dtype=torch.float32)\n" +
+                "torch.save(sd,o)\n";
+            var scriptPath = Path.Combine(tmpDir, "assemble.py");
+            File.WriteAllText(scriptPath, script);
+
+            // Don't redirect stdout/stderr to avoid process deadlock
+            var errPath = Path.Combine(tmpDir, "stderr.txt");
+            var psi = new ProcessStartInfo
+            {
+                FileName = "python",
+                Arguments = $"\"{scriptPath}\" \"{tmpDir}\" \"{outputPath}\" 2>\"{errPath}\"",
+                UseShellExecute = true,
+                CreateNoWindow = true,
+                WindowStyle = ProcessWindowStyle.Hidden
+            };
+
+            using var proc = Process.Start(psi)!;
+            if (!proc.WaitForExit(60000))
+            {
+                proc.Kill();
+                throw new InvalidOperationException("Python checkpoint save timed out after 60s");
+            }
+
+            if (proc.ExitCode != 0)
+            {
+                var err = File.Exists(errPath) ? File.ReadAllText(errPath) : "unknown error";
+                _log.WriteLine($"  Python save failed (exit {proc.ExitCode}): {err}");
+                throw new InvalidOperationException($"Checkpoint save via Python failed: {err}");
+            }
+
+            var size = new FileInfo(outputPath).Length;
+            _log.WriteLine($"  Saved {namedParams.Count} params — {size:N0} bytes (Python format)");
+            if (size < 1000)
+            {
+                throw new InvalidOperationException($"Checkpoint suspiciously small ({size} bytes)");
+            }
+        }
+        finally
+        {
+            try { Directory.Delete(tmpDir, recursive: true); } catch { }
+        }
     }
 
     private static Dictionary<string, Tensor> SaveLoRAState(LoRAModel model)

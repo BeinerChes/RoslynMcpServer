@@ -74,7 +74,7 @@ MCP vs Native tools on enterprise codebase: 47% fewer tokens, 100% accuracy vs 8
 | Tool | Purpose |
 |------|---------|
 | `UpdateMethod` | Replace a method's implementation |
-| `AddMember` | Add method/property/field to a type |
+| `AddMember` | Add method/property/field to a type (`auto=true` for AI generation) |
 | `AddType` | Create new class/interface/struct |
 | `DeleteMember` | Remove a member from a type |
 | `RenameSymbol` | Rename across entire solution |
@@ -114,6 +114,20 @@ MCP vs Native tools on enterprise codebase: 47% fewer tokens, 100% accuracy vs 8
 | `KnowledgeAdd` | Save gotchas, patterns, insights |
 | `KnowledgeSearch` | Semantic search for past learnings |
 | `KnowledgeForSymbol` | Get knowledge linked to a symbol |
+
+</details>
+
+<details>
+<summary><strong>Self-Improving Code Generation</strong></summary>
+
+| Tool | Purpose |
+|------|---------|
+| `GenerateMethod` | Generate method body from signature using SharpTinyCoder |
+| `Finetune` | Fine-tune the model on collected corrections |
+
+The server includes **SharpTinyCoder**, a tiny (4.3M parameter) code generation model that runs 100% locally. When Claude Code adds methods via `AddMember(auto=true)`, the model generates the body. Claude reviews and corrects mistakes — those corrections become training data. Call `Finetune()` to improve the model on your codebase's patterns.
+
+See [SharpOps/WORKFLOW.md](SharpOps/WORKFLOW.md) for the full technical explanation.
 
 </details>
 
