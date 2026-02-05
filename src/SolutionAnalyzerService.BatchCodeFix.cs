@@ -39,8 +39,7 @@ public partial class SolutionAnalyzerService
             solution = EnhanceSolutionWithGeneratedFiles(solution);
 
             // Delegate to CodeFixService
-            var codeFixService = new Services.CodeFixService();
-            return await codeFixService.BatchApplyCodeFixAsync(solution, solutionPath, diagnosticId, projectFilter, fileFilter, maxFixes, preview);
+            return await Services.CodeFixService.BatchApplyCodeFixAsync(solution, solutionPath, diagnosticId, projectFilter, fileFilter, maxFixes, preview);
         }
         catch (Exception ex)
         {
