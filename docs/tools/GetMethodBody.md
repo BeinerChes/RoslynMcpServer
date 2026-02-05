@@ -10,7 +10,7 @@ The tool handles:
 - Constructor retrieval (use `.ctor` or the type name)
 - Includes XML documentation comments and attributes
 - Returns structured data: file location, line range, signature, and source code
-- Integration with knowledge base (returns related gotchas/patterns if available)
+
 
 ## Comparison with Native Claude Code Tools
 
@@ -207,24 +207,6 @@ Fields:
 - `signature`: Method signature with return type and parameters
 - `code`: Full method source including XML docs and attributes
 
-**With knowledge entries:**
-```json
-{
-  "file": "Services\\UserService.cs:42-58",
-  "signature": "Task<User> GetUserAsync(int id)",
-  "code": "...",
-  "knowledge": [
-    {
-      "Id": 1,
-      "Category": "gotcha",
-      "Title": "GetUserAsync throws on invalid ID"
-    }
-  ]
-}
-```
-
-If the knowledge base has entries linked to this method or its containing type, they're included automatically.
-
 **Method not found:**
 ```json
 {
@@ -317,15 +299,6 @@ GetMethodBody(typeName: "DatabaseContext", methodName: ".ctor")
    → See who calls it
 3. UpdateMethod or DeleteMember
    → Proceed with changes
-```
-
-**Learning from knowledge base:**
-```
-1. GetMethodBody(typeName: "PaymentService", methodName: "ProcessPayment")
-   → Returns method + related knowledge entries
-2. KnowledgeGet(id: 5)
-   → Read full details of a gotcha
-3. Implement changes with knowledge in mind
 ```
 
 ### Line Range Information

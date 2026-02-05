@@ -107,35 +107,6 @@ public static partial class RoslynTools
                 // Track for visualization sync
                 LastSymbolTracker.Track(solutionPath!, $"{typeName}.{methodName}", "method");
 
-                // Fetch related knowledge entries
-                List<object>? knowledge = null;
-                if (result.TypeName != null)
-                {
-                    try
-                    {
-                        var db = await GetKnowledgeDatabaseAsync(solutionPath!);
-                        var fullyQualifiedSymbol = $"{result.TypeName}.{methodName}";
-                        var entries = await db.GetEntriesForSymbolAsync(fullyQualifiedSymbol);
-
-                        var typeEntries = await db.GetEntriesForSymbolAsync(result.TypeName);
-                        entries.AddRange(typeEntries.Where(e => !entries.Any(x => x.Id == e.Id)));
-
-                        if (entries.Count > 0)
-                        {
-                            knowledge = entries.Select(e => (object)new
-                            {
-                                e.Id,
-                                e.Category,
-                                e.Title
-                            }).ToList();
-                        }
-                    }
-                    catch
-                    {
-                        // Knowledge lookup failure shouldn't break the main functionality
-                    }
-                }
-
                 // Build compact response
                 var relativePath = GetRelativePath(result.FilePath ?? "", solutionPath!);
                 var compactResult = new Dictionary<string, object?>
@@ -144,9 +115,6 @@ public static partial class RoslynTools
                     ["signature"] = result.Signature,
                     ["code"] = result.SourceCode
                 };
-
-                if (knowledge != null)
-                    compactResult["knowledge"] = knowledge;
 
                 return new
                 {
