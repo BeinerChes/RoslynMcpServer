@@ -28,6 +28,7 @@ Native tools are fine for non-C# files (JSON, XML, markdown, .csproj, etc.), Glo
 - Check errors: `GetDiagnostics()` — summary. Add `diagnosticId` for details.
 - Batch fix: `BatchApplyCodeFixes(diagnosticId)` — does NOT work for CS8019, use `RemoveUnnecessaryUsings` instead
 - Single fix: `ApplyCodeFix(filePath, line, column)`
+- Find dead code: `FindDeadCode(includePrivate?, includeTests?, maxResults?)` — solution-wide, two-phase (graph DB + Roslyn validation). Use with `DeleteMember` to clean up.
 
 **Knowledge base:**
 - Save a learning: `KnowledgeAdd(category, title, content)` — use after fixing tricky bugs or discovering non-obvious behavior
