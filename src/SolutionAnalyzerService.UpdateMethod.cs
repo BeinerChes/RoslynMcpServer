@@ -8,13 +8,29 @@ namespace RoslynMcpServer;
 
 public partial class SolutionAnalyzerService
 {
+    /// <summary>
+    /// Updates a method's source code. Supports full replacement via newSourceCode, or targeted edit mode via oldText/newText parameters that perform text replacement within the existing method body.
+    /// </summary>
+    /// <param name="solutionPath"></param>
+    /// <param name="typeName"></param>
+    /// <param name="methodName"></param>
+    /// <param name="newSourceCode"></param>
+    /// <param name="parameterTypes"></param>
+    /// <param name="comment"></param>
+    /// <param name="oldText"></param>
+    /// <param name="newText"></param>
+    /// <param name="replaceAll"></param>
+    /// <returns></returns>
     public static async Task<UpdateMethodResult> UpdateMethodAsync(
     string solutionPath,
     string typeName,
     string methodName,
-    string newSourceCode,
+    string? newSourceCode,
     string? parameterTypes = null,
-    string? comment = null)
+    string? comment = null,
+    string? oldText = null,
+    string? newText = null,
+    bool replaceAll = false)
     {
         EnsureMSBuildRegistered();
 
@@ -163,8 +179,51 @@ public partial class SolutionAnalyzerService
                 };
             }
 
+            // Edit mode: perform oldText -> newText replacement within the method
+            if (oldText != null && newText != null)
+            {
+                var currentSource = methodNode.ToFullString();
+                var occurrences = 0;
+                var idx = -1;
+                var searchFrom = 0;
+                while ((idx = currentSource.IndexOf(oldText, searchFrom, StringComparison.Ordinal)) >= 0)
+                {
+                    occurrences++;
+                    searchFrom = idx + oldText.Length;
+                }
+
+                if (occurrences == 0)
+                {
+                    return new UpdateMethodResult
+                    {
+                        Success = false,
+                        Error = $"oldText not found in method '{methodName}'. The text to find was:\n{oldText}"
+                    };
+                }
+
+                if (occurrences > 1 && !replaceAll)
+                {
+                    return new UpdateMethodResult
+                    {
+                        Success = false,
+                        Error = $"oldText found {occurrences} times in method '{methodName}'. Set replaceAll=true to replace all, or provide more context to make the match unique."
+                    };
+                }
+
+                if (replaceAll)
+                {
+                    newSourceCode = currentSource.Replace(oldText, newText, StringComparison.Ordinal);
+                }
+                else
+                {
+                    // Single occurrence - replace first match
+                    var pos = currentSource.IndexOf(oldText, StringComparison.Ordinal);
+                    newSourceCode = string.Concat(currentSource.AsSpan(0, pos), newText, currentSource.AsSpan(pos + oldText.Length));
+                }
+            }
+
             // Parse the new source code
-            var newSyntaxTree = CSharpSyntaxTree.ParseText(newSourceCode.Trim());
+            var newSyntaxTree = CSharpSyntaxTree.ParseText(newSourceCode!.Trim());
             var newRoot = await newSyntaxTree.GetRootAsync();
 
             // Find the method declaration in the new code
@@ -215,7 +274,7 @@ public partial class SolutionAnalyzerService
             // Add XML doc comment AFTER setting trivia, so it doesn't get overwritten
             if (comment != null && newMethodWithTrivia is MemberDeclarationSyntax newMemberDecl)
             {
-                newMethodWithTrivia = AddXmlDocComment(newMemberDecl, comment, newSourceCode);
+                newMethodWithTrivia = AddXmlDocComment(newMemberDecl, comment, newSourceCode!);
             }
 
             var newRootNode = root.ReplaceNode(methodNode, newMethodWithTrivia);
@@ -225,9 +284,9 @@ public partial class SolutionAnalyzerService
 
             // Write the updated file
             var filePath = syntaxTree.FilePath;
-            var newText = formattedRoot.ToFullString();
+            var newText2 = formattedRoot.ToFullString();
 
-            await File.WriteAllTextAsync(filePath, newText);
+            await File.WriteAllTextAsync(filePath, newText2);
 
             // Calculate new line numbers
             var newMethodInUpdated = newRootNode.DescendantNodes()

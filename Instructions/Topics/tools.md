@@ -9,7 +9,8 @@ Hook blocks Read/Edit on .cs files. Use Roslyn tools instead.
 | Find symbol | `FindSymbol(pattern)` |
 | See class structure | `GetTypeMembers(typeName)` |
 | Read method | `GetMethodBody(typeName, methodName)` |
-| Edit method | `UpdateMethod(typeName, methodName, newSourceCode, comment?)` |
+| Edit method (full) | `UpdateMethod(typeName, methodName, newSourceCode, comment?)` |
+| Edit method (targeted) | `UpdateMethod(typeName, methodName, oldText, newText, replaceAll?)` |
 | Add member | `AddMember(typeName, memberCode, auto?, comment?)` |
 | Create type | `AddType(projectName, typeName)` |
 | Delete member | `DeleteMember(typeName, memberName)` |
@@ -63,11 +64,16 @@ Call `Finetune()` again to check status. See [SharpOps/WORKFLOW.md](../../../Sha
 
 ## Patterns
 
-**Explore class → edit method:**
+**Explore class → edit method (full replacement):**
 ```
 GetTypeMembers(typeName)
 GetMethodBody(typeName, methodName)
 UpdateMethod(typeName, methodName, newCode)
+```
+
+**Targeted edit within a method:**
+```
+UpdateMethod(typeName, methodName, oldText: "oldCode", newText: "newCode")
 ```
 
 **Create new type with members:**

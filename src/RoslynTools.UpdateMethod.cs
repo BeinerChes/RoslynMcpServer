@@ -5,15 +5,16 @@ namespace RoslynMcpServer;
 public static partial class RoslynTools
 {
     /// <summary>
-    /// Updates a method's source code in place.
+    /// Registers the UpdateMethod tool with MCP server. Supports two modes: full replacement via newSourceCode, or targeted edit via oldText/newText parameters.
     /// </summary>
+    /// <param name="server"></param>
     private static void RegisterUpdateMethodTool(McpServer server)
     {
         server.RegisterTool(
             "UpdateMethod",
             new ToolDefinition
             {
-                Description = "Replaces a method's implementation with new source code. Uses Roslyn to precisely locate and replace the method while preserving surrounding code. Essential for making targeted changes to large classes.",
+                Description = "Replaces a method's implementation with new source code. Uses Roslyn to precisely locate and replace the method while preserving surrounding code. Essential for making targeted changes to large classes.\n\nSupports two modes:\n1. Full replacement: provide `newSourceCode` with the complete method\n2. Edit mode: provide `oldText` + `newText` to make targeted edits within the method (token-efficient)",
                 InputSchema = new
                 {
                     type = "object",
@@ -43,9 +44,24 @@ public static partial class RoslynTools
                         {
                             type = "string",
                             description = "Plain text description of the method. Generates XML doc comment with <summary>, <param>, and <returns> tags, replacing any existing XML doc."
+                        },
+                        oldText = new
+                        {
+                            type = "string",
+                            description = "Text to find within the current method source. Use with newText for targeted edits instead of full replacement."
+                        },
+                        newText = new
+                        {
+                            type = "string",
+                            description = "Replacement text (can be empty string for deletion). Required when oldText is provided."
+                        },
+                        replaceAll = new
+                        {
+                            type = "boolean",
+                            description = "Replace all occurrences of oldText. Default: false (errors if multiple matches found)."
                         }
                     },
-                    required = new[] { "typeName", "methodName", "newSourceCode" }
+                    required = new[] { "typeName", "methodName" }
                 },
                 Annotations = new ToolAnnotations
                 {
@@ -63,6 +79,9 @@ public static partial class RoslynTools
                 var newSourceCode = args?["newSourceCode"]?.GetValue<string>();
                 var parameterTypes = args?["parameterTypes"]?.GetValue<string>();
                 var comment = args?["comment"]?.GetValue<string>();
+                var oldText = args?["oldText"]?.GetValue<string>();
+                var newText = args?["newText"]?.GetValue<string>();
+                var replaceAll = GetOptionalBool(args, "replaceAll", false);
 
                 if (string.IsNullOrWhiteSpace(typeName))
                     return CreateToolError("Error: typeName is required");
@@ -70,8 +89,18 @@ public static partial class RoslynTools
                 if (string.IsNullOrWhiteSpace(methodName))
                     return CreateToolError("Error: methodName is required");
 
-                if (string.IsNullOrWhiteSpace(newSourceCode))
-                    return CreateToolError("Error: newSourceCode is required");
+                // Validate: either newSourceCode or oldText+newText, not both
+                if (!string.IsNullOrEmpty(newSourceCode) && oldText != null)
+                    return CreateToolError("Error: cannot provide both newSourceCode and oldText/newText. Use one mode or the other.");
+
+                if (oldText != null && newText == null)
+                    return CreateToolError("Error: newText is required when oldText is provided (can be empty string for deletion).");
+
+                if (oldText == null && newText != null)
+                    return CreateToolError("Error: oldText is required when newText is provided.");
+
+                if (string.IsNullOrEmpty(newSourceCode) && oldText == null)
+                    return CreateToolError("Error: provide either newSourceCode (full replacement) or oldText+newText (edit mode).");
 
                 var result = await SolutionAnalyzerService.UpdateMethodAsync(
                     solutionPath!,
@@ -79,7 +108,10 @@ public static partial class RoslynTools
                     methodName,
                     newSourceCode,
                     parameterTypes,
-                    comment);
+                    comment,
+                    oldText,
+                    newText,
+                    replaceAll);
 
                 if (!result.Success)
                 {
