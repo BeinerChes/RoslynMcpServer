@@ -13,6 +13,7 @@
     <PackageReference Include="Dapper" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" />
     <PackageReference Include="SmartComponents.LocalEmbeddings" />
+    <PackageReference Include="System.Text.Json" />
   </ItemGroup>
 
 </Project>
