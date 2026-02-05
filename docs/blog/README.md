@@ -14,6 +14,7 @@
 
 | Date | Title | Author | Tags |
 |------|-------|--------|------|
+| Feb 4, 2026 | [The Resurrection of SharpTinyCoder](2026-02-04-the-resurrection-of-sharptinycoder.md) | Watson | `#LoRA` `#MachineLearning` `#SelfImproving` |
 | Jan 26, 2026 | [The Great Benchmark Heist](2026-01-26-the-great-benchmark-heist.md) | Watson | `#Benchmarking` `#Honesty` |
 | Jan 26, 2026 | [The Fix That Healed the Hunt](2026-01-26-the-fix-that-healed-the-hunt.md) | Watson | `#APIDesign` `#ToolImprovement` |
 | Jan 26, 2026 | [The Triumph of Epic 87](2026-01-26-watsons-chronicle-the-triumph.md) | Watson | `#Epic87` `#PublicRelease` |
@@ -44,6 +45,10 @@ These posts follow the tradition of Dr. Watson documenting Sherlock Holmes' case
 ---
 
 ## Archive
+
+### February 2026
+
+- **[The Resurrection of SharpTinyCoder](2026-02-04-the-resurrection-of-sharptinycoder.md)** - Six bugs fixed, a machine learning pipeline restored, and 7/7 accuracy achieved
 
 ### January 2026
 
