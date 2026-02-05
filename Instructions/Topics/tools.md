@@ -6,7 +6,7 @@ Hook blocks Read/Edit on .cs files. Use Roslyn tools instead.
 
 | Task | Tool |
 |------|------|
-| Find symbol | `FindSymbol(pattern)` |
+| Find symbol | `FindSymbol(pattern)` — fuzzy fallback via graph DB when no results found |
 | See class structure | `GetTypeMembers(typeName)` |
 | Read method | `GetMethodBody(typeName, methodName)` |
 | Edit method (full) | `UpdateMethod(typeName, methodName, newSourceCode, comment?)` |

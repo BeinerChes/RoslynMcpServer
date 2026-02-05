@@ -1,3 +1,5 @@
+using RoslynMcpServer.Graph;
+using RoslynMcpServer.Services;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
@@ -18,7 +20,7 @@ public static partial class RoslynTools
             "FindSymbol",
             new ToolDefinition
             {
-                Description = "Searches for symbols (types, methods, properties, fields) in a .NET solution by name. Returns fully qualified names, file locations, and signatures. Much faster and more accurate than text search.",
+                Description = "Searches for symbols (types, methods, properties, fields) in a .NET solution by name. Returns fully qualified names, file locations, and signatures. Much faster and more accurate than text search. When no results are found, falls back to fuzzy matching via the graph database to suggest similar symbol names (requires prior GraphAnalyze).",
                 InputSchema = new
                 {
                     type = "object",
@@ -78,17 +80,34 @@ public static partial class RoslynTools
         var result = await _analyzerService!.SearchSymbolsAsync(
             solutionPath!, pattern, symbolKind, matchType, maxResults);
 
-        var response = await BuildFindSymbolResponseAsync(solutionPath!, result);
+        // Fuzzy fallback: when no results, suggest similar names from graph DB
+        List<string>? suggestions = null;
+        if (result.TotalFound == 0)
+        {
+            suggestions = await GetFuzzySuggestionsAsync(solutionPath!, pattern);
+        }
+
+        var response = await BuildFindSymbolResponseAsync(solutionPath!, result, suggestions);
         return CreateSuccessResponse(response, !result.Success);
     }
 
     /// <summary>
     /// Builds the response for find_symbol, including knowledge flags.
     /// </summary>
-    private static async Task<object> BuildFindSymbolResponseAsync(string solutionPath, FindSymbolResult result)
+    private static async Task<object> BuildFindSymbolResponseAsync(string solutionPath, FindSymbolResult result, List<string>? suggestions = null)
     {
         if (!result.Success || result.Symbols == null || result.Symbols.Count == 0)
         {
+            if (suggestions != null && suggestions.Count > 0)
+            {
+                return new
+                {
+                    count = 0,
+                    symbols = Array.Empty<string>(),
+                    suggestions
+                };
+            }
+
             return new
             {
                 count = 0,
@@ -113,5 +132,32 @@ public static partial class RoslynTools
             count = result.TotalFound,
             symbols = compactSymbols
         };
+    }
+
+    /// <summary>
+    /// Queries the graph database for fuzzy symbol name suggestions when FindSymbol returns no results.
+    /// </summary>
+    private static async Task<List<string>?> GetFuzzySuggestionsAsync(string solutionPath, string pattern)
+    {
+        using var db = new GraphDatabase(solutionPath);
+        if (!db.Exists()) return null;
+
+        await db.OpenAsync();
+        var solution = await db.GetSolutionAsync(solutionPath);
+        if (solution == null) return null;
+
+        var allSymbols = await db.GetAllSymbolsAsync(solution.Id);
+        if (allSymbols.Count == 0) return null;
+
+        var matches = FuzzyMatcher.FindSimilar(pattern, allSymbols);
+        if (matches.Count == 0) return null;
+
+        return matches.Select(m =>
+        {
+            var distance = FuzzyMatcher.LevenshteinDistance(pattern, m.Name);
+            var isSubseq = FuzzyMatcher.IsSubsequence(pattern, m.Name);
+            var matchType = isSubseq && distance > 3 ? "subsequence" : $"distance: {distance}";
+            return $"{m.Name} ({matchType})";
+        }).ToList();
     }
 }
