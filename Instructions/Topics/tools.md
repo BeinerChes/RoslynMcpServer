@@ -11,6 +11,7 @@ Hook blocks Read/Edit on .cs files. Use Roslyn tools instead.
 | Read method | `GetMethodBody(typeName, methodName)` |
 | Edit method (full) | `UpdateMethod(typeName, methodName, newSourceCode, comment?)` |
 | Edit method (targeted) | `UpdateMethod(typeName, methodName, oldText, newText, replaceAll?)` |
+| Edit method (auto) | `UpdateMethod(typeName, methodName, auto: true, comment?)` |
 | Add member | `AddMember(typeName, memberCode, auto?, comment?)` |
 | Create type | `AddType(projectName, typeName)` |
 | Delete member | `DeleteMember(typeName, memberName)` |
@@ -48,6 +49,15 @@ example that improves the model over time. Always let the model try first, then 
 
 Only use `auto=false` for non-method members (fields, properties, events).
 
+## Regenerating Methods (auto mode)
+
+To regenerate an existing method's body using the model:
+```
+UpdateMethod(typeName: "MyClass", methodName: "Add", auto: true, comment?: "optional description")
+```
+
+Same review workflow as AddMember auto mode — check `generatedCode`, fix with non-auto `UpdateMethod` if wrong.
+
 ## Fine-Tuning the Model
 
 When enough corrections accumulate, call `Finetune()` to improve the model:
@@ -74,6 +84,11 @@ UpdateMethod(typeName, methodName, newCode)
 **Targeted edit within a method:**
 ```
 UpdateMethod(typeName, methodName, oldText: "oldCode", newText: "newCode")
+```
+
+**Auto-regenerate a method:**
+```
+UpdateMethod(typeName, methodName, auto: true, comment?: "description")
 ```
 
 **Create new type with members:**
