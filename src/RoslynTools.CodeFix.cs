@@ -88,7 +88,7 @@ public static partial class RoslynTools
                         {
                             new { type = "text", text = "Error: filePath is required" }
                         },
-                        isError = true
+                        isError = false
                     };
                 }
 
@@ -100,7 +100,7 @@ public static partial class RoslynTools
                         {
                             new { type = "text", text = "Error: line must be a positive integer (1-based)" }
                         },
-                        isError = true
+                        isError = false
                     };
                 }
 
@@ -112,7 +112,7 @@ public static partial class RoslynTools
                         {
                             new { type = "text", text = "Error: column must be a positive integer (1-based)" }
                         },
-                        isError = true
+                        isError = false
                     };
                 }
 
@@ -131,7 +131,7 @@ public static partial class RoslynTools
                     {
                         new { type = "text", text = JsonSerializer.Serialize(result, JsonOptions) }
                     },
-                    isError = !result.Success
+                    isError = false
                 };
             });
     }

@@ -87,7 +87,7 @@ public static partial class RoslynTools
                         {
                             new { type = "text", text = result.Error ?? "Failed to get diagnostics" }
                         },
-                        isError = true
+                        isError = false
                     };
                 }
 

@@ -42,15 +42,6 @@ This directory contains detailed documentation for each Roslyn MCP tool. Each to
 | **BatchApplyCodeFixes** | ✅ | [BatchApplyCodeFixes.md](BatchApplyCodeFixes.md) | Complete |
 | **FindDeadCode** | ❌ | *Coming soon* | Pending |
 
-### Call Graph & Impact Analysis
-
-| Tool | In tools.md? | Documentation | Status |
-|------|--------------|---------------|--------|
-| **GraphAnalyze** | ❌ | *Coming soon* | Pending |
-| **GraphStatus** | ❌ | *Coming soon* | Pending |
-| **QueryGraph** | ❌ | *Coming soon* | Pending |
-| **GraphImpact** | ❌ | *Coming soon* | Pending |
-
 ### AI Code Generation & Training
 
 | Tool | In tools.md? | Documentation | Status |
@@ -79,17 +70,17 @@ This directory contains detailed documentation for each Roslyn MCP tool. Each to
 
 ## Tool Count
 
-**Total: 32 tools** across 7 categories
+**Total: 28 tools** across 6 categories
 
 ## Documentation Progress
 
 ### Detailed Documentation
-- ✅ **16/32** tools have detailed docs (UpdateMethod, AddMember, AddType, DeleteMember, AddUsing, RemoveUnnecessaryUsings, ExtractMethod, RenameSymbol, FindSymbol, GetTypeMembers, GetMethodBody, GetReferences, GetCallers, ApplyCodeFix, BatchApplyCodeFixes, GetDiagnostics)
-- ⏳ **16/32** remaining
+- ✅ **16/28** tools have detailed docs (UpdateMethod, AddMember, AddType, DeleteMember, AddUsing, RemoveUnnecessaryUsings, ExtractMethod, RenameSymbol, FindSymbol, GetTypeMembers, GetMethodBody, GetReferences, GetCallers, ApplyCodeFix, BatchApplyCodeFixes, GetDiagnostics)
+- ⏳ **12/28** remaining
 
 ### Claude Code Integration (Instructions/Topics/tools.md)
-- ✅ **18/32** tools documented in quick reference (ApplyCodeFix already in)
-- ❌ **14/32** tools missing from Claude Code docs
+- ✅ **18/28** tools documented in quick reference
+- ❌ **10/28** tools missing from Claude Code docs
 
 ## Documentation Algorithm
 

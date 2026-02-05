@@ -62,7 +62,7 @@ public static partial class RoslynTools
                         {
                             new { type = "text", text = "Error: typeName is required" }
                         },
-                        isError = true
+                        isError = false
                     };
                 }
 

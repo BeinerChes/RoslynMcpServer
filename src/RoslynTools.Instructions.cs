@@ -57,7 +57,7 @@ public static partial class RoslynTools
                         {
                             new { type = "text", text = $"Error: Unknown template '{templateName}'. Available: {string.Join(", ", Instructions.Templates.Available)}" }
                         },
-                        isError = true
+                        isError = false
                     };
                 }
 
@@ -125,7 +125,7 @@ public static partial class RoslynTools
                         {
                             new { type = "text", text = $"Error: Unknown topic '{topicName}'. Available: {string.Join(", ", Instructions.Topics.Available)}" }
                         },
-                        isError = true
+                        isError = false
                     };
                 }
 

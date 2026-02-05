@@ -81,7 +81,7 @@ public static partial class RoslynTools
                         {
                             new { type = "text", text = "Error: filePath is required" }
                         },
-                        isError = true
+                        isError = false
                     };
                 }
 
@@ -93,7 +93,7 @@ public static partial class RoslynTools
                         {
                             new { type = "text", text = "Error: line must be >= 1" }
                         },
-                        isError = true
+                        isError = false
                     };
                 }
 
@@ -105,7 +105,7 @@ public static partial class RoslynTools
                         {
                             new { type = "text", text = "Error: column must be >= 1" }
                         },
-                        isError = true
+                        isError = false
                     };
                 }
 

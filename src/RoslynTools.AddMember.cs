@@ -81,7 +81,7 @@ public static partial class RoslynTools
                         {
                             new { type = "text", text = "Error: typeName is required" }
                         },
-                        isError = true
+                        isError = false
                     };
                 }
 
@@ -93,7 +93,7 @@ public static partial class RoslynTools
                         {
                             new { type = "text", text = "Error: memberCode is required" }
                         },
-                        isError = true
+                        isError = false
                     };
                 }
 
@@ -145,7 +145,7 @@ public static partial class RoslynTools
                     {
                         new { type = "text", text = JsonSerializer.Serialize(result, JsonOptions) }
                     },
-                    isError = !result.Success
+                    isError = false
                 };
             });
     }

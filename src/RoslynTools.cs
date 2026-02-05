@@ -104,10 +104,6 @@ public static partial class RoslynTools
         RegisterAddUsingTool(server);
         RegisterRenameSymbolTool(server);
         RegisterExtractMethodTool(server);
-        RegisterGraphStatusTool(server);
-        RegisterGraphAnalyzeTool(server);
-        RegisterQueryGraphTool(server);
-        RegisterGraphImpactTool(server);
         RegisterFindDeadCodeTool(server);
         RegisterGetTemplateTool(server);
         RegisterGetInstructionsTool(server);
@@ -276,7 +272,7 @@ public static partial class RoslynTools
                     {
                         new { type = "text", text = JsonSerializer.Serialize(result, JsonOptions) }
                     },
-                    isError = !result.Success
+                    isError = false
                 };
             });
     }

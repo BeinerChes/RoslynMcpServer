@@ -78,7 +78,7 @@ public static partial class RoslynTools
                         {
                             new { type = "text", text = "Error: filePath is required" }
                         },
-                        isError = true
+                        isError = false
                     };
                 }
 
@@ -90,7 +90,7 @@ public static partial class RoslynTools
                         {
                             new { type = "text", text = "Error: startLine must be >= 1" }
                         },
-                        isError = true
+                        isError = false
                     };
                 }
 
@@ -102,7 +102,7 @@ public static partial class RoslynTools
                         {
                             new { type = "text", text = "Error: endLine must be >= startLine" }
                         },
-                        isError = true
+                        isError = false
                     };
                 }
 
@@ -114,7 +114,7 @@ public static partial class RoslynTools
                         {
                             new { type = "text", text = "Error: methodName is required" }
                         },
-                        isError = true
+                        isError = false
                     };
                 }
 
@@ -132,7 +132,7 @@ public static partial class RoslynTools
                     {
                         new { type = "text", text = JsonSerializer.Serialize(result, JsonOptions) }
                     },
-                    isError = !result.Success
+                    isError = false
                 };
             });
     }

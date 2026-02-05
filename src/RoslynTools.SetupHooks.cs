@@ -47,7 +47,7 @@ public static partial class RoslynTools
                         {
                             new { type = "text", text = "Error: projectPath is required" }
                         },
-                        isError = true
+                        isError = false
                     };
                 }
 
@@ -59,7 +59,7 @@ public static partial class RoslynTools
                         {
                             new { type = "text", text = $"Error: Directory does not exist: {projectPath}" }
                         },
-                        isError = true
+                        isError = false
                     };
                 }
 
@@ -82,7 +82,7 @@ public static partial class RoslynTools
                         {
                             new { type = "text", text = $"Error setting up hooks: {ex.Message}" }
                         },
-                        isError = true
+                        isError = false
                     };
                 }
             });

@@ -60,7 +60,7 @@ public static partial class RoslynTools
                         {
                             new { type = "text", text = "Error: usingDirective is required" }
                         },
-                        isError = true
+                        isError = false
                     };
                 }
 
@@ -72,7 +72,7 @@ public static partial class RoslynTools
                         {
                             new { type = "text", text = "Error: either typeName or filePath is required" }
                         },
-                        isError = true
+                        isError = false
                     };
                 }
 
@@ -88,7 +88,7 @@ public static partial class RoslynTools
                     {
                         new { type = "text", text = JsonSerializer.Serialize(result, JsonOptions) }
                     },
-                    isError = !result.Success
+                    isError = false
                 };
             });
     }

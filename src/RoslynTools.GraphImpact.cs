@@ -3,90 +3,11 @@ using RoslynMcpServer.Graph;
 namespace RoslynMcpServer;
 
 /// <summary>
-/// Graph impact analysis and dead code detection tools.
+/// Dead code detection tool.
 /// Issue: #13
 /// </summary>
 public static partial class RoslynTools
 {
-    /// <summary>
-    /// Registers the GraphImpact tool.
-    /// </summary>
-    internal static void RegisterGraphImpactTool(McpServer server)
-    {
-        server.RegisterTool(
-            "GraphImpact",
-            new ToolDefinition
-            {
-                Description = "Analyzes what code would be affected if a symbol changes. Returns all direct and transitive callers of the symbol. Essential for understanding the blast radius of a change before refactoring.",
-                InputSchema = new
-                {
-                    type = "object",
-                    properties = new
-                    {
-                        symbolName = new
-                        {
-                            type = "string",
-                            description = "Qualified name of the symbol to analyze (e.g., 'MyNamespace.MyClass.MyMethod')"
-                        },
-                        maxDepth = new
-                        {
-                            type = "integer",
-                            description = "Maximum recursion depth for transitive callers. -1 for unlimited. Default: 10",
-                            minimum = -1,
-                            maximum = 100
-                        },
-                        includeTests = new
-                        {
-                            type = "boolean",
-                            description = "Include test files in impact analysis. Default: true"
-                        }
-                    },
-                    required = new[] { "symbolName" }
-                },
-                Annotations = new ToolAnnotations
-                {
-                    ReadOnlyHint = true,
-                    IdempotentHint = true
-                }
-            },
-            async args =>
-            {
-                var (solutionPath, solutionError) = GetSolutionPathOrError();
-                if (solutionError != null) return solutionError;
-
-                var symbolName = args?["symbolName"]?.GetValue<string>();
-                var maxDepth = args?["maxDepth"]?.GetValue<int>() ?? 10;
-                var includeTests = args?["includeTests"]?.GetValue<bool>() ?? true;
-
-                if (string.IsNullOrWhiteSpace(symbolName))
-                    return CreateToolError("Error: symbolName is required");
-
-                var result = await GetGraphImpactAsync(solutionPath!, symbolName, maxDepth, includeTests);
-
-                if (!result.Success)
-                {
-                    return CreateToolResponse(new { error = result.Error }, true);
-                }
-
-                // Compact format: group by file, list affected symbols
-                var compactFiles = result.AffectedFiles?.Select(f => new
-                {
-                    file = f.FileName,
-                    symbols = f.AffectedSymbols.Select(s => $"{s.Name}:{s.Line}").ToList()
-                }).ToList();
-
-                var compactResult = new
-                {
-                    symbol = result.Symbol?.QualifiedName ?? symbolName,
-                    affectedFiles = result.TotalAffectedFiles,
-                    affectedSymbols = result.TotalAffectedSymbols,
-                    files = compactFiles
-                };
-
-                return CreateToolResponse(compactResult, false);
-            });
-    }
-
     // Empty default patterns - structural detection is preferred over name patterns
     private static readonly string[] DefaultExcludeTypePatterns = [];
     private static readonly string[] DefaultExcludeFilePatterns = [];
@@ -171,102 +92,6 @@ public static partial class RoslynTools
             });
     }
 
-    private static async Task<GraphImpactResult> GetGraphImpactAsync(
-        string solutionPath, string symbolName, int maxDepth, bool includeTests)
-    {
-        using var db = new GraphDatabase(solutionPath);
-
-        if (!db.Exists())
-        {
-            return new GraphImpactResult
-            {
-                Success = false,
-                Error = "No graph database exists. Use GraphAnalyze first."
-            };
-        }
-
-        await db.OpenAsync();
-        var solution = await db.GetSolutionAsync(solutionPath);
-
-        if (solution == null)
-        {
-            return new GraphImpactResult
-            {
-                Success = false,
-                Error = "Solution not found in graph database."
-            };
-        }
-
-        // Ensure graph is fresh before querying (blocking)
-        await EnsureGraphFreshAsync(db, solution.Id, solutionPath);
-
-        // Get solution directory for relative paths (Issue #115)
-        var solutionDir = Path.GetDirectoryName(solutionPath) ?? "";
-
-        // Use FindSymbolAsync for partial name matching (Issue #33)
-        var searchResult = await db.FindSymbolAsync(solution.Id, symbolName);
-
-        if (searchResult.Symbol == null)
-        {
-            var error = searchResult.Error ?? $"Symbol '{symbolName}' not found in graph.";
-            if (searchResult.Candidates != null && searchResult.Candidates.Count > 0)
-            {
-                error += " Did you mean: " + string.Join(", ", searchResult.Candidates.Take(5).Select(c => c.QualifiedName));
-            }
-            return new GraphImpactResult
-            {
-                Success = false,
-                Error = error
-            };
-        }
-
-        var symbol = searchResult.Symbol;
-
-        // Get all transitive callers
-        var allCallers = await db.GetRecursiveCallersAsync(symbol.Id, maxDepth);
-
-        // Filter out test files if requested
-        var filteredCallers = includeTests
-            ? allCallers
-            : allCallers.Where(c => !IsTestFile(c.FilePath)).ToList();
-
-        // Group by file for better readability
-        var affectedFiles = filteredCallers
-            .Where(c => !string.IsNullOrEmpty(c.FilePath) && c.FilePath != "external")
-            .GroupBy(c => c.FilePath)
-            .Select(g => new AffectedFile
-            {
-                FilePath = GetRelativePath(g.Key, solutionDir),
-                FileName = Path.GetFileName(g.Key),
-                AffectedSymbols = g.Select(s => new AffectedSymbol
-                {
-                    Name = s.Name,
-                    QualifiedName = s.QualifiedName,
-                    Kind = s.Kind.ToString(),
-                    Line = s.Line
-                }).ToList()
-            })
-            .OrderBy(f => f.FileName)
-            .ToList();
-
-        return new GraphImpactResult
-        {
-            Success = true,
-            Symbol = new GraphSymbolEntry
-            {
-                Name = symbol.Name,
-                QualifiedName = symbol.QualifiedName,
-                Kind = symbol.Kind.ToString(),
-                FilePath = GetRelativePath(symbol.FilePath, solutionDir),
-                Line = symbol.Line
-            },
-            TotalAffectedSymbols = filteredCallers.Count,
-            TotalAffectedFiles = affectedFiles.Count,
-            AffectedFiles = affectedFiles,
-            MaxDepthReached = maxDepth
-        };
-    }
-
     private static async Task<DeadCodeResult> FindDeadCodeAsync(
         string solutionPath, bool includePrivate, bool includeTests, int maxResults,
         string[] excludeTypePatterns, string[] excludeFilePatterns)
@@ -275,11 +100,18 @@ public static partial class RoslynTools
 
         if (!db.Exists())
         {
-            return new DeadCodeResult
+            // Auto-build graph if it doesn't exist
+            Console.Error.WriteLine("Graph database not found. Building automatically...");
+            var buildResult = await AnalyzeGraphAsync(solutionPath, incremental: false, projectFilter: null);
+            if (!buildResult.Success)
             {
-                Success = false,
-                Error = "No graph database exists. Use GraphAnalyze first."
-            };
+                return new DeadCodeResult
+                {
+                    Success = false,
+                    Error = $"Failed to build graph: {buildResult.Error}"
+                };
+            }
+            Console.Error.WriteLine($"Graph built: {buildResult.SymbolsFound} symbols, {buildResult.EdgesFound} edges");
         }
 
         await db.OpenAsync();
@@ -500,9 +332,6 @@ public static partial class RoslynTools
         }
     }
 
-    private static readonly string[] definitionArray100 = Array.Empty<string>();
-    private static readonly string[] definitionArray0 = new[] { "symbolName" };
-
     private static bool IsTestFile(string filePath)
     {
         if (string.IsNullOrEmpty(filePath)) return false;
@@ -598,33 +427,6 @@ public static partial class RoslynTools
             isError = false
         };
     }
-}
-
-// DTOs for impact analysis
-public class GraphImpactResult
-{
-    public bool Success { get; set; }
-    public string? Error { get; set; }
-    public GraphSymbolEntry? Symbol { get; set; }
-    public int TotalAffectedSymbols { get; set; }
-    public int TotalAffectedFiles { get; set; }
-    public List<AffectedFile>? AffectedFiles { get; set; }
-    public int MaxDepthReached { get; set; }
-}
-
-public class AffectedFile
-{
-    public string FilePath { get; set; } = "";
-    public string FileName { get; set; } = "";
-    public List<AffectedSymbol> AffectedSymbols { get; set; } = [];
-}
-
-public class AffectedSymbol
-{
-    public string Name { get; set; } = "";
-    public string QualifiedName { get; set; } = "";
-    public string Kind { get; set; } = "";
-    public int Line { get; set; }
 }
 
 // DTOs for dead code detection

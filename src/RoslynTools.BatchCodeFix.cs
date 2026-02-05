@@ -75,7 +75,7 @@ public static partial class RoslynTools
                         {
                             new { type = "text", text = "Error: diagnosticId is required" }
                         },
-                        isError = true
+                        isError = false
                     };
                 }
 
