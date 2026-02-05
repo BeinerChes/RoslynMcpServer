@@ -14,6 +14,7 @@
 
 | Date | Title | Author | Tags |
 |------|-------|--------|------|
+| Feb 5, 2026 | [The Graph Conspiracy](2026-02-05-the-graph-conspiracy.md) | Watson | `#GraphDatabase` `#Incremental` `#Bug-Fixes` |
 | Feb 4, 2026 | [The Resurrection of SharpTinyCoder](2026-02-04-the-resurrection-of-sharptinycoder.md) | Watson | `#LoRA` `#MachineLearning` `#SelfImproving` |
 | Jan 26, 2026 | [The Great Benchmark Heist](2026-01-26-the-great-benchmark-heist.md) | Watson | `#Benchmarking` `#Honesty` |
 | Jan 26, 2026 | [The Fix That Healed the Hunt](2026-01-26-the-fix-that-healed-the-hunt.md) | Watson | `#APIDesign` `#ToolImprovement` |
@@ -48,6 +49,7 @@ These posts follow the tradition of Dr. Watson documenting Sherlock Holmes' case
 
 ### February 2026
 
+- **[The Graph Conspiracy](2026-02-05-the-graph-conspiracy.md)** - Hash mismatches, ignored parameters, and orphaned symbols — three graph bugs fixed in one session
 - **[The Resurrection of SharpTinyCoder](2026-02-04-the-resurrection-of-sharptinycoder.md)** - Six bugs fixed, a machine learning pipeline restored, and 7/7 accuracy achieved
 
 ### January 2026
