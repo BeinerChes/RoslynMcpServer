@@ -34,6 +34,9 @@ Native tools are fine for non-C# files (JSON, XML, markdown, .csproj, etc.), Glo
 - Save a learning: `KnowledgeAdd(category, title, content)` — use after fixing tricky bugs or discovering non-obvious behavior
 - Search before unfamiliar code: `KnowledgeSearch(query)`
 
+**Documentation:**
+- Get instructions: `GetInstructions(topic)` — topics: `git`, `plan`, `tools`. Generates hook bypass tokens for git/plan/tools topics.
+
 ## Auto-Generation Workflow
 
 When adding methods, ALWAYS try `auto: true` first:
