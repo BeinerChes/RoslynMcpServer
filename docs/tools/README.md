@@ -46,16 +46,16 @@ This directory contains detailed documentation for each Roslyn MCP tool. Each to
 
 | Tool | In tools.md? | Documentation | Status |
 |------|--------------|---------------|--------|
-| **Finetune** | ✅ | *Coming soon* | Pending |
+| **Finetune** | ✅ | [Finetune.md](Finetune.md) | Complete |
 
 ### Knowledge Base
 
 | Tool | In tools.md? | Documentation | Status |
 |------|--------------|---------------|--------|
-| **KnowledgeAdd** | ✅ | *Coming soon* | Pending |
-| **KnowledgeSearch** | ✅ | *Coming soon* | Pending |
-| **KnowledgeDelete** | ❌ | *Coming soon* | Pending |
-| **KnowledgeGet** | ❌ | *Coming soon* | Pending |
+| **KnowledgeAdd** | ✅ | [Knowledge.md](Knowledge.md) | Complete |
+| **KnowledgeSearch** | ✅ | [Knowledge.md](Knowledge.md) | Complete |
+| **KnowledgeDelete** | ✅ | [Knowledge.md](Knowledge.md) | Complete |
+| **KnowledgeGet** | ✅ | [Knowledge.md](Knowledge.md) | Complete |
 
 ### Setup & Utilities
 
@@ -71,12 +71,12 @@ This directory contains detailed documentation for each Roslyn MCP tool. Each to
 ## Documentation Progress
 
 ### Detailed Documentation
-- ✅ **19/24** tools have detailed docs (UpdateMethod, AddMember, AddType, DeleteMember, AddUsing, RemoveUnnecessaryUsings, ExtractMethod, RenameSymbol, FindSymbol, GetTypeMembers, GetMethodBody, GetReferences, GetCallers, ApplyCodeFix, BatchApplyCodeFixes, GetDiagnostics, FindDeadCode, GetInstructions, GetUsageReport)
-- ⏳ **5/24** remaining
+- ✅ **24/24** tools have detailed docs (UpdateMethod, AddMember, AddType, DeleteMember, AddUsing, RemoveUnnecessaryUsings, ExtractMethod, RenameSymbol, FindSymbol, GetTypeMembers, GetMethodBody, GetReferences, GetCallers, ApplyCodeFix, BatchApplyCodeFixes, GetDiagnostics, FindDeadCode, GetInstructions, GetUsageReport, KnowledgeAdd, KnowledgeSearch, KnowledgeDelete, KnowledgeGet, Finetune)
+- ✅ All tools documented!
 
 ### Claude Code Integration (Instructions/Topics/tools.md)
-- ✅ **21/24** tools documented in quick reference
-- ❌ **3/24** tools missing from Claude Code docs
+- ✅ **23/24** tools documented in quick reference
+- ❌ **1/24** tools missing from Claude Code docs
 
 ## Documentation Algorithm
 

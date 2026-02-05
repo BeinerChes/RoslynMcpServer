@@ -31,8 +31,10 @@ Native tools are fine for non-C# files (JSON, XML, markdown, .csproj, etc.), Glo
 - Find dead code: `FindDeadCode(includePrivate?, includeTests?, maxResults?)` — solution-wide, two-phase (graph DB + Roslyn validation). Use with `DeleteMember` to clean up.
 
 **Knowledge base:**
-- Save a learning: `KnowledgeAdd(category, title, content)` — use after fixing tricky bugs or discovering non-obvious behavior
-- Search before unfamiliar code: `KnowledgeSearch(query)`
+- Save a learning: `KnowledgeAdd(category, title, content)` — use after fixing tricky bugs or discovering non-obvious behavior. Optional: `symbolLinks`, `tags`, `confidence`
+- Search before unfamiliar code: `KnowledgeSearch(query)` — three-layer search: symbol links (exact), FTS (keywords), vector similarity (semantic). Optional: `symbols`, `limit`
+- Get full entry: `KnowledgeGet(id)` — returns full content, timestamps, tags, symbol links
+- Delete entry: `KnowledgeDelete(id)` — removes entry by ID
 
 **Documentation:**
 - Get instructions: `GetInstructions(topic)` — topics: `git`, `plan`, `tools`. Generates hook bypass tokens for git/plan/tools topics.
