@@ -189,25 +189,25 @@ FindDeadCode(maxResults: 20)
 {
   "success": true,
   "totalFound": 45,
-  "totalFiles": 25,
-  "byFile": [
-    {
-      "filePath": "SharpOps.Examples\\Calculator.cs",
-      "fileName": "Calculator.cs",
-      "count": 5,
-      "symbols": [
-        {
-          "name": "CalculateAverage",
-          "qualifiedName": "SharpOps.Examples.Calculator.CalculateAverage()",
-          "kind": "Method",
-          "filePath": "SharpOps.Examples\\Calculator.cs",
-          "fileName": "Calculator.cs",
-          "line": 41
-        }
+  "note": "Validated 84 candidates, filtered 39 false positives.",
+  "files": {
+    "SharpOps.Examples\\Calculator.cs": {
+      "Calculator": [
+        { "member": "Add(int, int)", "kind": "Method", "line": 13 },
+        { "member": "AddToHistory(double)", "kind": "Method", "line": 21 },
+        { "member": "CalculateAverage()", "kind": "Method", "line": 41 }
+      ]
+    },
+    "SharpOps\\Model\\SharpTinyCoderModel.cs": {
+      "ModelConfig": [
+        { "member": "PadTokenId", "kind": "Property", "line": 23 },
+        { "member": "BosTokenId", "kind": "Property", "line": 24 }
+      ],
+      "SharpTinyCoder": [
+        { "member": "Config", "kind": "Property", "line": 291 }
       ]
     }
-  ],
-  "note": "Validated 84 candidates, filtered 39 false positives."
+  }
 }
 ```
 

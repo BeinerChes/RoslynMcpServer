@@ -723,4 +723,19 @@ public static partial class RoslynTools
             return (stubCode, true);
         }
     }
+
+    /// <summary>
+    /// Extracts parameter signature from a qualified name.
+    /// e.g., "Namespace.Type.Method(int, string)" -> "int, string"
+    /// e.g., "Namespace.Type.Method()" -> ""
+    /// e.g., "Namespace.Type.Property" -> ""
+    /// </summary>
+    private static string GetParameterSignature(string qualifiedName)
+    {
+        var parenStart = qualifiedName.IndexOf('(');
+        if (parenStart < 0) return "";
+        var parenEnd = qualifiedName.LastIndexOf(')');
+        if (parenEnd <= parenStart + 1) return "";
+        return qualifiedName[(parenStart + 1)..parenEnd];
+    }
 }

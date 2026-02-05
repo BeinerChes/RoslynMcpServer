@@ -177,14 +177,15 @@ public static partial class RoslynTools
             };
         }
 
-        var deadCode = new List<DeadCodeEntry>();
+        var files = new Dictionary<string, Dictionary<string, List<DeadCodeEntry>>>();
+        var totalFound = 0;
         var validatedCount = 0;
         var falsePositivesFiltered = 0;
 
         // STEP 3: Validate each candidate using FindReferencesAsync
         foreach (var candidate in candidateSymbols)
         {
-            if (deadCode.Count >= maxResults) break;
+            if (totalFound >= maxResults) break;
 
             // Find the symbol by qualified name using Roslyn
             var roslynSymbol = await FindSymbolByQualifiedNameAsync(roslynSolution, candidate.QualifiedName);
@@ -205,15 +206,29 @@ public static partial class RoslynTools
             if (refCount == 0)
             {
                 // Truly dead - no references found
-                deadCode.Add(new DeadCodeEntry
+                var filePath = GetRelativePath(candidate.FilePath, solutionDir);
+                var typeName = GetContainingTypeName(candidate.QualifiedName);
+                var entry = new DeadCodeEntry
                 {
-                    Name = candidate.Name,
-                    QualifiedName = candidate.QualifiedName,
+                    Member = candidate.Kind == SymbolKind.Method
+                        ? candidate.Name + "(" + GetParameterSignature(candidate.QualifiedName) + ")"
+                        : candidate.Name,
                     Kind = candidate.Kind.ToString(),
-                    FilePath = GetRelativePath(candidate.FilePath, solutionDir),
-                    FileName = Path.GetFileName(candidate.FilePath),
                     Line = candidate.Line
-                });
+                };
+
+                if (!files.TryGetValue(filePath, out var types))
+                {
+                    types = new Dictionary<string, List<DeadCodeEntry>>();
+                    files[filePath] = types;
+                }
+                if (!types.TryGetValue(typeName, out var entries))
+                {
+                    entries = [];
+                    types[typeName] = entries;
+                }
+                entries.Add(entry);
+                totalFound++;
             }
             else
             {
@@ -221,27 +236,13 @@ public static partial class RoslynTools
             }
         }
 
-        // Group by file
-        var byFile = deadCode
-            .GroupBy(d => d.FilePath)
-            .Select(g => new DeadCodeFile
-            {
-                FilePath = g.Key,
-                FileName = Path.GetFileName(g.Key),
-                Count = g.Count(),
-                Symbols = g.ToList()
-            })
-            .OrderByDescending(f => f.Count)
-            .ToList();
-
         return new DeadCodeResult
         {
             Success = true,
-            TotalFound = deadCode.Count,
-            TotalFiles = byFile.Count,
-            ByFile = byFile,
+            TotalFound = totalFound,
+            Files = files,
             Note = $"Validated {validatedCount} candidates, filtered {falsePositivesFiltered} false positives." +
-                   (deadCode.Count >= maxResults ? $" Results limited to {maxResults}." : "")
+                   (totalFound >= maxResults ? $" Results limited to {maxResults}." : "")
         };
     }
 
@@ -435,25 +436,16 @@ public class DeadCodeResult
     public bool Success { get; set; }
     public string? Error { get; set; }
     public int TotalFound { get; set; }
-    public int TotalFiles { get; set; }
-    public List<DeadCodeFile>? ByFile { get; set; }
     public string? Note { get; set; }
-}
-
-public class DeadCodeFile
-{
-    public string FilePath { get; set; } = "";
-    public string FileName { get; set; } = "";
-    public int Count { get; set; }
-    public List<DeadCodeEntry> Symbols { get; set; } = [];
+    /// <summary>
+    /// File path → type name → list of dead members.
+    /// </summary>
+    public Dictionary<string, Dictionary<string, List<DeadCodeEntry>>>? Files { get; set; }
 }
 
 public class DeadCodeEntry
 {
-    public string Name { get; set; } = "";
-    public string QualifiedName { get; set; } = "";
+    public string Member { get; set; } = "";
     public string Kind { get; set; } = "";
-    public string FilePath { get; set; } = "";
-    public string FileName { get; set; } = "";
     public int Line { get; set; }
 }
