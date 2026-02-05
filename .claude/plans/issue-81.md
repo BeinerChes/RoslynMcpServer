@@ -1,12 +1,12 @@
 # Plan: Add .claude and .roslyn-mcp to .gitignore automatically
 
 ## Problem Statement
-When users install RoslynMcpServer in a new solution, the `.claude` and `.roslyn-mcp` folders should be automatically added to the project's `.gitignore`. Currently, `roslyn_setup_hooks` creates these folders but doesn't update `.gitignore`, potentially causing users to accidentally commit local Claude configuration.
+When users install RoslynMcpServer in a new solution, the `.claude` and `.roslyn-mcp` folders should be automatically added to the project's `.gitignore`. Currently, `SetupHooks` creates these folders but doesn't update `.gitignore`, potentially causing users to accidentally commit local Claude configuration.
 
 ## Completed Fixes
 
 ### 1. Added `UpdateGitignore` helper method
-**File:** `src/RoslynTools.AddMember.cs` (added via roslyn_add_member)
+**File:** `src/RoslynTools.AddMember.cs` (added via AddMember)
 
 New private static method that:
 - Creates `.gitignore` with entries if it doesn't exist

@@ -9,12 +9,12 @@ namespace RoslynMcpServer;
 public static partial class RoslynTools
 {
     /// <summary>
-    /// Registers the roslyn_graph_impact tool.
+    /// Registers the GraphImpact tool.
     /// </summary>
     internal static void RegisterGraphImpactTool(McpServer server)
     {
         server.RegisterTool(
-            "roslyn_graph_impact",
+            "GraphImpact",
             new ToolDefinition
             {
                 Description = "Analyzes what code would be affected if a symbol changes. Returns all direct and transitive callers of the symbol. Essential for understanding the blast radius of a change before refactoring.",
@@ -92,15 +92,15 @@ public static partial class RoslynTools
     private static readonly string[] DefaultExcludeFilePatterns = [];
 
     /// <summary>
-    /// Registers the roslyn_find_dead_code tool.
+    /// Registers the FindDeadCode tool.
     /// </summary>
     internal static void RegisterFindDeadCodeTool(McpServer server)
     {
         server.RegisterTool(
-            "roslyn_find_dead_code",
+            "FindDeadCode",
             new ToolDefinition
             {
-                Description = "Finds potentially dead code - methods and properties with no callers. Excludes common entry points, properties with attributes, and properties on pure model/DTO classes (detected by structure: only auto-properties, no methods). Use roslyn_graph_analyze first to build the graph.",
+                Description = "Finds potentially dead code - methods and properties with no callers. Excludes common entry points, properties with attributes, and properties on pure model/DTO classes (detected by structure: only auto-properties, no methods). Use GraphAnalyze first to build the graph.",
                 InputSchema = new
                 {
                     type = "object",
@@ -181,7 +181,7 @@ public static partial class RoslynTools
             return new GraphImpactResult
             {
                 Success = false,
-                Error = "No graph database exists. Use roslyn_graph_analyze first."
+                Error = "No graph database exists. Use GraphAnalyze first."
             };
         }
 
@@ -278,7 +278,7 @@ public static partial class RoslynTools
             return new DeadCodeResult
             {
                 Success = false,
-                Error = "No graph database exists. Use roslyn_graph_analyze first."
+                Error = "No graph database exists. Use GraphAnalyze first."
             };
         }
 

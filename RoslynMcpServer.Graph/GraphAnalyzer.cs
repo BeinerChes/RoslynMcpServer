@@ -514,7 +514,7 @@ public sealed class GraphAnalyzer
 
     private static string GetQualifiedName(ISymbol symbol)
     {
-        // Use default ToDisplayString() to match the format used by roslyn_find_symbol
+        // Use default ToDisplayString() to match the format used by FindSymbol
         return symbol.ToDisplayString();
     }
 

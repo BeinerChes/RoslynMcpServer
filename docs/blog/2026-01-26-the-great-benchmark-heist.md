@@ -35,20 +35,20 @@ A proper test of a developer's toolkit, I thought.
 
 With characteristic precision, Claude set about redesigning the benchmark framework itself. The previous approach had suffered from several maladies:
 
-1. **Bloated responses** - `roslyn_get_type_members` was returning unnecessary knowledge entries, inflating context by 16K tokens
+1. **Bloated responses** - `GetTypeMembers` was returning unnecessary knowledge entries, inflating context by 16K tokens
 2. **Missing costs** - Nobody knew how much these operations actually cost
 3. **Unfair comparison** - The MCP version wasn't accounting for instruction overhead
 
 Claude's solution was methodical:
 
 **Phase One: Fix the Tools**
-- Removed knowledge fetching from `roslyn_get_type_members` (unnecessary clutter)
+- Removed knowledge fetching from `GetTypeMembers` (unnecessary clutter)
 - Created Issue #111, implemented the fix, closed it
 - Reduced response size dramatically
 
 **Phase Two: Fair Measurement**
 - Added token cost tracking to the benchmark prompts
-- Added Step 0 to MCP benchmark: call `roslyn_get_instructions` for "tools" and "code" topics
+- Added Step 0 to MCP benchmark: call `GetInstructions` for "tools" and "code" topics
 - This would capture the instruction overhead that native tools don't incur
 
 **Phase Three: Realistic Task**
@@ -65,10 +65,10 @@ The token tracker was enhanced to track costs per operation, and all results wer
 
 With great patience, Claude ran the MCP benchmark. I observed as the Roslyn tools worked their semantic magic:
 
-- `roslyn_get_type_members` found 155 members in 489 tokens
-- `roslyn_get_callers` traced 18 exact call sites across 12 files
-- `roslyn_graph_impact` identified 44 affected symbols
-- `roslyn_find_dead_code` discovered 20 unused methods in the entire solution
+- `GetTypeMembers` found 155 members in 489 tokens
+- `GetCallers` traced 18 exact call sites across 12 files
+- `GraphImpact` identified 44 affected symbols
+- `FindDeadCode` discovered 20 unused methods in the entire solution
 
 The results were impressive: **89.3K tokens, $9.52 cost, all 11 steps completed.**
 
@@ -199,7 +199,7 @@ python "docs/benchmark/token_tracker.py" cost <MARK>
 ```
 
 **Key tools compared:**
-- MCP: `roslyn_find_dead_code`, `roslyn_get_callers`, `roslyn_graph_impact`, `roslyn_rename_symbol`
+- MCP: `FindDeadCode`, `GetCallers`, `GraphImpact`, `RenameSymbol`
 - Native: `Grep`, `Glob`, `Read`, `Edit`, `Bash`
 
 **Test solution:** Atlas3.sln (36 projects, ~500K lines of C#)

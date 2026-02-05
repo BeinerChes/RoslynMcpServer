@@ -59,12 +59,12 @@ MCP vs Native tools on enterprise codebase: 47% fewer tokens, 100% accuracy vs 8
 
 | Tool | Purpose |
 |------|---------|
-| `roslyn_find_symbol` | Search for types, methods, properties by name |
-| `roslyn_get_references` | Find all usages of a symbol |
-| `roslyn_get_callers` | Find all call sites of a method |
-| `roslyn_get_implementations` | Find interface implementations |
-| `roslyn_get_type_members` | List all members of a class |
-| `roslyn_get_method_body` | Get source code of a method |
+| `FindSymbol` | Search for types, methods, properties by name |
+| `GetReferences` | Find all usages of a symbol |
+| `GetCallers` | Find all call sites of a method |
+| `GetImplementations` | Find interface implementations |
+| `GetTypeMembers` | List all members of a class |
+| `GetMethodBody` | Get source code of a method |
 
 </details>
 
@@ -73,12 +73,12 @@ MCP vs Native tools on enterprise codebase: 47% fewer tokens, 100% accuracy vs 8
 
 | Tool | Purpose |
 |------|---------|
-| `roslyn_update_method` | Replace a method's implementation |
-| `roslyn_add_member` | Add method/property/field to a type |
-| `roslyn_add_type` | Create new class/interface/struct |
-| `roslyn_delete_member` | Remove a member from a type |
-| `roslyn_rename_symbol` | Rename across entire solution |
-| `roslyn_extract_method` | Extract code into new method |
+| `UpdateMethod` | Replace a method's implementation |
+| `AddMember` | Add method/property/field to a type (`auto=true` for AI generation) |
+| `AddType` | Create new class/interface/struct |
+| `DeleteMember` | Remove a member from a type |
+| `RenameSymbol` | Rename across entire solution |
+| `ExtractMethod` | Extract code into new method |
 
 </details>
 
@@ -87,10 +87,10 @@ MCP vs Native tools on enterprise codebase: 47% fewer tokens, 100% accuracy vs 8
 
 | Tool | Purpose |
 |------|---------|
-| `roslyn_get_diagnostics` | Get compiler errors and warnings |
-| `roslyn_apply_code_fix` | Apply Roslyn's suggested fix |
-| `roslyn_batch_apply_code_fixes` | Fix all issues of a specific type |
-| `roslyn_remove_unnecessary_usings` | Clean up unused usings |
+| `GetDiagnostics` | Get compiler errors and warnings |
+| `ApplyCodeFix` | Apply Roslyn's suggested fix |
+| `BatchApplyCodeFixes` | Fix all issues of a specific type |
+| `RemoveUnnecessaryUsings` | Clean up unused usings |
 
 </details>
 
@@ -99,10 +99,10 @@ MCP vs Native tools on enterprise codebase: 47% fewer tokens, 100% accuracy vs 8
 
 | Tool | Purpose |
 |------|---------|
-| `roslyn_graph_analyze` | Build call graph database |
-| `roslyn_query_graph` | Query callers/callees recursively |
-| `roslyn_graph_impact` | Analyze blast radius of changes |
-| `roslyn_find_dead_code` | Find unused methods/properties |
+| `GraphAnalyze` | Build call graph database |
+| `QueryGraph` | Query callers/callees recursively |
+| `GraphImpact` | Analyze blast radius of changes |
+| `FindDeadCode` | Find unused methods/properties |
 
 </details>
 
@@ -111,9 +111,23 @@ MCP vs Native tools on enterprise codebase: 47% fewer tokens, 100% accuracy vs 8
 
 | Tool | Purpose |
 |------|---------|
-| `roslyn_knowledge_add` | Save gotchas, patterns, insights |
-| `roslyn_knowledge_search` | Semantic search for past learnings |
-| `roslyn_knowledge_for_symbol` | Get knowledge linked to a symbol |
+| `KnowledgeAdd` | Save gotchas, patterns, insights |
+| `KnowledgeSearch` | Semantic search for past learnings |
+| `KnowledgeForSymbol` | Get knowledge linked to a symbol |
+
+</details>
+
+<details>
+<summary><strong>Self-Improving Code Generation</strong></summary>
+
+| Tool | Purpose |
+|------|---------|
+| `GenerateMethod` | Generate method body from signature using SharpTinyCoder |
+| `Finetune` | Fine-tune the model on collected corrections |
+
+The server includes **SharpTinyCoder**, a tiny (4.3M parameter) code generation model that runs 100% locally. When Claude Code adds methods via `AddMember(auto=true)`, the model generates the body. Claude reviews and corrects mistakes — those corrections become training data. Call `Finetune()` to improve the model on your codebase's patterns.
+
+See [SharpOps/WORKFLOW.md](SharpOps/WORKFLOW.md) for the full technical explanation.
 
 </details>
 

@@ -1,7 +1,7 @@
-# Plan: Add roslyn_extract_method tool
+# Plan: Add ExtractMethod tool
 
 ## Problem Statement
-Implement `roslyn_extract_method` tool that extracts a code block into a new method using Roslyn's data flow analysis APIs.
+Implement `ExtractMethod` tool that extracts a code block into a new method using Roslyn's data flow analysis APIs.
 
 ## Completed Fixes
 

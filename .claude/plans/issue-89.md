@@ -55,7 +55,7 @@ Phase 3 complete. All 3 service extractions done. Consider task #4 as a review/c
 
 ## Workflow Reminder (MANDATORY)
 After each fix:
-1. Run `roslyn_get_diagnostics` to check for errors
+1. Run `GetDiagnostics` to check for errors
 2. **MANDATORY: Re-read and follow CLAUDE.md**
 3. **Update this plan**
 4. Keep working until issue is resolved

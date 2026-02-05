@@ -12,7 +12,7 @@ Read/Edit hooks for C# files are soft suggestions (exit 0). Need to make them ha
 4. Update README.md hook enforcement table
 
 ### Token already works:
-- `roslyn_get_instructions("tools")` already writes `roslyn-tools-token-{hash}`
+- `GetInstructions("tools")` already writes `roslyn-tools-token-{hash}`
 - Hooks already check for this token
 - Just need to change exit code from 0 to 2
 

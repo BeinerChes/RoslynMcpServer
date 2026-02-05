@@ -2,7 +2,7 @@
 
 ## Problem Statement
 
-`roslyn_query_graph` fails to find constructors when queried with `.ctor` syntax because:
+`QueryGraph` fails to find constructors when queried with `.ctor` syntax because:
 - Roslyn's `ToDisplayString()` returns `Namespace.Type.Type(params)` for constructors
 - Users query with `Namespace.Type..ctor(params)`
 - The SQL pattern matching doesn't handle this translation
@@ -66,7 +66,7 @@ Passed!  - Failed: 0, Passed: 6, Skipped: 0, Total: 6
 
 ## Workflow Reminder (MANDATORY)
 After each fix:
-1. Run `roslyn_get_diagnostics` to check for errors
+1. Run `GetDiagnostics` to check for errors
 2. Re-read and follow CLAUDE.md
 3. Update this plan
 4. Keep working until issue is resolved

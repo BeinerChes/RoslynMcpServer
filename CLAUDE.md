@@ -6,9 +6,9 @@
 
 Call these at the start of each session:
 ```
-roslyn_get_instructions(topic: "plan")
-roslyn_get_instructions(topic: "tools")
-roslyn_get_instructions(topic: "git")
+GetInstructions(topic: "plan")
+GetInstructions(topic: "tools")
+GetInstructions(topic: "git")
 ```
 
 ## IMPORTANT: Self-Referential Project
@@ -44,7 +44,7 @@ This project **uses itself** for development. There are TWO copies of hooks and 
 | Hook added/modified | `.claude/hooks/` (edit), then sync to `Instructions/Hooks/` |
 | Skill added/modified | `.claude/skills/` (edit), then sync to `Instructions/Skills/` |
 
-**Note:** Template (`Instructions/Templates/CLAUDE.md`) fetches instructions dynamically via `roslyn_get_instructions` - no updates needed for tool/workflow changes.
+**Note:** Template (`Instructions/Templates/CLAUDE.md`) fetches instructions dynamically via `GetInstructions` - no updates needed for tool/workflow changes.
 
 ## MANDATORY: Pre-Commit Sync Check
 
@@ -83,13 +83,21 @@ dotnet test            # Run tests
 
 ### Rebuilding After Code Changes
 
-The MCP server runs as a background process and locks the exe. **Before rebuilding, kill it automatically:**
+This project uses itself as its own MCP server. After code changes, you MUST rebuild and redeploy:
 
 ```bash
+# 1. Kill running MCP server (it locks the exe)
 taskkill //F //IM RoslynMcpServer.exe
+
+# 2. Build
 dotnet build
+
+# 3. Deploy to .roslyn-mcp/ (where the MCP server runs from)
+cp -r bin/Debug/net10.0/* .roslyn-mcp/
+
+# 4. Tell the user to reconnect MCP
 ```
 
-After successful build, tell the user: "Reconnect MCP with `/mcp` → reconnect roslyn"
+After successful build + deploy, tell the user: **"Reconnect MCP with `/mcp` → reconnect roslyn"**
 
 **Do NOT ask the user to kill processes** - just do it.

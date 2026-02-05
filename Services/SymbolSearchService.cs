@@ -12,8 +12,7 @@ public class SymbolSearchService
         string pattern,
         SymbolKindFilter kindFilter = SymbolKindFilter.All,
         MatchType matchType = MatchType.Contains,
-        int maxResults = 100,
-        bool compact = true)
+        int maxResults = 100)
     {
         Console.Error.WriteLine($"Searching for symbols matching '{pattern}'...");
 
@@ -45,18 +44,11 @@ public class SymbolSearchService
 
             var info = new SymbolInfo
             {
-                // Core fields - always included
                 Name = symbol.Name,
                 FullyQualifiedName = symbol.ToDisplayString(),
                 Kind = GetSymbolKind(symbol),
                 FilePath = lineSpan?.Path,
-                Line = lineSpan?.StartLinePosition.Line + 1, // 1-based
-                                                             // Optional fields - only in detailed mode
-                Column = compact ? null : lineSpan?.StartLinePosition.Character + 1,
-                ContainingType = compact ? null : symbol.ContainingType?.ToDisplayString(),
-                Accessibility = compact ? null : symbol.DeclaredAccessibility.ToString(),
-                IsStatic = compact ? null : symbol.IsStatic,
-                Signature = compact ? null : GetSignature(symbol)
+                Line = lineSpan?.StartLinePosition.Line + 1,
             };
 
             results.Add(info);

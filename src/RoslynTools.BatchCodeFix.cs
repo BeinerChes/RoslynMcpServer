@@ -9,12 +9,12 @@ public static partial class RoslynTools
     private static void RegisterBatchApplyCodeFix(McpServer server)
     {
         server.RegisterTool(
-            "roslyn_batch_apply_code_fixes",
+            "BatchApplyCodeFixes",
             new ToolDefinition
             {
                 Description = "Batch applies Roslyn code fixes for all diagnostics of a specific type. " +
                               "Much faster than applying fixes one by one - loads solution once, applies all fixes in memory, " +
-                              "then writes changes to disk. Use roslyn_get_diagnostics first to find diagnostic IDs with fixAvailable: true.",
+                              "then writes changes to disk. Use GetDiagnostics first to find diagnostic IDs with fixAvailable: true.",
                 InputSchema = new
                 {
                     type = "object",

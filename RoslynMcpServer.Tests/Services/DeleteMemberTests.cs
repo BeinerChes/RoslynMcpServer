@@ -1,7 +1,7 @@
 namespace RoslynMcpServer.Tests.Services;
 
 /// <summary>
-/// Tests for the roslyn_delete_member tool.
+/// Tests for the DeleteMember tool.
 /// Issue: #39
 /// </summary>
 public class DeleteMemberTests : IAsyncLifetime

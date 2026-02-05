@@ -57,7 +57,7 @@ Overall: **Healthy codebase** with minor cleanup opportunities.
 ### 1. Fix CA1861: Constant Arrays as Arguments (80 instances)
 **Location:** Various files
 **Issue:** Creating new arrays repeatedly in method calls
-**Fix:** `roslyn_batch_apply_code_fixes(solutionPath, "CA1861")`
+**Fix:** `BatchApplyCodeFixes(solutionPath, "CA1861")`
 **Effort:** Auto-fixable
 
 ### 2. Fix CA1816: Dispose Pattern (4 instances)
@@ -75,11 +75,11 @@ Overall: **Healthy codebase** with minor cleanup opportunities.
 ## Medium Priority (P2)
 
 ### 4. Remove Unnecessary Usings (CS8019: 38 instances)
-**Fix:** `roslyn_batch_apply_code_fixes(solutionPath, "CS8019")`
+**Fix:** `BatchApplyCodeFixes(solutionPath, "CS8019")`
 **Effort:** Auto-fixable
 
 ### 5. Mark Members as Static (CA1822: 38 instances)
-**Fix:** `roslyn_batch_apply_code_fixes(solutionPath, "CA1822")`
+**Fix:** `BatchApplyCodeFixes(solutionPath, "CA1822")`
 **Effort:** Auto-fixable
 
 ### 6. Review Web Project Usage

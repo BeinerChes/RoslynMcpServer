@@ -1,10 +1,10 @@
-# Plan: Add roslyn_add_type tool for creating new classes/files
+# Plan: Add AddType tool for creating new classes/files
 
 GitHub Issue: https://github.com/BeinerChes/RoslynMcpServer/issues/85
 
 ## Problem Statement
 
-Add a new `roslyn_add_type` tool that creates new C# types (class, interface, struct, record, enum) with:
+Add a new `AddType` tool that creates new C# types (class, interface, struct, record, enum) with:
 - Proper file placement based on project structure
 - Namespace inference from project/folder
 - Roslyn-based code generation for consistency
@@ -23,7 +23,7 @@ Add a new `roslyn_add_type` tool that creates new C# types (class, interface, st
 
 ### 3. Created tool registration
 **File:** `src/RoslynTools.AddType.cs`
-- Registered `roslyn_add_type` tool with full parameter schema
+- Registered `AddType` tool with full parameter schema
 
 ### 4. Registered tool
 **File:** `src/RoslynTools.cs`

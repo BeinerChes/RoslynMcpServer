@@ -46,21 +46,21 @@ Fix IDisposable leak: "Call System.IDisposable.Dispose on object created by 'Cac
 
 ### Workflow
 ```
-1. roslyn_find_symbol("FeatureLayer", type) → Confirm class location
-2. roslyn_find_symbol("BuildCachedData", member) → Find method with overloads
-3. roslyn_get_method_body("FeatureLayer", "BuildCachedData", "CancellationToken, bool")
+1. FindSymbol("FeatureLayer", type) → Confirm class location
+2. FindSymbol("BuildCachedData", member) → Find method with overloads
+3. GetMethodBody("FeatureLayer", "BuildCachedData", "CancellationToken, bool")
    → Get ONLY the target method (130 lines)
-4. roslyn_update_method(..., newSourceCode)
+4. UpdateMethod(..., newSourceCode)
    → Replace entire method in one operation
 ```
 
 ### Tool Calls
 | Step | Tool | Purpose | Result |
 |------|------|---------|--------|
-| 1 | roslyn_find_symbol | Find class | 1 exact match |
-| 2 | roslyn_find_symbol | Find method | 5 overloads listed |
-| 3 | roslyn_get_method_body | Get method source | 130 lines, structured |
-| 4 | roslyn_update_method | Apply fix | Success, single operation |
+| 1 | FindSymbol | Find class | 1 exact match |
+| 2 | FindSymbol | Find method | 5 overloads listed |
+| 3 | GetMethodBody | Get method source | 130 lines, structured |
+| 4 | UpdateMethod | Apply fix | Success, single operation |
 
 ### Advantages
 - **Semantic understanding**: Roslyn understands code structure, not just text patterns

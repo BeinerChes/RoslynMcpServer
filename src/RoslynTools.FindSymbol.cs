@@ -15,7 +15,7 @@ public static partial class RoslynTools
     private static void RegisterFindSymbolTool(McpServer server)
     {
         server.RegisterTool(
-            "roslyn_find_symbol",
+            "FindSymbol",
             new ToolDefinition
             {
                 Description = "Searches for symbols (types, methods, properties, fields) in a .NET solution by name. Returns fully qualified names, file locations, and signatures. Much faster and more accurate than text search.",
@@ -47,11 +47,6 @@ public static partial class RoslynTools
                             description = "Maximum number of results to return. Default: 100",
                             minimum = 1,
                             maximum = 1000
-                        },
-                        compact = new
-                        {
-                            type = "boolean",
-                            description = "Return minimal fields only (name, qualifiedName, kind, file, line). Default: true. Set to false for detailed info (column, containingType, accessibility, isStatic, signature)"
                         }
                     },
                     required = new[] { "pattern" }
@@ -79,10 +74,9 @@ public static partial class RoslynTools
         var symbolKind = ParseSymbolKindFilter(GetOptionalString(args, "symbolKind", "all"));
         var matchType = ParseMatchType(GetOptionalString(args, "matchType", "contains"));
         var maxResults = GetOptionalInt(args, "maxResults", 100);
-        var compact = GetOptionalBool(args, "compact", true);
 
         var result = await _analyzerService!.SearchSymbolsAsync(
-            solutionPath!, pattern, symbolKind, matchType, maxResults, compact);
+            solutionPath!, pattern, symbolKind, matchType, maxResults);
 
         var response = await BuildFindSymbolResponseAsync(solutionPath!, result);
         return CreateSuccessResponse(response, !result.Success);

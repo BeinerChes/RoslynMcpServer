@@ -12,7 +12,7 @@ public static partial class RoslynTools
     private static void RegisterGetMethodBodyTool(McpServer server)
     {
         server.RegisterTool(
-            "roslyn_get_method_body",
+            "GetMethodBody",
             new ToolDefinition
             {
                 Description = "Gets the full source code of a method including its implementation. Returns the complete method text that can be edited and applied back. Essential for working with large classes without reading the entire file.",

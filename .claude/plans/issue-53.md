@@ -17,16 +17,16 @@ Add a knowledge base system that stores learnings, gotchas, and insights about c
 - [x] Implement `SmartComponentsEmbeddingProvider`
 
 ### Phase 2: Basic Tools ✅
-- [x] Add `roslyn_knowledge_add` tool
-- [x] Add `roslyn_knowledge_search` tool
-- [x] Add `roslyn_knowledge_list` tool (view all entries)
-- [x] Add `roslyn_knowledge_delete` tool
-- [x] Add `roslyn_knowledge_for_symbol` tool
+- [x] Add `KnowledgeAdd` tool
+- [x] Add `KnowledgeSearch` tool
+- [x] Add `KnowledgeList` tool (view all entries)
+- [x] Add `KnowledgeDelete` tool
+- [x] Add `KnowledgeForSymbol` tool
 
 ### Phase 3: Integration ✅
-- [x] Integrate into `roslyn_get_method_body` - returns linked knowledge
-- [x] Integrate into `roslyn_get_type_members` - returns type-level knowledge
-- [x] Add knowledge flags to `roslyn_find_symbol` - `hasKnowledge` flag on results
+- [x] Integrate into `GetMethodBody` - returns linked knowledge
+- [x] Integrate into `GetTypeMembers` - returns type-level knowledge
+- [x] Add knowledge flags to `FindSymbol` - `hasKnowledge` flag on results
 
 ### Phase 4: Advanced Features (Future)
 - [ ] Add `roslyn_knowledge_context` for task-based retrieval
@@ -61,7 +61,7 @@ Add a knowledge base system that stores learnings, gotchas, and insights about c
 
 ## Workflow Reminder (MANDATORY)
 After each fix:
-1. Run `roslyn_get_diagnostics` to check for errors
+1. Run `GetDiagnostics` to check for errors
 2. **MANDATORY: Re-read and follow CLAUDE.md**
 3. **Update this plan**
 4. Keep working until issue is resolved

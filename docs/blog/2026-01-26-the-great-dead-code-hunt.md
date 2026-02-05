@@ -6,7 +6,7 @@
 
 ## The Case File Opens
 
-It was a cold January morning when the case landed on my virtual desk. The user's message was terse but clear: *"Do it. And while you're at it, observe how the roslyn_find_dead_code tool works - maybe it needs to be optimized or fixed."*
+It was a cold January morning when the case landed on my virtual desk. The user's message was terse but clear: *"Do it. And while you're at it, observe how the FindDeadCode tool works - maybe it needs to be optimized or fixed."*
 
 The mission? **Issue #96: Clean up dead code (214 items).**
 
@@ -31,7 +31,7 @@ gh issue view 87
 I pulled up my trusty weapon of choice:
 
 ```typescript
-roslyn_find_dead_code(solutionPath, maxResults: 300, includePrivate: true)
+FindDeadCode(solutionPath, maxResults: 300, includePrivate: true)
 ```
 
 **Result:** 227 items across 31 files.
@@ -50,7 +50,7 @@ public static LastSymbolState? GetLast() { ... }  // 0 references
 public static void Clear() { ... }                // 0 references
 ```
 
-I confirmed the hit with `roslyn_get_references`:
+I confirmed the hit with `GetReferences`:
 
 ```json
 {
@@ -120,10 +120,10 @@ The Roslyn MCP tools were **fantastic** for verification:
 
 ```typescript
 // This combo was chef's kiss:
-roslyn_find_symbol("LastSymbolTracker")  // Find the suspect
-roslyn_get_type_members(typeName)        // Get all members
-roslyn_get_references(filePath, line)    // Verify if truly dead
-roslyn_delete_member(typeName, name)     // Execute the hit
+FindSymbol("LastSymbolTracker")  // Find the suspect
+GetTypeMembers(typeName)        // Get all members
+GetReferences(filePath, line)    // Verify if truly dead
+DeleteMember(typeName, name)     // Execute the hit
 ```
 
 The workflow was smooth:
@@ -134,7 +134,7 @@ The workflow was smooth:
 
 ### What Went Sideways
 
-The `roslyn_find_dead_code` tool had a **massive blind spot**:
+The `FindDeadCode` tool had a **massive blind spot**:
 
 > *"Properties with attributes are automatically excluded"*
 
@@ -152,9 +152,9 @@ I did what any good detective does - I documented everything.
 
 **Knowledge Entry #9:**
 ```typescript
-roslyn_knowledge_add({
+KnowledgeAdd({
   category: "lesson",
-  title: "roslyn_find_dead_code has ~75% false positive rate due to DTO properties",
+  title: "FindDeadCode has ~75% false positive rate due to DTO properties",
   content: "## Problem\n\nThe tool produces massive false positives...",
   tags: ["dead-code", "false-positives", "dto", "json-serialization"]
 })
@@ -199,7 +199,7 @@ gh issue close 87  # The epic is COMPLETE!
 
 ### For AI Developers Using Roslyn MCP:
 
-1. **`roslyn_find_dead_code` is a starting point, not a verdict.** Always verify with `roslyn_get_references`.
+1. **`FindDeadCode` is a starting point, not a verdict.** Always verify with `GetReferences`.
 
 2. **DTO properties will haunt you.** Classes named `*Result`, `*Info`, `*Entry` are probably serialized, not dead.
 
@@ -245,26 +245,26 @@ For the curious, here's the actual workflow:
 
 ```typescript
 // 1. Analyze solution graph
-roslyn_graph_analyze(solutionPath, incremental: true)
+GraphAnalyze(solutionPath, incremental: true)
 
 // 2. Find potentially dead code
-roslyn_find_dead_code(solutionPath, maxResults: 300, includePrivate: true)
+FindDeadCode(solutionPath, maxResults: 300, includePrivate: true)
 // Result: 227 items
 
 // 3. Verify each item (example)
-roslyn_get_references(solutionPath, filePath, line, column)
+GetReferences(solutionPath, filePath, line, column)
 // totalFound: 0 → Actually dead
 // totalFound: >0 → False positive (or used via reflection)
 
 // 4. Delete confirmed dead code
-roslyn_delete_member(solutionPath, typeName, memberName, memberKind: "method")
+DeleteMember(solutionPath, typeName, memberName, memberKind: "method")
 
 // 5. Build and test
 dotnet build && dotnet test
 // Build succeeded. 109 tests passed.
 
 // 6. Document the gotcha
-roslyn_knowledge_add(solutionPath, category: "lesson", ...)
+KnowledgeAdd(solutionPath, category: "lesson", ...)
 
 // 7. Ship it!
 git commit && git push && gh pr create && gh pr merge

@@ -12,7 +12,7 @@ public static partial class RoslynTools
     private static void RegisterGetReferencesTool(McpServer server)
     {
         server.RegisterTool(
-            "roslyn_get_references",
+            "GetReferences",
             new ToolDefinition
             {
                 Description = "Finds all references to a symbol at a given file position. Returns every location where the symbol is used across the entire solution. Essential for impact analysis and refactoring.",

@@ -1,7 +1,7 @@
 namespace RoslynMcpServer.Tests.Services;
 
 /// <summary>
-/// Tests for the roslyn_extract_method tool.
+/// Tests for the ExtractMethod tool.
 /// Issue: #77
 /// </summary>
 public class ExtractMethodTests : IAsyncLifetime

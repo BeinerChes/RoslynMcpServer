@@ -8,15 +8,13 @@ namespace RoslynMcpServer;
 
 public partial class SolutionAnalyzerService
 {
-    /// <summary>
-    /// Updates a method's source code in place.
-    /// </summary>
     public static async Task<UpdateMethodResult> UpdateMethodAsync(
-        string solutionPath,
-        string typeName,
-        string methodName,
-        string newSourceCode,
-        string? parameterTypes = null)
+    string solutionPath,
+    string typeName,
+    string methodName,
+    string newSourceCode,
+    string? parameterTypes = null,
+    string? comment = null)
     {
         EnsureMSBuildRegistered();
 
@@ -201,16 +199,31 @@ public partial class SolutionAnalyzerService
             var leadingTrivia = methodNode.GetLeadingTrivia();
             var trailingTrivia = methodNode.GetTrailingTrivia();
 
+            // Strip old XML doc trivia if comment is provided (will be re-added below)
+            if (comment != null)
+            {
+                leadingTrivia = new SyntaxTriviaList(leadingTrivia
+                    .Where(t => !t.IsKind(SyntaxKind.SingleLineDocumentationCommentTrivia) &&
+                                !t.IsKind(SyntaxKind.MultiLineDocumentationCommentTrivia)));
+            }
+
+            // Apply old leading/trailing trivia first
             var newMethodWithTrivia = newMethodNode
                 .WithLeadingTrivia(leadingTrivia)
                 .WithTrailingTrivia(trailingTrivia);
+
+            // Add XML doc comment AFTER setting trivia, so it doesn't get overwritten
+            if (comment != null && newMethodWithTrivia is MemberDeclarationSyntax newMemberDecl)
+            {
+                newMethodWithTrivia = AddXmlDocComment(newMemberDecl, comment, newSourceCode);
+            }
 
             var newRootNode = root.ReplaceNode(methodNode, newMethodWithTrivia);
 
             // Format the code
             var formattedRoot = Formatter.Format(newRootNode, workspace);
 
-            // Write the updated file - use syntaxTree.FilePath to avoid null dereference
+            // Write the updated file
             var filePath = syntaxTree.FilePath;
             var newText = formattedRoot.ToFullString();
 
@@ -234,6 +247,13 @@ public partial class SolutionAnalyzerService
             else if (newMethodNode is ConstructorDeclarationSyntax newCtor)
             {
                 newSignature = $"{newCtor.Identifier}({string.Join(", ", newCtor.ParameterList.Parameters)})";
+            }
+
+            // Collect fine-tune training data for methods
+            if (newMethodNode is MethodDeclarationSyntax)
+            {
+                _ = Task.Run(() => Services.FinetuneCollector.CollectAsync(
+                    solutionPath, filePath, typeName, targetMethod.Name, comment, parameterTypes));
             }
 
             return new UpdateMethodResult

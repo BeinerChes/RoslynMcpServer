@@ -15,7 +15,7 @@ public static partial class RoslynTools
     private static void RegisterAddTypeTool(McpServer server)
     {
         server.RegisterTool(
-            "roslyn_add_type",
+            "AddType",
             new ToolDefinition
             {
                 Description = "Creates a new type (class, interface, struct, record, enum) in a project. Automatically determines file location based on project structure and infers namespace from project name and folder path. The file is created with proper formatting.",

@@ -20,10 +20,10 @@ public static partial class RoslynTools
         var templateDesc = $"Template name. Available: {string.Join(", ", availableTemplates)}";
 
         server.RegisterTool(
-            "roslyn_get_template",
+            "GetTemplate",
             new ToolDefinition
             {
-                Description = "Returns a CLAUDE.md template for C# development. Users copy this to their project. Templates include instructions to call roslyn_get_instructions for detailed guidance.",
+                Description = "Returns a CLAUDE.md template for C# development. Users copy this to their project. Templates include instructions to call GetInstructions for detailed guidance.",
                 InputSchema = new
                 {
                     type = "object",
@@ -88,7 +88,7 @@ public static partial class RoslynTools
         var topicDesc = $"Topic name. Available: {string.Join(", ", availableTopics)}";
 
         server.RegisterTool(
-            "roslyn_get_instructions",
+            "GetInstructions",
             new ToolDefinition
             {
                 Description = "Returns specific development instructions for C# projects. Call this when the project's CLAUDE.md directs you to get instructions for a topic.",

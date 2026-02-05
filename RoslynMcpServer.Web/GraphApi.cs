@@ -140,7 +140,7 @@ public static class GraphApi
         using var db = new GraphDatabase(validatedPath!);
         if (!db.Exists())
         {
-            return Results.Ok(new { exists = false, message = "No graph database exists. Run roslyn_graph_analyze first." });
+            return Results.Ok(new { exists = false, message = "No graph database exists. Run GraphAnalyze first." });
         }
 
         await db.OpenAsync();
@@ -217,7 +217,7 @@ public static class GraphApi
         using var db = new GraphDatabase(validatedPath!);
         if (!db.Exists())
         {
-            return Results.NotFound(new { error = "No graph database exists. Run roslyn_graph_analyze first." });
+            return Results.NotFound(new { error = "No graph database exists. Run GraphAnalyze first." });
         }
 
         await db.OpenAsync();

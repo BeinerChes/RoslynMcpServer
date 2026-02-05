@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
-Hook: Enforce calling roslyn_get_instructions("tools") before Read on C# files.
+Hook: Enforce calling GetInstructions("tools") before Read on C# files.
 
 This hook BLOCKS Read operations on .cs files unless a valid tools token exists.
-Forces Claude to use Roslyn MCP tools (roslyn_get_method_body, etc.) for C# code.
+Forces Claude to use Roslyn MCP tools (GetMethodBody, etc.) for C# code.
 
 Tokens are stored in .roslyn-mcp/ folder and valid for 1 minute.
 
 Flow:
-1. roslyn_get_instructions("tools") generates a token and writes to .roslyn-mcp/tools-token
+1. GetInstructions("tools") generates a token and writes to .roslyn-mcp/tools-token
 2. This hook reads the token and validates it
 3. If valid, Read is allowed
 4. If invalid/missing, Read is BLOCKED with helpful message
@@ -112,16 +112,16 @@ def main():
     roslyn_dir = find_roslyn_mcp_dir(file_path)
     if not roslyn_dir:
         print('BLOCKED: No .roslyn-mcp directory found.', file=sys.stderr)
-        print('Run: roslyn_get_instructions(topic: "tools")', file=sys.stderr)
-        print('Alternative: Use roslyn_get_method_body or roslyn_get_type_members instead of Read.', file=sys.stderr)
+        print('Run: GetInstructions(topic: "tools")', file=sys.stderr)
+        print('Alternative: Use GetMethodBody or GetTypeMembers instead of Read.', file=sys.stderr)
         sys.exit(2)
 
     # Get the token
     token = get_token(roslyn_dir, 'tools')
     if not token:
         print('BLOCKED: No tools token found.', file=sys.stderr)
-        print('Run: roslyn_get_instructions(topic: "tools")', file=sys.stderr)
-        print('Alternative: Use roslyn_get_method_body or roslyn_get_type_members instead of Read.', file=sys.stderr)
+        print('Run: GetInstructions(topic: "tools")', file=sys.stderr)
+        print('Alternative: Use GetMethodBody or GetTypeMembers instead of Read.', file=sys.stderr)
         sys.exit(2)
 
     # Try HTTP validation first
@@ -136,8 +136,8 @@ def main():
         sys.exit(0)  # Allow
     else:
         print(f'BLOCKED: {message}', file=sys.stderr)
-        print('Run: roslyn_get_instructions(topic: "tools")', file=sys.stderr)
-        print('Alternative: Use roslyn_get_method_body or roslyn_get_type_members instead of Read.', file=sys.stderr)
+        print('Run: GetInstructions(topic: "tools")', file=sys.stderr)
+        print('Alternative: Use GetMethodBody or GetTypeMembers instead of Read.', file=sys.stderr)
         sys.exit(2)
 
 

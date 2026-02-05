@@ -30,7 +30,7 @@ The native benchmark avoided two operations it couldn't properly do:
 
 ### Step 8: Rename Symbol
 
-**What MCP did:** `roslyn_rename_symbol` renamed `ValidateBeforeSave` → `ValidateSaveState` across 2 files automatically.
+**What MCP did:** `RenameSymbol` renamed `ValidateBeforeSave` → `ValidateSaveState` across 2 files automatically.
 
 **What native did:** Claimed "naming is acceptable" and skipped the step entirely.
 
@@ -41,7 +41,7 @@ The native benchmark avoided two operations it couldn't properly do:
 
 ### Step 10: Find Dead Code
 
-**What MCP did:** `roslyn_find_dead_code` analyzed entire solution, found 20 unused methods.
+**What MCP did:** `FindDeadCode` analyzed entire solution, found 20 unused methods.
 
 **What native did:** Grepped for "ValidateBeforeSave" to verify it was called - only checks ONE method.
 

@@ -26,7 +26,7 @@ User input from HTTP query parameters flows directly to `File.Exists()` without 
 - `GetNode()` - now uses IsValidSolutionPath
 
 ## Test Results
-- No compiler errors (verified via roslyn_get_diagnostics)
+- No compiler errors (verified via GetDiagnostics)
 - CA3003 warnings still appear (static analyzer limitation - can't track validation)
 - Build blocked by running processes (file locks), not code issues
 
@@ -43,7 +43,7 @@ Complete! All code changes done and tests passing.
 
 ## Workflow Reminder (MANDATORY)
 After each fix:
-1. Run `roslyn_get_diagnostics` to check for errors
+1. Run `GetDiagnostics` to check for errors
 2. **MANDATORY: Re-read and follow CLAUDE.md**
 3. **Update this plan**
 4. Keep working until issue is resolved

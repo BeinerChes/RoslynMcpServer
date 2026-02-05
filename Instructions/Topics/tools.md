@@ -6,19 +6,21 @@ Hook blocks Read/Edit on .cs files. Use Roslyn tools instead.
 
 | Task | Tool |
 |------|------|
-| Find symbol | `roslyn_find_symbol(pattern)` |
-| See class structure | `roslyn_get_type_members(typeName)` |
-| Read method | `roslyn_get_method_body(typeName, methodName)` |
-| Edit method | `roslyn_update_method(typeName, methodName, newSourceCode)` |
-| Add member | `roslyn_add_member(typeName, memberCode)` |
-| Create type | `roslyn_add_type(projectName, typeName)` |
-| Delete member | `roslyn_delete_member(typeName, memberName)` |
-| Find usages | `roslyn_get_references(filePath, line, column)` |
-| Find callers | `roslyn_get_callers(filePath, line, column)` |
-| Find implementations | `roslyn_get_implementations(typeName)` |
-| Rename | `roslyn_rename_symbol(filePath, line, column, newName)` |
-| Check errors | `roslyn_get_diagnostics()` |
-| Fix warnings | `roslyn_batch_apply_code_fixes(diagnosticId)` |
+| Find symbol | `FindSymbol(pattern)` |
+| See class structure | `GetTypeMembers(typeName)` |
+| Read method | `GetMethodBody(typeName, methodName)` |
+| Edit method | `UpdateMethod(typeName, methodName, newSourceCode, comment?)` |
+| Add member | `AddMember(typeName, memberCode, auto?, comment?)` |
+| Create type | `AddType(projectName, typeName)` |
+| Delete member | `DeleteMember(typeName, memberName)` |
+| Find usages | `GetReferences(filePath, line, column)` |
+| Find callers | `GetCallers(filePath, line, column)` |
+| Find implementations | `GetImplementations(typeName)` |
+| Rename | `RenameSymbol(filePath, line, column, newName)` |
+| Check errors | `GetDiagnostics()` |
+| Fix warnings | `BatchApplyCodeFixes(diagnosticId)` |
+| Generate method | `GenerateMethod(methodSignature, description?, fields?)` |
+| Fine-tune model | `Finetune(dataPath?)` |
 
 ## Native Tools OK For
 
@@ -26,30 +28,67 @@ Hook blocks Read/Edit on .cs files. Use Roslyn tools instead.
 - Glob for file discovery
 - Grep for non-symbol searches (strings, comments, config)
 
+## Adding Methods (auto-generation)
+
+When adding a new method, ALWAYS use AddMember with `auto=true` first:
+```
+AddMember(typeName: "MyClass", memberCode: "public int Add(int a, int b)", auto: true)
+```
+
+The built-in model generates the method body. **You MUST review the result:**
+- If `autoGenerationFailed=true` → model failed, call `UpdateMethod` with your implementation
+- If `autoGenerationFailed=false` → **read `generatedCode` carefully**:
+  - Code is correct → done, move on
+  - Code is wrong or nonsensical → call `UpdateMethod` with the correct implementation
+
+**Why this matters:** Both `AddMember` and `UpdateMethod` collect finetune training data.
+When you correct bad model output via `UpdateMethod`, your correction becomes a training
+example that improves the model over time. Always let the model try first, then fix.
+
+Only use `auto=false` for non-method members (fields, properties, events).
+
+## Fine-Tuning the Model
+
+When enough corrections accumulate, call `Finetune()` to improve the model:
+```
+Finetune()  # Uses default dataset path, runs in background
+```
+
+The model trains on your corrections using LoRA (200 epochs, rank=8, alpha=32). After training:
+- Weights are merged into the base model
+- Model hot-reloads automatically (no MCP restart needed)
+- Training data is archived
+
+Call `Finetune()` again to check status. See [SharpOps/WORKFLOW.md](../../../SharpOps/WORKFLOW.md) for technical details.
+
 ## Patterns
 
 **Explore class → edit method:**
 ```
-roslyn_get_type_members(typeName)
-roslyn_get_method_body(typeName, methodName)
-roslyn_update_method(typeName, methodName, newCode)
+GetTypeMembers(typeName)
+GetMethodBody(typeName, methodName)
+UpdateMethod(typeName, methodName, newCode)
 ```
 
 **Create new type with members:**
 ```
-roslyn_add_type(projectName, typeName, folder: "Services")
-roslyn_add_member(typeName, "public void DoThing() { }")
+AddType(projectName, typeName, folder: "Services")
+AddMember(typeName, "public void DoThing() { }", comment: "Does the thing")
 ```
+
+**XML doc comments:**
+- `AddMember`: Pass `comment` for summary text. Public members get XML doc stubs automatically.
+- `UpdateMethod`: Pass `comment` to replace/add XML doc on the method.
 
 **Impact before refactoring:**
 ```
-roslyn_get_callers(filePath, line, column)
+GetCallers(filePath, line, column)
 ```
 
 ## Knowledge Base
 
 | When | Do |
 |------|----|
-| Learned something non-obvious | `roslyn_knowledge_add(category: "lesson", ...)` |
-| Fixed tricky bug | `roslyn_knowledge_add(category: "error-resolution", ...)` |
-| Starting unfamiliar code | `roslyn_knowledge_search(query)` |
+| Learned something non-obvious | `KnowledgeAdd(category: "lesson", ...)` |
+| Fixed tricky bug | `KnowledgeAdd(category: "error-resolution", ...)` |
+| Starting unfamiliar code | `KnowledgeSearch(query)` |
