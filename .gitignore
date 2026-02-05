@@ -377,3 +377,4 @@ FodyWeavers.xsd
 *.zip
 /publish-test
 .claude/
+/src/.mcp.json
