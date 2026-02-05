@@ -131,7 +131,7 @@ public static partial class RoslynTools
                         {
                             new { type = "text", text = result.Error ?? "Failed to find references" }
                         },
-                        isError = true
+                        isError = false
                     };
                 }
 

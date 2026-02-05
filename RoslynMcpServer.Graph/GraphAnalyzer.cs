@@ -77,6 +77,15 @@ public sealed class GraphAnalyzer
 
             await ProcessTypeMembersAsync(typeDecl, typeSymbol, semanticModel, solutionId, filePath, fileHash);
         }
+
+        // Handle top-level statements (C# 9+) — these produce GlobalStatementSyntax nodes
+        // at the compilation unit level, outside any TypeDeclarationSyntax.
+        // The compiler synthesizes a Program.<Main>$ method for them.
+        var globalStatements = root.ChildNodes().OfType<GlobalStatementSyntax>().ToList();
+        if (globalStatements.Count > 0)
+        {
+            await ProcessGlobalStatementsAsync(globalStatements, semanticModel, solutionId, filePath, fileHash);
+        }
     }
 
     private async Task ProcessTypeMembersAsync(
@@ -633,5 +642,58 @@ public sealed class GraphAnalyzer
         }
 
         return edges;
+    }
+
+    /// <summary>
+    /// Processes top-level statements (C# 9+) by creating a symbol for the synthesized entry point and analyzing call edges from global statements.
+    /// </summary>
+    /// <param name="globalStatements"></param>
+    /// <param name="semanticModel"></param>
+    /// <param name="solutionId"></param>
+    /// <param name="filePath"></param>
+    /// <param name="fileHash"></param>
+    private async Task ProcessGlobalStatementsAsync(
+        List<GlobalStatementSyntax> globalStatements,
+        SemanticModel semanticModel,
+        long solutionId,
+        string filePath,
+        string? fileHash)
+    {
+        // Get the synthesized entry point method (Program.<Main>$)
+        var entryPoint = semanticModel.Compilation.GetEntryPoint(default);
+        if (entryPoint == null) return;
+
+        var qualifiedName = GetQualifiedName(entryPoint);
+        var firstStatement = globalStatements[0];
+        var lineSpan = firstStatement.GetLocation().GetLineSpan();
+
+        var symbolId = await GetOrCreateSymbolAsync(new SymbolRecord
+        {
+            SolutionId = solutionId,
+            Kind = SymbolKind.Method,
+            Name = entryPoint.Name,
+            QualifiedName = qualifiedName,
+            FilePath = filePath,
+            Line = lineSpan.StartLinePosition.Line + 1,
+            Column = lineSpan.StartLinePosition.Character + 1,
+            FileHash = fileHash,
+            Status = SymbolStatus.Analyzed
+        });
+
+        // Analyze each global statement for call edges
+        var edges = new List<EdgeRecord>();
+        foreach (var globalStatement in globalStatements)
+        {
+            foreach (var node in globalStatement.DescendantNodes())
+            {
+                var nodeEdges = await AnalyzeNodeAsync(node, symbolId, solutionId, semanticModel);
+                edges.AddRange(nodeEdges);
+            }
+        }
+
+        if (edges.Count > 0)
+        {
+            await _db.InsertEdgesAsync(edges);
+        }
     }
 }

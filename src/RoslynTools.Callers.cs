@@ -6,10 +6,8 @@ namespace RoslynMcpServer;
 
 public static partial class RoslynTools
 {
-    private static readonly string[] definitionArray1 = ["filePath", "line", "column"];
-
     /// <summary>
-    /// Finds all callers of a method at a given position.
+    /// Finds all callers of a method/property by name.
     /// Uses graph cache when available, with automatic staleness detection and refresh.
     /// </summary>
     private static void RegisterGetCallersTool(McpServer server)
@@ -18,28 +16,16 @@ public static partial class RoslynTools
             "GetCallers",
             new ToolDefinition
             {
-                Description = "Finds all callers of a method/property at a given file position. Unlike get_references, this returns only actual call sites - not declarations, docs, or type references. Essential for understanding execution flow and impact analysis before refactoring.",
+                Description = "Finds all callers of a method/property by name. Unlike get_references, this returns only actual call sites - not declarations, docs, or type references. Essential for understanding execution flow and impact analysis before refactoring.",
                 InputSchema = new
                 {
                     type = "object",
                     properties = new
                     {
-                        filePath = new
+                        symbolName = new
                         {
                             type = "string",
-                            description = "Absolute path to the source file containing the method"
-                        },
-                        line = new
-                        {
-                            type = "integer",
-                            description = "Line number (1-based) where the method is located",
-                            minimum = 1
-                        },
-                        column = new
-                        {
-                            type = "integer",
-                            description = "Column number (1-based) where the method is located",
-                            minimum = 1
+                            description = "Name of the method/property to find callers of. Supports: 'MethodName', 'Type.Method', or 'Namespace.Type.Method'"
                         },
                         maxResults = new
                         {
@@ -65,7 +51,7 @@ public static partial class RoslynTools
                             description = "Filter by file path. Supports wildcards (*). Example: '*Service.cs'"
                         }
                     },
-                    required = new[] { "filePath", "line", "column" }
+                    required = new[] { "symbolName" }
                 },
                 Annotations = new ToolAnnotations
                 {
@@ -84,13 +70,7 @@ public static partial class RoslynTools
         var (solutionPath, solutionError) = GetSolutionPathOrError();
         if (solutionError != null) return solutionError;
 
-        if (!TryGetRequiredString(args, "filePath", out var filePath, out var error))
-            return error!;
-
-        if (!TryGetRequiredInt(args, "line", 1, out var line, out error))
-            return error!;
-
-        if (!TryGetRequiredInt(args, "column", 1, out var column, out error))
+        if (!TryGetRequiredString(args, "symbolName", out var symbolName, out var error))
             return error!;
 
         var maxResults = GetOptionalInt(args, "maxResults", 100);
@@ -104,9 +84,9 @@ public static partial class RoslynTools
         try
         {
             var graphResult = await TryGetCallersFromGraphAsync(
-                solutionPath!, filePath, line, column, maxResults, offset, projectFilter, fileFilter);
+                solutionPath!, symbolName, maxResults, offset, projectFilter, fileFilter);
 
-            if (graphResult != null)
+            if (graphResult != null && graphResult.TotalCallers > 0)
             {
                 result = graphResult;
             }
@@ -118,9 +98,10 @@ public static partial class RoslynTools
 
         if (result == null)
         {
-            // Fall back to live analysis
+            // Fall back to live analysis when graph is unavailable OR returns 0 callers.
+            // Graph may miss callers (e.g., stale graph), so live Roslyn is the source of truth.
             var liveResult = await SolutionAnalyzerService.GetCallersAsync(
-                solutionPath!, filePath, line, column, maxResults, offset, projectFilter, fileFilter);
+                solutionPath!, symbolName, maxResults, offset, projectFilter, fileFilter);
 
             result = new GetCallersResult
             {
@@ -142,7 +123,7 @@ public static partial class RoslynTools
                 {
                     new { type = "text", text = result.Error ?? "Failed to find callers" }
                 },
-                isError = true
+                isError = false
             };
         }
 
@@ -176,9 +157,7 @@ public static partial class RoslynTools
     /// </summary>
     private static async Task<GetCallersResult?> TryGetCallersFromGraphAsync(
         string solutionPath,
-        string filePath,
-        int line,
-        int column,
+        string symbolName,
         int maxResults,
         int offset,
         string? projectFilter,
@@ -194,16 +173,23 @@ public static partial class RoslynTools
         // Ensure graph is fresh before querying (blocking)
         var freshnessResult = await EnsureGraphFreshAsync(db, solution.Id, solutionPath);
 
-        // Get the symbol's qualified name from Roslyn
-        var roslynSolution = await SolutionAnalyzerService.LoadSolutionAsync(solutionPath);
-        if (roslynSolution == null) return null;
+        // Look up symbol in graph by name
+        var searchResult = await db.FindSymbolAsync(solution.Id, symbolName);
+        if (searchResult.Symbol == null)
+        {
+            // Return error with candidates if ambiguous
+            if (searchResult.Candidates?.Count > 0)
+            {
+                return new GetCallersResult
+                {
+                    Success = false,
+                    Error = searchResult.Error
+                };
+            }
+            return null; // Not found, fall back to live
+        }
 
-        var qualifiedName = await SolutionAnalyzerService.GetSymbolQualifiedNameAsync(solutionPath, filePath, line, column);
-        if (string.IsNullOrEmpty(qualifiedName)) return null;
-
-        // Look up symbol in graph
-        var symbol = await db.GetSymbolByQualifiedNameAsync(solution.Id, qualifiedName);
-        if (symbol == null) return null;
+        var symbol = searchResult.Symbol;
 
         // Get callers from fresh graph
         var callers = await db.GetCallersAsync(symbol.Id);
@@ -242,12 +228,12 @@ public static partial class RoslynTools
             .ToList();
 
         // Track for visualization sync
-        LastSymbolTracker.Track(solutionPath, qualifiedName, "member");
+        LastSymbolTracker.Track(solutionPath, symbol.QualifiedName, "member");
 
         return new GetCallersResult
         {
             Success = true,
-            Symbol = qualifiedName,
+            Symbol = symbol.QualifiedName,
             TotalCallers = totalCallers,
             ReturnedCount = paginatedCallers.Count,
             Source = freshnessResult.FilesReanalyzed > 0 ? "graph+refresh" : "graph",

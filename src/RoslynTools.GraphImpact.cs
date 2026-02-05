@@ -595,7 +595,7 @@ public static partial class RoslynTools
         return new
         {
             content = new[] { new { type = "text", text = message } },
-            isError = true
+            isError = false
         };
     }
 }

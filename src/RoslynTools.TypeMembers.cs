@@ -98,7 +98,7 @@ public static partial class RoslynTools
                         {
                             new { type = "text", text = JsonSerializer.Serialize(result, JsonOptions) }
                         },
-                        isError = true
+                        isError = false
                     };
                 }
 

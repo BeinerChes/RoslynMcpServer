@@ -83,7 +83,7 @@ public static partial class RoslynTools
                         {
                             new { type = "text", text = result.Error ?? "Failed to find implementations" }
                         },
-                        isError = true
+                        isError = false
                     };
                 }
 
