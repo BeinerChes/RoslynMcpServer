@@ -20,7 +20,7 @@ This directory contains detailed documentation for each Roslyn MCP tool. Each to
 | **DeleteMember** | ✅ | [DeleteMember.md](DeleteMember.md) | Complete |
 | **AddUsing** | ✅ | [AddUsing.md](AddUsing.md) | Complete |
 | **RemoveUnnecessaryUsings** | ✅ | [RemoveUnnecessaryUsings.md](RemoveUnnecessaryUsings.md) | Complete |
-| **RenameSymbol** | ✅ | *Coming soon* | Pending |
+| **RenameSymbol** | ✅ | [RenameSymbol.md](RenameSymbol.md) | Complete |
 | **ExtractMethod** | ✅ | [ExtractMethod.md](ExtractMethod.md) | Complete |
 
 ### Code Navigation & Exploration
@@ -86,11 +86,11 @@ This directory contains detailed documentation for each Roslyn MCP tool. Each to
 ## Documentation Progress
 
 ### Detailed Documentation
-- ✅ **7/34** tools have detailed docs (UpdateMethod, AddMember, AddType, DeleteMember, AddUsing, RemoveUnnecessaryUsings, ExtractMethod)
-- ⏳ **27/34** remaining
+- ✅ **8/34** tools have detailed docs (UpdateMethod, AddMember, AddType, DeleteMember, AddUsing, RemoveUnnecessaryUsings, ExtractMethod, RenameSymbol)
+- ⏳ **26/34** remaining
 
 ### Claude Code Integration (Instructions/Topics/tools.md)
-- ✅ **19/34** tools documented in quick reference
+- ✅ **19/34** tools documented in quick reference (RenameSymbol already in)
 - ❌ **15/34** tools missing from Claude Code docs
 
 ## Documentation Algorithm
