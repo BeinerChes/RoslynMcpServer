@@ -21,6 +21,7 @@ Hook blocks Read/Edit on .cs files. Use Roslyn tools instead.
 | Find callers | `GetCallers(filePath, line, column)` |
 | Find implementations | `GetImplementations(typeName)` |
 | Rename | `RenameSymbol(filePath, line, column, newName)` |
+| Extract method | `ExtractMethod(filePath, startLine, endLine, methodName, accessibility?)` |
 | Check errors | `GetDiagnostics()` |
 | Fix warnings | `BatchApplyCodeFixes(diagnosticId)` |
 | Generate method | `GenerateMethod(methodSignature, description?, fields?)` |
