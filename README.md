@@ -117,19 +117,29 @@ MCP vs Native tools on enterprise codebase: 47% fewer tokens, 100% accuracy vs 8
 
 </details>
 
-<details>
-<summary><strong>Self-Improving Code Generation</strong></summary>
+</details>
 
-| Tool | Purpose |
-|------|---------|
-| `GenerateMethod` | Generate method body from signature using SharpTinyCoder |
-| `Finetune` | Fine-tune the model on collected corrections |
+---
 
-The server includes **SharpTinyCoder**, a tiny (4.3M parameter) code generation model that runs 100% locally. When Claude Code adds methods via `AddMember(auto=true)`, the model generates the body. Claude reviews and corrects mistakes — those corrections become training data. Call `Finetune()` to improve the model on your codebase's patterns.
+## SharpTinyCoder: Self-Improving Code Generation
+
+The server includes **SharpTinyCoder**, a tiny (4.3M parameter) code generation model that runs 100% locally. When Claude Code adds methods, the model tries first. Claude reviews the output and corrects mistakes — those corrections become training data. Over time, the model learns your codebase's patterns.
+
+```
+You ask Claude Code to add a method
+        ↓
+Claude Code asks the tiny model to try first
+        ↓
+   Model generates code (maybe right, maybe wrong)
+        ↓
+Claude Code reviews it, fixes if needed
+        ↓
+   The correction becomes training data
+        ↓
+   Eventually: fine-tune → model improves
+```
 
 See [SharpOps/WORKFLOW.md](SharpOps/WORKFLOW.md) for the full technical explanation.
-
-</details>
 
 ---
 
