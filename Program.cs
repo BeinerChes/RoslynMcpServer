@@ -67,7 +67,7 @@ static void ShowHelp()
           (none)           Run as MCP server (default)
           --init           Initialize project (.mcp.json + CLAUDE.md)
           --enable-hooks   Enable Roslyn tool suggestions
-          --enable-skills  Enable /architect skill
+          --enable-skills  Enable skills (/doc-tool, /usage-report)
           --version, -v    Show version
           --help, -h       Show this help
 
@@ -171,7 +171,7 @@ static async Task InitializeProject()
         EnableHooks();
     }
 
-    Console.Write("Enable skills? (adds /architect command) [y/N]: ");
+    Console.Write("Enable skills? (adds /doc-tool, /usage-report) [y/N]: ");
     var enableSkills = Console.ReadLine()?.Trim().ToLowerInvariant() == "y";
     if (enableSkills)
     {
@@ -195,11 +195,11 @@ static void EnableHooks()
     Directory.CreateDirectory(hooksDir);
 
     // Copy hook files from exe directory
-    var sourceHooksDir = Path.Combine(exeDir, "hooks");
+    var sourceHooksDir = Path.Combine(exeDir, "Instructions", "Hooks");
     if (!Directory.Exists(sourceHooksDir))
     {
-        Console.Error.WriteLine($"Error: hooks/ folder not found at {sourceHooksDir}");
-        Console.Error.WriteLine("Make sure hooks/ is in the same directory as roslyn-mcp.exe");
+        Console.Error.WriteLine($"Error: Instructions/Hooks/ folder not found at {sourceHooksDir}");
+        Console.Error.WriteLine("Make sure Instructions/Hooks/ is in the same directory as roslyn-mcp.exe");
         Environment.Exit(1);
         return;
     }
@@ -255,11 +255,11 @@ static void EnableSkills()
     Directory.CreateDirectory(skillsDir);
 
     // Copy skills from exe directory
-    var sourceSkillsDir = Path.Combine(exeDir, "skills");
+    var sourceSkillsDir = Path.Combine(exeDir, "Instructions", "Skills");
     if (!Directory.Exists(sourceSkillsDir))
     {
-        Console.Error.WriteLine($"Error: skills/ folder not found at {sourceSkillsDir}");
-        Console.Error.WriteLine("Make sure skills/ is in the same directory as roslyn-mcp.exe");
+        Console.Error.WriteLine($"Error: Instructions/Skills/ folder not found at {sourceSkillsDir}");
+        Console.Error.WriteLine("Make sure Instructions/Skills/ is in the same directory as roslyn-mcp.exe");
         Environment.Exit(1);
         return;
     }
@@ -282,6 +282,6 @@ static void EnableSkills()
 
     Console.WriteLine();
     Console.WriteLine("Skills enabled! Available commands:");
-    Console.WriteLine("  /architect  - Deep code analysis");
-    Console.WriteLine("");
+    Console.WriteLine("  /doc-tool       - Document a Roslyn MCP tool");
+    Console.WriteLine("  /usage-report   - Tool usage analytics");
 }
