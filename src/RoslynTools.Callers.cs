@@ -101,14 +101,22 @@ public static partial class RoslynTools
         GetCallersResult? result = null;
 
         // Try graph cache first
-        var graphResult = await TryGetCallersFromGraphAsync(
-            solutionPath!, filePath, line, column, maxResults, offset, projectFilter, fileFilter);
-
-        if (graphResult != null)
+        try
         {
-            result = graphResult;
+            var graphResult = await TryGetCallersFromGraphAsync(
+                solutionPath!, filePath, line, column, maxResults, offset, projectFilter, fileFilter);
+
+            if (graphResult != null)
+            {
+                result = graphResult;
+            }
         }
-        else
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Graph cache failed, falling back to live analysis: {ex.Message}");
+        }
+
+        if (result == null)
         {
             // Fall back to live analysis
             var liveResult = await SolutionAnalyzerService.GetCallersAsync(

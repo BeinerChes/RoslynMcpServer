@@ -411,13 +411,20 @@ public static partial class RoslynTools
             return result;
         }
 
+        // Phase 1: Delete all stale symbols first.
+        // Must happen before reanalysis to avoid _symbolCache returning
+        // stale IDs that were deleted by a later iteration (FK violation).
+        foreach (var relativePath in filesToRefresh)
+        {
+            await db.DeleteSymbolsByFileAsync(solutionId, relativePath);
+        }
+
+        // Phase 2: Reanalyze all stale files with clean state.
         var analyzer = new GraphAnalyzer(db);
         var reanalyzedFiles = new List<string>();
 
         foreach (var relativePath in filesToRefresh)
         {
-            await db.DeleteSymbolsByFileAsync(solutionId, relativePath);
-
             var absolutePath = Path.Combine(solutionDir, relativePath);
             var document = roslynSolution.Projects
                 .SelectMany(p => p.Documents)
