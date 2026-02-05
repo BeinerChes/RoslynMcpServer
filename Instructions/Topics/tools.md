@@ -36,6 +36,7 @@ Native tools are fine for non-C# files (JSON, XML, markdown, .csproj, etc.), Glo
 
 **Documentation:**
 - Get instructions: `GetInstructions(topic)` — topics: `git`, `plan`, `tools`. Generates hook bypass tokens for git/plan/tools topics.
+- Usage analytics: `GetUsageReport(hours?, toolFilter?)` — aggregated tool usage stats. Server-side processing avoids loading large logs into context.
 
 ## Auto-Generation Workflow
 
