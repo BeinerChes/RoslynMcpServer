@@ -75,36 +75,6 @@ public class ReferenceInfo
 }
 
 /// <summary>
-/// Result of finding implementations.
-/// </summary>
-public class FindImplementationsResult
-{
-    public bool Success { get; init; }
-    public string? Error { get; init; }
-    public string? SolutionPath { get; init; }
-    public TypeInfo? BaseType { get; init; }
-    public int TotalFound { get; init; }
-    public List<ImplementationInfo> Implementations { get; init; } = [];
-}
-
-/// <summary>
-/// Information about an implementing type.
-/// </summary>
-public class ImplementationInfo
-{
-    public required string Name { get; init; }
-    public required string FullyQualifiedName { get; init; }
-    public required string Kind { get; init; }
-    public string? FilePath { get; init; }
-    public int? Line { get; init; }
-    public int? Column { get; init; }
-    public bool IsBaseType { get; init; }
-    public bool IsAbstract { get; init; }
-    public List<string> BaseTypes { get; init; } = [];
-    public List<string> Interfaces { get; init; } = [];
-}
-
-/// <summary>
 /// Result of getting type members.
 /// </summary>
 public class GetTypeMembersResult

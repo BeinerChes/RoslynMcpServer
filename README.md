@@ -62,7 +62,6 @@ MCP vs Native tools on enterprise codebase: 47% fewer tokens, 100% accuracy vs 8
 | `FindSymbol` | Search for types, methods, properties by name. Fuzzy fallback via graph DB when no results found |
 | `GetReferences` | Find all usages of a symbol |
 | `GetCallers` | Find all call sites of a method |
-| `GetImplementations` | Find interface implementations |
 | `GetTypeMembers` | List all members of a class |
 | `GetMethodBody` | Get source code of a method |
 

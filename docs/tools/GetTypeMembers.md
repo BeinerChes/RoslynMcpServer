@@ -315,7 +315,7 @@ Inherited members are annotated with `(from ClassName)`.
 ```
 1. GetTypeMembers(typeName: "Controller", includeInherited: true)
    # See what the base classes provide
-2. GetImplementations(typeName: "IController")
+2. Grep(pattern: ": IController", glob: "*.cs")
    # Find all implementations
 ```
 

@@ -6,7 +6,6 @@
 | `FindSymbol` | `search_symbols` | Find types, methods, properties by name pattern |
 | `GetReferences` | `find_references` | Find all usages of a symbol across solution |
 | `GetCallers` | `find_callers` | Find all call sites of a method |
-| `GetImplementations` | `find_implementations` | Find interface implementations or derived classes |
 | `GetTypeMembers` | `get_type_members` | List all members of a class (methods, properties, fields) |
 | `GetMethodBody` | `get_method_source` | Get full source code of a specific method |
 | — | `get_symbol_info` | Get semantic info at cursor position (type, modifiers, docs) |

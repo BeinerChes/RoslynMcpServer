@@ -11,7 +11,6 @@ Native tools are fine for non-C# files (JSON, XML, markdown, .csproj, etc.), Glo
 - Find symbol definition: `FindSymbol(pattern)` — falls back to fuzzy match via graph DB
 - Find all usages: `GetReferences(filePath, line, column)`
 - Find callers only: `GetCallers(symbolName)` — excludes docs/comments/type refs, only actual call sites
-- Find implementations: `GetImplementations(typeName)`
 
 **Modifying code:**
 - Edit method (full replace): `UpdateMethod(typeName, methodName, newSourceCode)`

@@ -85,7 +85,6 @@ These operations are **impossible** with native tools:
 - `FindDeadCode` - Find all unused methods
 - `GraphImpact` - Trace transitive callers
 - `RenameSymbol` - Rename across entire solution
-- `GetImplementations` - Find all classes implementing an interface
 
 ---
 

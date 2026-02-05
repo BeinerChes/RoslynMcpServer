@@ -15,7 +15,6 @@ allowed-tools:
   - mcp__roslyn__FindSymbol
   - mcp__roslyn__GetReferences
   - mcp__roslyn__GetCallers
-  - mcp__roslyn__GetImplementations
   - mcp__roslyn__GetTypeMembers
   - mcp__roslyn__GetMethodBody
   - mcp__roslyn__GetDiagnostics
@@ -100,9 +99,6 @@ When analyzing a specific class, perform this focused deep dive:
 
 3. Analyze impact (what breaks if this changes):
    GraphImpact(solutionPath, symbolName: "Namespace.ClassName")
-
-4. Check for implementations (if interface/base class):
-   GetImplementations(solutionPath, typeName)
 
 5. Get diagnostics for this type:
    GetDiagnostics(solutionPath) - filter to files containing this type
