@@ -29,7 +29,7 @@ This directory contains detailed documentation for each Roslyn MCP tool. Each to
 |------|--------------|---------------|--------|
 | **FindSymbol** | ✅ | [FindSymbol.md](FindSymbol.md) | Complete |
 | **GetTypeMembers** | ✅ | [GetTypeMembers.md](GetTypeMembers.md) | Complete |
-| **GetMethodBody** | ✅ | *Coming soon* | Pending |
+| **GetMethodBody** | ✅ | [GetMethodBody.md](GetMethodBody.md) | Complete |
 | **GetReferences** | ✅ | *Coming soon* | Pending |
 | **GetCallers** | ✅ | *Coming soon* | Pending |
 | **GetImplementations** | ✅ | *Coming soon* | Pending |
@@ -86,8 +86,8 @@ This directory contains detailed documentation for each Roslyn MCP tool. Each to
 ## Documentation Progress
 
 ### Detailed Documentation
-- ✅ **10/34** tools have detailed docs (UpdateMethod, AddMember, AddType, DeleteMember, AddUsing, RemoveUnnecessaryUsings, ExtractMethod, RenameSymbol, FindSymbol, GetTypeMembers)
-- ⏳ **24/34** remaining
+- ✅ **11/34** tools have detailed docs (UpdateMethod, AddMember, AddType, DeleteMember, AddUsing, RemoveUnnecessaryUsings, ExtractMethod, RenameSymbol, FindSymbol, GetTypeMembers, GetMethodBody)
+- ⏳ **23/34** remaining
 
 ### Claude Code Integration (Instructions/Topics/tools.md)
 - ✅ **19/34** tools documented in quick reference (FindSymbol already in)
