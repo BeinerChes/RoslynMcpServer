@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -6,9 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <RootNamespace>RoslynMcpServer</RootNamespace>
-    <Version>1.0.7</Version>
-    <!-- Exclude sub-projects from compilation -->
-    <DefaultItemExcludes>$(DefaultItemExcludes);RoslynMcpServer.Tests\**;RoslynMcpServer.Graph\**;RoslynMcpServer.Web\**;SharpTinyCoder.DataExtractor\**;SharpOps\**;SharpOps.Examples\**;SharpOps.Training\**;SharpOps.Torch\**</DefaultItemExcludes>
+    <Version>1.0.8</Version>
   </PropertyGroup>
 
   <!-- Single-file publish settings -->
@@ -21,9 +19,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="RoslynMcpServer.Graph\RoslynMcpServer.Graph.csproj" />
-    <ProjectReference Include="SharpOps\SharpOps.csproj" />
-    <ProjectReference Include="SharpOps.Torch\SharpOps.Torch.csproj" />
+    <ProjectReference Include="..\RoslynMcpServer.Graph\RoslynMcpServer.Graph.csproj" />
+    <ProjectReference Include="..\SharpOps\SharpOps.csproj" />
+    <ProjectReference Include="..\SharpOps.Torch\SharpOps.Torch.csproj" />
   </ItemGroup>
 
   <!-- Copy SharpTinyCoder model files to output directory -->
@@ -52,6 +50,7 @@
     <PackageReference Include="Microsoft.Build" ExcludeAssets="runtime" PrivateAssets="all" />
     <PackageReference Include="Microsoft.Build.Tasks.Core" ExcludeAssets="runtime" PrivateAssets="all" />
     <PackageReference Include="SmartComponents.LocalEmbeddings" />
+    <PackageReference Include="System.Text.Json" />
   </ItemGroup>
 
   <!-- Copy .NET Analyzers to output directory for self-contained deployment -->
