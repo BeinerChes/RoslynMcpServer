@@ -8,76 +8,7 @@ namespace RoslynMcpServer;
 /// </summary>
 public static partial class RoslynTools
 {
-    private static readonly string[] RequiredTemplate = ["template"];
     private static readonly string[] RequiredTopic = ["topic"];
-
-    /// <summary>
-    /// Returns a CLAUDE.md template for users to copy to their project.
-    /// </summary>
-    private static void RegisterGetTemplateTool(McpServer server)
-    {
-        var availableTemplates = Instructions.Templates.Available;
-        var templateDesc = $"Template name. Available: {string.Join(", ", availableTemplates)}";
-
-        server.RegisterTool(
-            "GetTemplate",
-            new ToolDefinition
-            {
-                Description = "Returns a CLAUDE.md template for C# development. Users copy this to their project. Templates include instructions to call GetInstructions for detailed guidance.",
-                InputSchema = new
-                {
-                    type = "object",
-                    properties = new
-                    {
-                        template = new
-                        {
-                            type = "string",
-                            description = templateDesc,
-                            @enum = availableTemplates
-                        }
-                    },
-                    required = RequiredTemplate
-                },
-                Annotations = new ToolAnnotations
-                {
-                    ReadOnlyHint = true,
-                    IdempotentHint = true
-                }
-            },
-            async args =>
-            {
-                var templateName = args?["template"]?.GetValue<string>()?.ToLowerInvariant() ?? "claude";
-                var template = Instructions.Templates.Get(templateName);
-
-                if (template == null)
-                {
-                    return new
-                    {
-                        content = new[]
-                        {
-                            new { type = "text", text = $"Error: Unknown template '{templateName}'. Available: {string.Join(", ", Instructions.Templates.Available)}" }
-                        },
-                        isError = false
-                    };
-                }
-
-                var result = new
-                {
-                    template = templateName,
-                    availableTemplates = Instructions.Templates.Available,
-                    content = template,
-                    usage = "Copy the content above to a CLAUDE.md file in your project root."
-                };
-
-                return new
-                {
-                    content = new[]
-                    {
-                        new { type = "text", text = JsonSerializer.Serialize(result, JsonOptions) }
-                    }
-                };
-            });
-    }
 
     /// <summary>
     /// Returns specific development instructions on-demand.

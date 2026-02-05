@@ -105,17 +105,13 @@ public static partial class RoslynTools
         RegisterRenameSymbolTool(server);
         RegisterExtractMethodTool(server);
         RegisterFindDeadCodeTool(server);
-        RegisterGetTemplateTool(server);
         RegisterGetInstructionsTool(server);
-        RegisterSetupHooksTool(server);
 
         // Knowledge base tools
         RegisterKnowledgeAddTool(server);
         RegisterKnowledgeSearchTool(server);
-        RegisterKnowledgeListTool(server);
         RegisterKnowledgeDeleteTool(server);
         RegisterKnowledgeGetTool(server);
-        RegisterKnowledgeForSymbolTool(server);
 
         // Code generation tools
 
