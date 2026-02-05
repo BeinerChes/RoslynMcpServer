@@ -73,7 +73,7 @@ MCP vs Native tools on enterprise codebase: 47% fewer tokens, 100% accuracy vs 8
 
 | Tool | Purpose |
 |------|---------|
-| `UpdateMethod` | Replace a method's implementation |
+| `UpdateMethod` | Replace a method's implementation (`auto=true` for AI regeneration) |
 | `AddMember` | Add method/property/field to a type (`auto=true` for AI generation) |
 | `AddType` | Create new class/interface/struct |
 | `DeleteMember` | Remove a member from a type |

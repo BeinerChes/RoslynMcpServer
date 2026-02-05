@@ -30,7 +30,8 @@ public partial class SolutionAnalyzerService
     string? comment = null,
     string? oldText = null,
     string? newText = null,
-    bool replaceAll = false)
+    bool replaceAll = false,
+    bool skipFinetuneCollection = false)
     {
         EnsureMSBuildRegistered();
 
@@ -316,7 +317,7 @@ public partial class SolutionAnalyzerService
             }
 
             // Collect fine-tune training data for methods
-            if (newMethodNode is MethodDeclarationSyntax)
+            if (!skipFinetuneCollection && newMethodNode is MethodDeclarationSyntax)
             {
                 _ = Task.Run(() => Services.FinetuneCollector.CollectAsync(
                     solutionPath, filePath, typeName, targetMethod.Name, comment, parameterTypes));
