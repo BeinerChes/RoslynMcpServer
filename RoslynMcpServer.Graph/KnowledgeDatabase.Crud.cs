@@ -153,30 +153,6 @@ public partial class KnowledgeDatabase
     }
 
     /// <summary>
-    /// Gets all entries linked to a specific symbol.
-    /// </summary>
-    public async Task<List<KnowledgeEntry>> GetEntriesForSymbolAsync(string symbolName)
-    {
-        var conn = GetConnection();
-
-        const string sql = """
-            SELECT e.* FROM KnowledgeEntries e
-            JOIN KnowledgeSymbolLinks l ON e.Id = l.KnowledgeId
-            WHERE l.SymbolName = @SymbolName
-            ORDER BY e.Confidence DESC, e.UpdatedAt DESC
-            """;
-
-        var entries = (await conn.QueryAsync<KnowledgeEntry>(sql, new { SymbolName = symbolName })).ToList();
-
-        foreach (var entry in entries)
-        {
-            await LoadRelatedDataAsync(entry);
-        }
-
-        return entries;
-    }
-
-    /// <summary>
     /// Gets the count of knowledge entries.
     /// </summary>
     public async Task<int> GetEntryCountAsync()
