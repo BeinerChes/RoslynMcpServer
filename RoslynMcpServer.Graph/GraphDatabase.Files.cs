@@ -120,11 +120,13 @@ public sealed partial class GraphDatabase
 
         return deletedFiles.Count;
     }
-
     /// <summary>
-    /// Removes symbols from deleted files.
+    /// Removes symbols from files that no longer exist. Pass existingFiles (set of relative paths) for accurate detection when symbols store relative paths.
     /// </summary>
-    public async Task<int> CleanupSymbolsFromDeletedFilesAsync(long solutionId)
+    /// <param name="solutionId"></param>
+    /// <param name="existingFiles"></param>
+    /// <returns></returns>
+    public async Task<int> CleanupSymbolsFromDeletedFilesAsync(long solutionId, ISet<string>? existingFiles = null)
     {
         if (_connection == null) throw new InvalidOperationException("Database not open");
 
@@ -133,7 +135,18 @@ public sealed partial class GraphDatabase
             "SELECT DISTINCT FilePath FROM Symbols WHERE SolutionId = @SolutionId AND FilePath != 'external'",
             new { SolutionId = solutionId });
 
-        var deletedPaths = symbolFilePaths.Where(p => !File.Exists(p)).ToList();
+        List<string> deletedPaths;
+        if (existingFiles != null)
+        {
+            // Use the provided set of existing files (relative paths)
+            deletedPaths = symbolFilePaths.Where(p => !existingFiles.Contains(p)).ToList();
+        }
+        else
+        {
+            // Fallback: check absolute paths on disk
+            deletedPaths = symbolFilePaths.Where(p => !File.Exists(p)).ToList();
+        }
+
         if (deletedPaths.Count == 0) return 0;
 
         var deletedCount = await _connection.ExecuteAsync(
@@ -222,15 +235,15 @@ public sealed partial class GraphDatabase
 
         return needsAnalysis;
     }
-
     /// <summary>
-    /// Computes SHA256 hash of file content (first 16 hex chars).
+    /// Computes SHA256 hash of file content (first 16 hex chars). Reads as text to ensure consistency with ComputeContentHash.
     /// </summary>
+    /// <param name="filePath"></param>
+    /// <returns></returns>
     public static string ComputeFileHash(string filePath)
     {
-        var bytes = File.ReadAllBytes(filePath);
-        var hash = SHA256.HashData(bytes);
-        return Convert.ToHexString(hash)[..16];
+        var content = File.ReadAllText(filePath);
+        return ComputeContentHash(content);
     }
 
     /// <summary>

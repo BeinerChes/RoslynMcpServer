@@ -353,14 +353,13 @@ public static partial class RoslynTools
         var solutionDir = Path.GetDirectoryName(solutionPath);
         if (string.IsNullOrEmpty(solutionDir))
         {
-            return result; // Can't check freshness without solution dir
+            return result;
         }
 
-        // Compute current file hashes using relative paths (normalized to backslash)
+        // Compute current file hashes using relative paths
         var currentFileHashes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var absolutePath in Directory.EnumerateFiles(solutionDir, "*.cs", SearchOption.AllDirectories))
         {
-            // Skip generated files and obj folder
             if (absolutePath.EndsWith(".g.cs", StringComparison.OrdinalIgnoreCase) ||
                 absolutePath.EndsWith(".designer.cs", StringComparison.OrdinalIgnoreCase) ||
                 absolutePath.Contains(Path.DirectorySeparatorChar + "obj" + Path.DirectorySeparatorChar))
@@ -368,16 +367,13 @@ public static partial class RoslynTools
                 continue;
             }
 
-            // Convert to relative path with consistent separators
             var relativePath = absolutePath.Substring(solutionDir.Length)
                 .TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
                 .Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
 
             try
             {
-                // Use content-based hash (read as text) for consistency with GraphAnalyzer
-                var content = File.ReadAllText(absolutePath);
-                currentFileHashes[relativePath] = GraphDatabase.ComputeContentHash(content);
+                currentFileHashes[relativePath] = GraphDatabase.ComputeFileHash(absolutePath);
             }
             catch
             {
@@ -385,26 +381,28 @@ public static partial class RoslynTools
             }
         }
 
-        // Find stale files - only those with non-null FileHash that differs
+        // Clean up symbols from deleted files
+        var existingFiles = new HashSet<string>(currentFileHashes.Keys, StringComparer.OrdinalIgnoreCase);
+        await db.CleanupSymbolsFromDeletedFilesAsync(solutionId, existingFiles);
+
+        // Find stale files
         var staleFiles = await db.GetStaleSymbolFilesAsync(solutionId, currentFileHashes);
 
-        // Filter to only files that actually exist and have hash mismatches (not just missing from current)
         var filesToRefresh = staleFiles
             .Where(f => currentFileHashes.ContainsKey(f))
             .ToList();
 
         if (filesToRefresh.Count == 0)
         {
-            return result; // Graph is fresh
+            return result;
         }
 
         result.WasFresh = false;
         result.StaleFilesFound = filesToRefresh.Count;
 
-        // Load Roslyn solution for re-analysis
         if (_analyzerService == null)
         {
-            return result; // Can't refresh without analyzer
+            return result;
         }
 
         var roslynSolution = await SolutionAnalyzerService.LoadSolutionAsync(solutionPath);
@@ -413,7 +411,6 @@ public static partial class RoslynTools
             return result;
         }
 
-        // Re-analyze stale files (delete then re-analyze each)
         var analyzer = new GraphAnalyzer(db);
         var reanalyzedFiles = new List<string>();
 
