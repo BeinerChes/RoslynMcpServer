@@ -10,7 +10,7 @@ Native tools are fine for non-C# files (JSON, XML, markdown, .csproj, etc.), Glo
 - Read method source: `GetMethodBody(typeName, methodName)` — use `parameterTypes` if overloaded
 - Find symbol definition: `FindSymbol(pattern)` — falls back to fuzzy match via graph DB
 - Find all usages: `GetReferences(filePath, line, column)`
-- Find callers only: `GetCallers(filePath, line, column)` — excludes docs/comments/type refs
+- Find callers only: `GetCallers(symbolName)` — excludes docs/comments/type refs, only actual call sites
 - Find implementations: `GetImplementations(typeName)`
 
 **Modifying code:**
