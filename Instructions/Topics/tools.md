@@ -13,6 +13,8 @@ Hook blocks Read/Edit on .cs files. Use Roslyn tools instead.
 | Edit method (targeted) | `UpdateMethod(typeName, methodName, oldText, newText, replaceAll?)` |
 | Edit method (auto) | `UpdateMethod(typeName, methodName, auto: true, comment?)` |
 | Add member | `AddMember(typeName, memberCode, auto?, comment?)` |
+| Add using | `AddUsing(typeName, usingDirective)` |
+| Remove unused usings | `RemoveUnnecessaryUsings(projectFilter?, fileFilter?)` |
 | Create type | `AddType(projectName, typeName)` |
 | Delete member | `DeleteMember(typeName, memberName)` |
 | Find usages | `GetReferences(filePath, line, column)` |

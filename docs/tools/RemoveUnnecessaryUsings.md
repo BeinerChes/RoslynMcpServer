@@ -117,19 +117,18 @@ Scaling (estimate for 10 files): **~500 tokens** (same - batch operation)
 
 | Aspect | Native Edit (Manual) | RemoveUnnecessaryUsings |
 |--------|---------------------|-------------------------|
-| **Token usage (1 file)** | 1160 (measured) | 497-1000 (measured: no preview / with preview) |
-| **Token usage (10 files)** | ~11,600 | ~500-1000 (batch - same as 1 file!) |
-| **Token usage (100 files)** | ~116,000 | ~500-1000 (batch - same as 1 file!) |
-| **Operations required** | 2 per file (Read + Edit) | 1-2 total (optional preview + apply) |
+| **Token usage (1 file)** | 1160 (measured) | 497 (measured) |
+| **Token usage (10 files)** | ~11,600 | ~500 (batch - same as 1 file!) |
+| **Token usage (100 files)** | ~116,000 | ~500 (batch - same as 1 file!) |
+| **Operations required** | 2 per file (Read + Edit) | 1 total (apply) |
 | **Semantic analysis** | Manual (examine code) | Automatic (compiler-accurate) |
 | **Risk of removing used usings** | Medium (human error) | None (semantic check) |
 | **Batch processing** | No (per-file) | Yes (all files at once) |
-| **Preview mode** | No | Yes |
 
 **REAL measured savings from testing on SharpOps.Examples:**
-- **1 file:** 57% fewer tokens without preview (497 vs 1160), 14% with preview (1000 vs 1160)
-- **10 files:** 95-96% fewer tokens (~500-1000 vs ~11,600)
-- **100 files:** 99.1-99.6% fewer tokens (~500-1000 vs ~116,000)
+- **1 file:** 57% fewer tokens (497 vs 1160)
+- **10 files:** 96% fewer tokens (~500 vs ~11,600)
+- **100 files:** 99.6% fewer tokens (~500 vs ~116,000)
 
 **Key insight:** Roslyn's batch processing means token count is nearly constant regardless of file count!
 
@@ -179,7 +178,7 @@ Processes all files in the solution (or filtered subset) in a single operation:
 RemoveUnnecessaryUsings()
 ```
 
-No need to specify files individually - the tool discovers and processes them all.
+No need to specify files individually - the tool discovers and processes them all. Always applies changes immediately.
 
 ### Filtering Options
 
@@ -204,36 +203,6 @@ RemoveUnnecessaryUsings(
 ```
 Processes files matching "User" in the "MyApp.Services" project.
 
-### Preview Mode
-
-See what would be removed without making changes:
-```
-RemoveUnnecessaryUsings(preview: true)
-```
-
-**Response:**
-```json
-{
-  "filesProcessed": 15,
-  "usingsRemoved": 42,
-  "changes": [
-    {
-      "file": "Services/UserService.cs",
-      "removedUsings": ["System.Linq", "System.Collections.Generic"]
-    },
-    {
-      "file": "Controllers/UserController.cs",
-      "removedUsings": ["System.Text"]
-    }
-  ]
-}
-```
-
-Review the preview, then apply:
-```
-RemoveUnnecessaryUsings()
-```
-
 ### Generated File Exclusion
 
 Automatically skips generated files:
@@ -247,8 +216,7 @@ These typically have auto-generated usings that shouldn't be manually removed.
 
 **Clean entire solution:**
 ```
-1. RemoveUnnecessaryUsings(preview: true)  # Review what would be removed
-2. RemoveUnnecessaryUsings()               # Apply removal
+RemoveUnnecessaryUsings()
 ```
 
 **Clean specific project after refactoring:**
@@ -261,11 +229,10 @@ RemoveUnnecessaryUsings(projectFilter: "MyApp.Services")
 RemoveUnnecessaryUsings(fileFilter: "Controller")
 ```
 
-**Integration with GetDiagnostics:**
+**Check for CS8019 warnings, then clean:**
 ```
 1. GetDiagnostics(diagnosticId: "CS8019")  # See how many CS8019 warnings
 2. RemoveUnnecessaryUsings()                # Fix them all
-3. GetDiagnostics(diagnosticId: "CS8019")  # Verify 0 warnings
 ```
 
 **Post-refactoring cleanup:**
@@ -281,24 +248,12 @@ After removing or changing types:
 ```json
 {
   "success": true,
-  "filesProcessed": 25,
-  "usingsRemoved": 63,
-  "preview": false
-}
-```
-
-**Preview:**
-```json
-{
-  "success": true,
-  "filesProcessed": 25,
-  "usingsRemoved": 63,
-  "preview": true,
-  "changes": [
-    {
-      "file": "relative/path/to/File.cs",
-      "removedUsings": ["System.Linq", "System.Text"]
-    }
+  "solutionPath": "D:\\path\\to\\solution.slnx",
+  "totalUsingsRemoved": 63,
+  "filesModified": 25,
+  "modifiedFiles": [
+    "D:\\path\\to\\File1.cs",
+    "D:\\path\\to\\File2.cs"
   ]
 }
 ```
@@ -307,9 +262,10 @@ After removing or changing types:
 ```json
 {
   "success": true,
-  "filesProcessed": 25,
-  "usingsRemoved": 0,
-  "message": "No unnecessary usings found"
+  "solutionPath": "D:\\path\\to\\solution.slnx",
+  "totalUsingsRemoved": 0,
+  "filesModified": 0,
+  "modifiedFiles": []
 }
 ```
 
