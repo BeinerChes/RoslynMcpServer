@@ -406,7 +406,7 @@ public class CodeFixService
     }
 
 
-    public async Task<BatchApplyCodeFixResult> BatchApplyCodeFixAsync(
+    public static async Task<BatchApplyCodeFixResult> BatchApplyCodeFixAsync(
         Solution solution,
         string solutionPath,
         string diagnosticId,
@@ -521,6 +521,7 @@ public class CodeFixService
             ImmutableArray<DiagnosticAnalyzer> netAnalyzers)
     {
         var allDiagnostics = new List<(Document document, Diagnostic diagnostic)>();
+        var seen = new HashSet<string>(); // Deduplicate by file:line
         var needAnalyzers = diagnosticId.StartsWith("CA", StringComparison.OrdinalIgnoreCase);
 
         foreach (var project in solution.Projects)
@@ -549,6 +550,11 @@ public class CodeFixService
                     if (!fileName.Contains(fileFilter, StringComparison.OrdinalIgnoreCase) && !syntaxTree.FilePath.Contains(fileFilter, StringComparison.OrdinalIgnoreCase))
                         continue;
                 }
+
+                // Deduplicate: same file + same line = same diagnostic from different project compilations
+                var lineSpan = diagnostic.Location.GetLineSpan();
+                var key = $"{syntaxTree.FilePath}:{lineSpan.StartLinePosition.Line}";
+                if (!seen.Add(key)) continue;
 
                 var documentId = solution.GetDocumentIdsWithFilePath(syntaxTree.FilePath).FirstOrDefault();
                 var document = documentId != null ? solution.GetDocument(documentId) : null;

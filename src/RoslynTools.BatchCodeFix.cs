@@ -82,13 +82,39 @@ public static partial class RoslynTools
                 var result = await SolutionAnalyzerService.BatchApplyCodeFixAsync(
                     solutionPath!, diagnosticId, projectFilter, fileFilter, maxFixes, preview);
 
+                if (!result.Success)
+                {
+                    return new
+                    {
+                        content = new[]
+                        {
+                            new { type = "text", text = result.Error ?? "Failed to batch apply code fixes" }
+                        },
+                        isError = false
+                    };
+                }
+
+                // Compact output: summary + relative file list
+                var relativeFiles = result.ModifiedFiles
+                    .Select(f => GetRelativePath(f, solutionPath!))
+                    .ToList();
+
+                var compact = new
+                {
+                    diagnosticId,
+                    found = result.TotalDiagnosticsFound,
+                    applied = result.FixesApplied,
+                    failed = result.FixesFailed,
+                    filesModified = relativeFiles
+                };
+
                 return new
                 {
                     content = new[]
                     {
-                        new { type = "text", text = JsonSerializer.Serialize(result, JsonOptions) }
+                        new { type = "text", text = JsonSerializer.Serialize(compact, JsonOptions) }
                     },
-                    isError = !result.Success
+                    isError = false
                 };
             });
     }
