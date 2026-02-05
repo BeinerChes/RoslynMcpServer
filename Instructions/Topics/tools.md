@@ -1,118 +1,89 @@
-# Roslyn Tools for C#
+# Roslyn MCP Tools
 
-Hook blocks Read/Edit on .cs files. Use Roslyn tools instead.
+Hook blocks Read/Edit/Write on .cs files. Use Roslyn tools instead.
+Native tools are fine for non-C# files (JSON, XML, markdown, .csproj, etc.), Glob, and Grep for string searches.
 
-## Quick Reference
+## Tool Mapping
 
-| Task | Tool |
-|------|------|
-| Find symbol | `FindSymbol(pattern)` — fuzzy fallback via graph DB when no results found |
-| See class structure | `GetTypeMembers(typeName)` |
-| Read method | `GetMethodBody(typeName, methodName)` |
-| Edit method (full) | `UpdateMethod(typeName, methodName, newSourceCode, comment?)` |
-| Edit method (targeted) | `UpdateMethod(typeName, methodName, oldText, newText, replaceAll?)` |
-| Edit method (auto) | `UpdateMethod(typeName, methodName, auto: true, comment?)` |
-| Add member | `AddMember(typeName, memberCode, auto?, comment?)` |
-| Add using | `AddUsing(typeName, usingDirective)` |
-| Remove unused usings | `RemoveUnnecessaryUsings(projectFilter?, fileFilter?)` |
-| Create type | `AddType(projectName, typeName)` |
-| Delete member | `DeleteMember(typeName, memberName)` |
-| Find usages | `GetReferences(filePath, line, column)` |
-| Find callers | `GetCallers(filePath, line, column)` |
-| Find implementations | `GetImplementations(typeName)` |
-| Rename | `RenameSymbol(filePath, line, column, newName)` |
-| Extract method | `ExtractMethod(filePath, startLine, endLine, methodName, accessibility?)` |
-| Check errors | `GetDiagnostics()` |
-| Fix warnings | `BatchApplyCodeFixes(diagnosticId)` |
-| Generate method | `GenerateMethod(methodSignature, description?, fields?)` |
-| Fine-tune model | `Finetune(dataPath?)` |
+**Reading code:**
+- See class structure: `GetTypeMembers(typeName)`
+- Read method source: `GetMethodBody(typeName, methodName)` — use `parameterTypes` if overloaded
+- Find symbol definition: `FindSymbol(pattern)` — falls back to fuzzy match via graph DB
+- Find all usages: `GetReferences(filePath, line, column)`
+- Find callers only: `GetCallers(filePath, line, column)` — excludes docs/comments/type refs
+- Find implementations: `GetImplementations(typeName)`
 
-## Native Tools OK For
+**Modifying code:**
+- Edit method (full replace): `UpdateMethod(typeName, methodName, newSourceCode)`
+- Edit method (targeted): `UpdateMethod(typeName, methodName, oldText, newText)` — oldText must be unique within the method
+- Edit method (auto-generate): `UpdateMethod(typeName, methodName, auto: true)`
+- Add member: `AddMember(typeName, memberCode, auto: true)` — see auto-generation workflow below
+- Add using: `AddUsing(typeName, usingDirective)` — sorted, idempotent
+- Remove unused usings: `RemoveUnnecessaryUsings(projectFilter?, fileFilter?)` — batch, entire solution
+- Create type: `AddType(projectName, typeName, folder?, typeKind?)`
+- Delete member: `DeleteMember(typeName, memberName)` — removes XML docs and attributes too
+- Rename across solution: `RenameSymbol(filePath, line, column, newName)`
+- Extract to method: `ExtractMethod(filePath, startLine, endLine, methodName)` — auto-detects parameters/returns via data flow
 
-- Non-C# files (JSON, XML, markdown, .csproj)
-- Glob for file discovery
-- Grep for non-symbol searches (strings, comments, config)
+**Diagnostics:**
+- Check errors: `GetDiagnostics()` — summary. Add `diagnosticId` for details.
+- Batch fix: `BatchApplyCodeFixes(diagnosticId)` — does NOT work for CS8019, use `RemoveUnnecessaryUsings` instead
+- Single fix: `ApplyCodeFix(filePath, line, column)`
 
-## Adding Methods (auto-generation)
+**Knowledge base:**
+- Save a learning: `KnowledgeAdd(category, title, content)` — use after fixing tricky bugs or discovering non-obvious behavior
+- Search before unfamiliar code: `KnowledgeSearch(query)`
 
-When adding a new method, ALWAYS use AddMember with `auto=true` first:
+## Auto-Generation Workflow
+
+When adding methods, ALWAYS try `auto: true` first:
+
 ```
-AddMember(typeName: "MyClass", memberCode: "public int Add(int a, int b)", auto: true)
-```
-
-The built-in model generates the method body. **You MUST review the result:**
-- If `autoGenerationFailed=true` → model failed, call `UpdateMethod` with your implementation
-- If `autoGenerationFailed=false` → **read `generatedCode` carefully**:
-  - Code is correct → done, move on
-  - Code is wrong or nonsensical → call `UpdateMethod` with the correct implementation
-
-**Why this matters:** Both `AddMember` and `UpdateMethod` collect finetune training data.
-When you correct bad model output via `UpdateMethod`, your correction becomes a training
-example that improves the model over time. Always let the model try first, then fix.
-
-Only use `auto=false` for non-method members (fields, properties, events).
-
-## Regenerating Methods (auto mode)
-
-To regenerate an existing method's body using the model:
-```
-UpdateMethod(typeName: "MyClass", methodName: "Add", auto: true, comment?: "optional description")
+AddMember(typeName, memberCode: "public int Add(int a, int b)", auto: true, comment: "Adds two integers")
 ```
 
-Same review workflow as AddMember auto mode — check `generatedCode`, fix with non-auto `UpdateMethod` if wrong.
+Check the response:
+- `autoGenerationFailed: true` — model failed, call `UpdateMethod` with your implementation
+- `autoGenerationFailed: false` — read `generatedCode` carefully:
+  - Correct: done, move on
+  - Wrong: call `UpdateMethod` with correct code
 
-## Fine-Tuning the Model
+**Why this order matters:** `AddMember(auto: true)` does NOT collect training data. Your `UpdateMethod` correction DOES. Over time the model learns from corrections.
 
-When enough corrections accumulate, call `Finetune()` to improve the model:
+Same workflow for regenerating existing methods:
 ```
-Finetune()  # Uses default dataset path, runs in background
-```
-
-The model trains on your corrections using LoRA (200 epochs, rank=8, alpha=32). After training:
-- Weights are merged into the base model
-- Model hot-reloads automatically (no MCP restart needed)
-- Training data is archived
-
-Call `Finetune()` again to check status. See [SharpOps/WORKFLOW.md](../../../SharpOps/WORKFLOW.md) for technical details.
-
-## Patterns
-
-**Explore class → edit method (full replacement):**
-```
-GetTypeMembers(typeName)
-GetMethodBody(typeName, methodName)
-UpdateMethod(typeName, methodName, newCode)
+UpdateMethod(typeName, methodName, auto: true, comment: "description")
 ```
 
-**Targeted edit within a method:**
-```
-UpdateMethod(typeName, methodName, oldText: "oldCode", newText: "newCode")
-```
+For non-method members (fields, properties, events): use `auto: false` — model only generates method bodies.
 
-**Auto-regenerate a method:**
-```
-UpdateMethod(typeName, methodName, auto: true, comment?: "description")
-```
+Pass `comment` on public methods — generates XML doc (`<summary>`, `<param>`, `<returns>`).
 
-**Create new type with members:**
-```
-AddType(projectName, typeName, folder: "Services")
-AddMember(typeName, "public void DoThing() { }", comment: "Does the thing")
-```
+After corrections accumulate: `Finetune()` — runs in background, model hot-reloads when done.
 
-**XML doc comments:**
-- `AddMember`: Pass `comment` for summary text. Public members get XML doc stubs automatically.
-- `UpdateMethod`: Pass `comment` to replace/add XML doc on the method.
+## Gotchas
 
-**Impact before refactoring:**
-```
-GetCallers(filePath, line, column)
-```
+**Overloaded methods:** `GetMethodBody`, `UpdateMethod`, `DeleteMember` need `parameterTypes: "int, int"` to disambiguate. Without it, you get an error listing available overloads.
 
-## Knowledge Base
+**typeName is short name:** Use `"Calculator"` not `"SharpOps.Examples.Calculator"`. Roslyn searches across the solution.
 
-| When | Do |
-|------|----|
-| Learned something non-obvious | `KnowledgeAdd(category: "lesson", ...)` |
-| Fixed tricky bug | `KnowledgeAdd(category: "error-resolution", ...)` |
-| Starting unfamiliar code | `KnowledgeSearch(query)` |
+**UpdateMethod edit mode:** `oldText` must be unique within that method's source. If it matches multiple places, use a longer string or `replaceAll: true`.
+
+**GetReferences vs GetCallers:** GetReferences returns ALL references (declarations, docs, type constraints, etc.). GetCallers returns only actual call sites — use this for impact analysis.
+
+**AddType namespace:** Inferred from `projectName + folder`. Don't specify `namespace` unless you need to override.
+
+**RemoveUnnecessaryUsings vs BatchApplyCodeFixes("CS8019"):** CS8019 code fix requires IDE services. RemoveUnnecessaryUsings is the only way to batch-remove unused usings.
+
+**ExtractMethod limitations:** Cannot extract code containing `return` statements. Code must be inside a method body.
+
+**ApplyCodeFix with multiple fixes:** If multiple fixes available at a location, returns the list. Call again with `fixIndex` to pick one.
+
+## When to Use Native Tools on .cs Files
+
+Sometimes Edit/Write is better:
+- Editing comments, regions, or disabled code
+- Code Roslyn can't parse (syntax errors)
+- Bulk text changes not related to symbols
+
+Get a bypass token: `GetInstructions(topic: "tools")` — valid 1 minute.
