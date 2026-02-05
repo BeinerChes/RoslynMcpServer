@@ -32,8 +32,5 @@
     <EmbeddedResource Remove="SharpOps\**" />
     <None Remove="SharpOps\**" />
   </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\RoslynMcpServer.Web\RoslynMcpServer.Web.csproj" />
-  </ItemGroup>
 
 </Project>
