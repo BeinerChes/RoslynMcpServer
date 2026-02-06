@@ -21,7 +21,7 @@ It also includes **SharpTinyCoder**, a tiny local model that learns your codebas
 ### Build from Source
 
 ```bash
-git clone <repo-url>
+git clone [<repo-url>](https://github.com/BeinerChes/RoslynMcpServer)
 cd RoslynMcpServer
 dotnet publish RoslynMcpServer.csproj -c Debug -o .roslyn-mcp
 ```
