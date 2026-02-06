@@ -13,7 +13,7 @@ public static partial class RoslynTools
     /// <summary>
     /// Creates a standard success response for tool handlers.
     /// </summary>
-    private static object CreateSuccessResponse(object result, bool isError = false) => new
+    internal static object CreateSuccessResponse(object result, bool isError = false) => new
     {
         content = new[]
         {

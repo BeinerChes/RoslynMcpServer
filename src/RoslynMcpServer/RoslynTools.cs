@@ -1,5 +1,5 @@
+using System.Reflection;
 using System.Text.Json;
-using SharpOps.Inference;
 
 namespace RoslynMcpServer;
 
@@ -15,44 +15,7 @@ public static partial class RoslynTools
     };
 
     private static SolutionAnalyzerService? _analyzerService;
-    private static SharpOpsService? _sharpOpsService;
-    private static string? _sharpOpsError;
-
-    private static SharpOpsService? GetSharpOpsService()
-    {
-        if (_sharpOpsService != null) return _sharpOpsService;
-        if (_sharpOpsError != null) return null;
-
-        try
-        {
-            var baseDir = AppContext.BaseDirectory;
-            var modelPath = Path.Combine(baseDir, "Models", "checkpoint.pt");
-            var tokenizerPath = Path.Combine(baseDir, "Models", "tokenizer", "tokenizer.json");
-
-            if (!File.Exists(modelPath))
-            {
-                _sharpOpsError = $"Model file not found: {modelPath}";
-                return null;
-            }
-
-            if (!File.Exists(tokenizerPath))
-            {
-                _sharpOpsError = $"Tokenizer file not found: {tokenizerPath}";
-                return null;
-            }
-
-            Console.Error.WriteLine($"Loading SharpTinyCoder model from {modelPath}");
-            _sharpOpsService = new SharpOpsService(modelPath, tokenizerPath);
-            Console.Error.WriteLine("SharpTinyCoder model loaded successfully");
-            return _sharpOpsService;
-        }
-        catch (Exception ex)
-        {
-            _sharpOpsError = $"Failed to load SharpTinyCoder model: {ex.Message}";
-            Console.Error.WriteLine(_sharpOpsError);
-            return null;
-        }
-    }
+    internal static ICodeGenPlugin? _codeGenPlugin;
 
     /// <summary>
     /// Auto-detected solution path. Set at startup, used by all tools.
@@ -113,13 +76,39 @@ public static partial class RoslynTools
         RegisterKnowledgeDeleteTool(server);
         RegisterKnowledgeGetTool(server);
 
-        // Code generation tools
-
-        // Training tools
-        RegisterFinetuneTool(server);
+        // Try to load optional CodeGen plugin
+        LoadCodeGenPlugin(server);
 
         // Usage reporting
         RegisterUsageReportTool(server);
+    }
+
+    private static void LoadCodeGenPlugin(McpServer server)
+    {
+        try
+        {
+            var pluginPath = Path.Combine(AppContext.BaseDirectory, "RoslynMcpServer.CodeGen.dll");
+            if (!File.Exists(pluginPath))
+            {
+                Console.Error.WriteLine("CodeGen plugin not found — AI code generation disabled.");
+                return;
+            }
+
+            var assembly = Assembly.LoadFrom(pluginPath);
+            var pluginType = assembly.GetTypes()
+                .FirstOrDefault(t => typeof(ICodeGenPlugin).IsAssignableFrom(t) && !t.IsInterface && !t.IsAbstract);
+
+            if (pluginType != null)
+            {
+                _codeGenPlugin = (ICodeGenPlugin)Activator.CreateInstance(pluginType)!;
+                _codeGenPlugin.RegisterTools(server);
+                Console.Error.WriteLine("SharpTinyCoder plugin loaded.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Warning: Failed to load CodeGen plugin: {ex.Message}");
+        }
     }
 
     private static readonly string[] definitionArray11 = new[] { "message" };

@@ -1,4 +1,3 @@
-using RoslynSymbolKind = Microsoft.CodeAnalysis.SymbolKind;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Text.Json;
@@ -102,10 +101,14 @@ public static partial class RoslynTools
                 string? generatedCode = null;
                 if (auto)
                 {
-                    var autoResult = await HandleAutoGenerateAsync(solutionPath!, typeName, memberCode, comment);
+                    if (_codeGenPlugin == null)
+                    {
+                        return CreateErrorResponse("auto=true requires SharpTinyCoder plugin. Install RoslynMcpServer.CodeGen to enable AI code generation.");
+                    }
+
+                    var autoResult = await _codeGenPlugin.HandleAutoGenerateAsync(solutionPath!, typeName, memberCode, comment);
                     memberCode = autoResult.FullMemberCode;
                     autoGenerationFailed = autoResult.Failed;
-                    // Only return generatedCode when model succeeded — stub code is not useful
                     if (!autoGenerationFailed)
                     {
                         generatedCode = autoResult.FullMemberCode;
@@ -117,8 +120,14 @@ public static partial class RoslynTools
                     typeName,
                     memberCode,
                     insertionPoint,
-                    comment,
-                    skipFinetuneCollection: auto);
+                    comment);
+
+                // Collect finetune data when not auto-generated and plugin is available
+                if (!auto && _codeGenPlugin != null && result.Success && result.MemberKind == "method")
+                {
+                    _ = Task.Run(() => _codeGenPlugin.CollectFinetuneDataAsync(
+                        solutionPath!, result.FilePath!, typeName, result.MemberName!, comment, null));
+                }
 
                 // Enrich result with auto-generation info
                 if (auto)
@@ -487,241 +496,6 @@ public static partial class RoslynTools
         }
 
         return null;
-    }
-
-    /// <summary>
-    /// Populate symbol tables on a SharpOpsSequence from context available during generation. Parameters are extracted from the method signature, fields from the fields dictionary.
-    /// </summary>
-    /// <param name="sequence"></param>
-    /// <param name="methodSignature"></param>
-    /// <param name="fields"></param>
-
-    private static void PopulateSymbolTablesFromContext(
-        SharpOps.SharpOpsSequence sequence,
-        string methodSignature,
-        Dictionary<string, string>? fields)
-    {
-        // Extract parameter names from signature: "public int Add(int a, int b)" -> ["a", "b"]
-        var parenStart = methodSignature.IndexOf('(');
-        var parenEnd = methodSignature.LastIndexOf(')');
-        if (parenStart >= 0 && parenEnd > parenStart)
-        {
-            var paramSection = methodSignature[(parenStart + 1)..parenEnd].Trim();
-            if (paramSection.Length > 0)
-            {
-                var paramTable = sequence.SymbolTables[RoslynSymbolKind.Parameter];
-                foreach (var param in paramSection.Split(','))
-                {
-                    var parts = param.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                    if (parts.Length >= 2)
-                    {
-                        paramTable.Add(parts[^1]);
-                    }
-                }
-            }
-        }
-
-        // Fields: ordered by name to match ContextExtractor.ExtractUsedFields ordering
-        if (fields != null && fields.Count > 0)
-        {
-            var fieldTable = sequence.SymbolTables[RoslynSymbolKind.Field];
-            foreach (var name in fields.Keys.OrderBy(k => k))
-            {
-                fieldTable.Add(name);
-            }
-        }
-    }
-
-    /// <summary>
-    /// Populate symbol tables from a full type symbol (used by SmartGenerateMethod).
-    /// </summary>
-    /// <param name="sequence"></param>
-    /// <param name="methodSignature"></param>
-    /// <param name="typeSymbol"></param>
-
-    private static void PopulateSymbolTablesFromType(
-        SharpOps.SharpOpsSequence sequence,
-        string methodSignature,
-        INamedTypeSymbol typeSymbol)
-    {
-        // Parameters from signature
-        var parenStart = methodSignature.IndexOf('(');
-        var parenEnd = methodSignature.LastIndexOf(')');
-        if (parenStart >= 0 && parenEnd > parenStart)
-        {
-            var paramSection = methodSignature[(parenStart + 1)..parenEnd].Trim();
-            if (paramSection.Length > 0)
-            {
-                var paramTable = sequence.SymbolTables[RoslynSymbolKind.Parameter];
-                foreach (var param in paramSection.Split(','))
-                {
-                    var parts = param.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                    if (parts.Length >= 2)
-                    {
-                        paramTable.Add(parts[^1]);
-                    }
-                }
-            }
-        }
-
-        // Fields: ordered by name to match ContextExtractor ordering
-        var fieldTable = sequence.SymbolTables[RoslynSymbolKind.Field];
-        foreach (var member in typeSymbol.GetMembers()
-            .OfType<IFieldSymbol>()
-            .Where(f => !f.IsImplicitlyDeclared)
-            .OrderBy(f => f.Name))
-        {
-            fieldTable.Add(member.Name);
-        }
-
-        // Properties: ordered by name
-        var propTable = sequence.SymbolTables[RoslynSymbolKind.Property];
-        foreach (var member in typeSymbol.GetMembers()
-            .OfType<IPropertySymbol>()
-            .Where(p => !p.IsImplicitlyDeclared)
-            .OrderBy(p => p.Name))
-        {
-            propTable.Add(member.Name);
-        }
-
-        // Methods: ordered by name
-        var methodTable = sequence.SymbolTables[RoslynSymbolKind.Method];
-        foreach (var name in typeSymbol.GetMembers()
-            .OfType<IMethodSymbol>()
-            .Where(m => m.MethodKind == Microsoft.CodeAnalysis.MethodKind.Ordinary && !m.IsImplicitlyDeclared)
-            .Select(m => m.Name)
-            .Distinct()
-            .OrderBy(n => n))
-        {
-            methodTable.Add(name);
-        }
-
-        // Named types: add containing type
-        var typeTable = sequence.SymbolTables[RoslynSymbolKind.NamedType];
-        typeTable.Add(typeSymbol.Name);
-    }
-
-    private static async Task<(string FullMemberCode, bool Failed)> HandleAutoGenerateAsync(
-        string solutionPath,
-        string typeName,
-        string memberSignature,
-        string? comment)
-    {
-        // Try to load the model
-        var service = GetSharpOpsService();
-        if (service == null)
-        {
-            var stubCode = memberSignature + "\n{ throw new NotImplementedException(); }";
-            return (stubCode, true);
-        }
-
-        try
-        {
-            // Load solution and find the type
-            var solution = await SolutionAnalyzerService.LoadSolutionAsync(solutionPath);
-            if (solution == null)
-            {
-                var stubCode = memberSignature + "\n{ throw new NotImplementedException(); }";
-                return (stubCode, true);
-            }
-
-            // Find the type symbol
-            INamedTypeSymbol? typeSymbol = null;
-            foreach (var project in solution.Projects)
-            {
-                var compilation = await project.GetCompilationAsync();
-                if (compilation == null) continue;
-
-                foreach (var syntaxTree in compilation.SyntaxTrees)
-                {
-                    var semanticModel = compilation.GetSemanticModel(syntaxTree);
-                    var root = await syntaxTree.GetRootAsync();
-
-                    foreach (var typeDecl in root.DescendantNodes().OfType<TypeDeclarationSyntax>())
-                    {
-                        var symbol = semanticModel.GetDeclaredSymbol(typeDecl);
-                        if (symbol != null &&
-                            (symbol.Name == typeName || symbol.ToDisplayString().EndsWith("." + typeName)))
-                        {
-                            typeSymbol = (INamedTypeSymbol)symbol;
-                            break;
-                        }
-                    }
-                    if (typeSymbol != null) break;
-                }
-                if (typeSymbol != null) break;
-            }
-
-            // Extract fields from the type for context
-            Dictionary<string, string>? fields = null;
-            if (typeSymbol != null)
-            {
-                // Sort alphabetically to match ContextExtractor and PopulateSymbolTablesFromType ordering
-                fields = new Dictionary<string, string>();
-                foreach (var member in typeSymbol.GetMembers()
-                    .Where(m => (m is IFieldSymbol f && !f.IsImplicitlyDeclared) ||
-                                (m is IPropertySymbol p && !p.IsImplicitlyDeclared))
-                    .OrderBy(m => m.Name))
-                {
-                    if (member is IFieldSymbol field)
-                        fields[field.Name] = field.Type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
-                    else if (member is IPropertySymbol prop)
-                        fields[prop.Name] = prop.Type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
-                }
-            }
-
-            // Generate with greedy decoding (temperature=0) for deterministic output
-            var sharpOps = service.GenerateSharpOps(
-                memberSignature,
-                fields?.Count > 0 ? fields : null,
-                comment,
-                temperature: 0f,
-                topP: 0.9f,
-                maxTokens: 512);
-
-            // Try to compile to C#
-            try
-            {
-                var sequence = SharpOps.SharpOpsSequence.ParseOps(sharpOps, null);
-
-                if (typeSymbol != null)
-                {
-                    PopulateSymbolTablesFromType(sequence, memberSignature, typeSymbol);
-                }
-                else
-                {
-                    PopulateSymbolTablesFromContext(sequence, memberSignature, fields);
-                }
-
-                var compiledBody = SharpOps.SharpOpsCompiler.CompileToString(sequence);
-                var fullCode = memberSignature + "\n" + compiledBody;
-
-                // Validate: parse the generated code to ensure it's valid C#
-                var wrappedCode = $"class _Validate {{ {fullCode} }}";
-                var parseTree = Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree.ParseText(wrappedCode);
-                var parseErrors = parseTree.GetDiagnostics()
-                    .Where(d => d.Severity == DiagnosticSeverity.Error)
-                    .ToList();
-
-                if (parseErrors.Count > 0)
-                {
-                    var stubCode = memberSignature + "\n{ throw new NotImplementedException(); }";
-                    return (stubCode, true);
-                }
-
-                return (fullCode, false);
-            }
-            catch
-            {
-                var stubCode = memberSignature + "\n{ throw new NotImplementedException(); }";
-                return (stubCode, true);
-            }
-        }
-        catch
-        {
-            var stubCode = memberSignature + "\n{ throw new NotImplementedException(); }";
-            return (stubCode, true);
-        }
     }
 
     /// <summary>

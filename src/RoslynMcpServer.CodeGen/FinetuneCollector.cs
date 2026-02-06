@@ -2,16 +2,15 @@ using System.Text.Json;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.FindSymbols;
-using Microsoft.CodeAnalysis.MSBuild;
 using SharpOps;
 
-namespace RoslynMcpServer.Services;
+namespace RoslynMcpServer.CodeGen;
 
 /// <summary>
 /// Collects fine-tune training data from successful add_member and update_method calls.
 /// Runs in the background and never affects tool responses.
 /// </summary>
-public static class FinetuneCollector
+internal static class FinetuneCollector
 {
     private static readonly SemaphoreSlim _writeLock = new(1, 1);
 
@@ -165,7 +164,6 @@ public static class FinetuneCollector
                         var existing = JsonSerializer.Deserialize<Dictionary<string, object?>>(line, _jsonOptions);
                         if (existing != null)
                         {
-                            // Skip record with same key (will be replaced)
                             var existingKey = existing.TryGetValue("key", out var k) ? k?.ToString() : null;
                             if (existingKey != key)
                                 records.Add(existing);
@@ -178,10 +176,8 @@ public static class FinetuneCollector
                 }
             }
 
-            // Add new record
             records.Add(record);
 
-            // Write all records back
             await using var writer = new StreamWriter(outputPath, append: false,
                 encoding: new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
 
