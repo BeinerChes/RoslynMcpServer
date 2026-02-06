@@ -47,7 +47,6 @@
     <PackageReference Include="Microsoft.Build" ExcludeAssets="runtime" PrivateAssets="all" />
     <PackageReference Include="Microsoft.Build.Tasks.Core" ExcludeAssets="runtime" PrivateAssets="all" />
     <PackageReference Include="SmartComponents.LocalEmbeddings" />
-    <PackageReference Include="System.Text.Json" />
   </ItemGroup>
 
   <!-- Copy .NET Analyzers to output directory for self-contained deployment -->
