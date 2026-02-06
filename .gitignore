@@ -372,3 +372,4 @@ FodyWeavers.xsd
 .claude/
 /src/.mcp.json
 /src/.roslyn-mcp
+/src/.cr/personal/FavoritesList/List.xml
