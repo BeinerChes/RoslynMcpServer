@@ -123,6 +123,11 @@ public static partial class RoslynTools
                 string? generatedCode = null;
                 if (auto)
                 {
+                    if (_codeGenPlugin == null)
+                    {
+                        return CreateToolError("auto=true requires SharpTinyCoder plugin. Install RoslynMcpServer.CodeGen to enable AI code generation.");
+                    }
+
                     var bodyResult = await SolutionAnalyzerService.GetMethodBodyAsync(
                         solutionPath!, typeName, methodName, parameterTypes);
 
@@ -141,7 +146,7 @@ public static partial class RoslynTools
                         .WithSemicolonToken(default).WithLeadingTrivia().WithTrailingTrivia()
                         .NormalizeWhitespace().ToFullString().TrimEnd();
 
-                    var autoResult = await HandleAutoGenerateAsync(solutionPath!, typeName, signature, comment);
+                    var autoResult = await _codeGenPlugin.HandleAutoGenerateAsync(solutionPath!, typeName, signature, comment);
                     autoGenerationFailed = autoResult.Failed;
                     newSourceCode = autoResult.FullMemberCode;
 
@@ -160,8 +165,14 @@ public static partial class RoslynTools
                     comment,
                     oldText,
                     newText,
-                    replaceAll,
-                    skipFinetuneCollection: auto);
+                    replaceAll);
+
+                // Collect finetune data when not auto-generated and plugin is available
+                if (!auto && _codeGenPlugin != null && result.Success)
+                {
+                    _ = Task.Run(() => _codeGenPlugin.CollectFinetuneDataAsync(
+                        solutionPath!, result.FilePath!, typeName, result.MethodName!, comment, parameterTypes));
+                }
 
                 if (!result.Success)
                 {

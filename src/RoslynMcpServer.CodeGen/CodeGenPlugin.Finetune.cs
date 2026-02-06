@@ -1,16 +1,22 @@
 using System.Text.Json.Nodes;
 using SharpOps.Torch.Training;
 
-namespace RoslynMcpServer;
+namespace RoslynMcpServer.CodeGen;
 
-public static partial class RoslynTools
+/// <summary>
+/// Finetune tool registration and handling, separated from the main CodeGenPlugin class.
+/// </summary>
+internal static class CodeGenPluginFinetune
 {
     private static Task<TrainingResult>? _trainingTask;
     private static string? _trainingLogPath;
     private static readonly object _trainingLock = new();
+    private static CodeGenPlugin? _plugin;
 
-    private static void RegisterFinetuneTool(McpServer server)
+    internal static void Register(CodeGenPlugin plugin, McpServer server)
     {
+        _plugin = plugin;
+
         server.RegisterTool(
             "Finetune",
             new ToolDefinition
@@ -48,10 +54,9 @@ public static partial class RoslynTools
     {
         lock (_trainingLock)
         {
-            // Check if training is already running
             if (_trainingTask is not null && !_trainingTask.IsCompleted)
             {
-                return Task.FromResult<object>(CreateSuccessResponse(new
+                return Task.FromResult<object>(RoslynTools.CreateSuccessResponse(new
                 {
                     status = "running",
                     message = "Training is already in progress.",
@@ -59,7 +64,6 @@ public static partial class RoslynTools
                 }));
             }
 
-            // If completed, return results
             if (_trainingTask is not null && _trainingTask.IsCompleted)
             {
                 var completedResult = GetTrainingResult();
@@ -68,7 +72,6 @@ public static partial class RoslynTools
             }
         }
 
-        // Resolve data path
         var dataPath = args?["dataPath"]?.GetValue<string>();
         if (string.IsNullOrEmpty(dataPath))
         {
@@ -77,20 +80,18 @@ public static partial class RoslynTools
 
         if (!File.Exists(dataPath) && !Directory.Exists(dataPath))
         {
-            return Task.FromResult<object>(CreateErrorResponse($"Data path not found: {dataPath}"));
+            return Task.FromResult<object>(RoslynTools.CreateErrorResponse($"Data path not found: {dataPath}"));
         }
 
-        // Resolve model paths
         var baseDir = AppContext.BaseDirectory;
         var checkpointPath = Path.Combine(baseDir, "Models", "checkpoint.pt");
         var tokenizerPath = Path.Combine(baseDir, "Models", "tokenizer", "tokenizer.json");
 
         if (!File.Exists(checkpointPath))
         {
-            return Task.FromResult<object>(CreateErrorResponse($"Checkpoint not found: {checkpointPath}"));
+            return Task.FromResult<object>(RoslynTools.CreateErrorResponse($"Checkpoint not found: {checkpointPath}"));
         }
 
-        // Set up log file
         var logDir = Path.Combine(baseDir, "Models", "finetune");
         Directory.CreateDirectory(logDir);
         var logPath = Path.Combine(logDir, $"training_{DateTime.Now:yyyyMMdd_HHmmss}.log");
@@ -100,7 +101,6 @@ public static partial class RoslynTools
             DataPath = dataPath,
             CheckpointPath = checkpointPath,
             TokenizerPath = tokenizerPath,
-            // Output overwrites the active checkpoint so model reload picks it up
             OutputPath = checkpointPath,
         };
 
@@ -111,15 +111,13 @@ public static partial class RoslynTools
             _trainingTask = Task.Run(() =>
             {
                 using var logWriter = new StreamWriter(logPath, append: false) { AutoFlush = true };
-                // Tee to both log file and stderr (for MCP server console)
                 var teeWriter = new TeeTextWriter(logWriter, Console.Error);
                 var trainer = new LoRATrainer(config, teeWriter);
                 var result = trainer.Run();
 
-                // Auto-reload the model after successful training
                 if (!float.IsNaN(result.BestLoss))
                 {
-                    ReloadSharpOpsModel();
+                    _plugin?.ReloadSharpOpsModel();
                     teeWriter.WriteLine("[Finetune] Model reloaded for inference.");
                     ArchiveDataset(dataPath, logPath, teeWriter);
                 }
@@ -128,7 +126,7 @@ public static partial class RoslynTools
             });
         }
 
-        return Task.FromResult<object>(CreateSuccessResponse(new
+        return Task.FromResult<object>(RoslynTools.CreateSuccessResponse(new
         {
             status = "started",
             message = "Fine-tuning started in background. Call Finetune again to check status.",
@@ -150,24 +148,23 @@ public static partial class RoslynTools
     private static object GetTrainingResult()
     {
         if (_trainingTask == null)
-            return CreateErrorResponse("No training task found");
+            return RoslynTools.CreateErrorResponse("No training task found");
 
         if (_trainingTask.IsFaulted)
         {
             var ex = _trainingTask.Exception?.InnerException ?? _trainingTask.Exception;
             var details = ex?.ToString() ?? "Unknown error";
-            return CreateErrorResponse($"Training failed: {details}");
+            return RoslynTools.CreateErrorResponse($"Training failed: {details}");
         }
 
         var result = _trainingTask.Result;
 
         if (float.IsNaN(result.BestLoss))
-            return CreateErrorResponse("Training failed: no training examples found");
+            return RoslynTools.CreateErrorResponse("Training failed: no training examples found");
 
-        // Handle infinity (no validation split) - report as -1 since JSON doesn't support infinity
         var bestLoss = float.IsPositiveInfinity(result.BestLoss) ? -1f : result.BestLoss;
 
-        return CreateSuccessResponse(new
+        return RoslynTools.CreateSuccessResponse(new
         {
             status = "completed",
             message = "Fine-tuning completed. Model has been reloaded.",
@@ -179,26 +176,15 @@ public static partial class RoslynTools
         });
     }
 
-    private static void ReloadSharpOpsModel()
-    {
-        // Dispose current model and null out so next GetSharpOpsService() reloads
-        var old = _sharpOpsService;
-        _sharpOpsService = null;
-        _sharpOpsError = null;
-        old?.Dispose();
-    }
-
     private static void ArchiveDataset(string dataPath, string logPath, TextWriter log)
     {
         try
         {
-            // dataPath is either a file or directory
             var dataDir = File.Exists(dataPath) ? Path.GetDirectoryName(dataPath)! : dataPath;
             var files = Directory.GetFiles(dataDir, "*.jsonl");
             if (files.Length == 0) return;
 
-            // Use the log file timestamp for the archive folder name
-            var logName = Path.GetFileNameWithoutExtension(logPath); // training_20260204_141952
+            var logName = Path.GetFileNameWithoutExtension(logPath);
             var timestamp = logName.Replace("training_", "");
             var archiveDir = Path.Combine(Path.GetDirectoryName(dataDir)!, "archive", timestamp);
             Directory.CreateDirectory(archiveDir);

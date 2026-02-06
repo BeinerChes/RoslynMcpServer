@@ -30,8 +30,7 @@ public partial class SolutionAnalyzerService
     string? comment = null,
     string? oldText = null,
     string? newText = null,
-    bool replaceAll = false,
-    bool skipFinetuneCollection = false)
+    bool replaceAll = false)
     {
         EnsureMSBuildRegistered();
 
@@ -314,13 +313,6 @@ public partial class SolutionAnalyzerService
             else if (newMethodNode is ConstructorDeclarationSyntax newCtor)
             {
                 newSignature = $"{newCtor.Identifier}({string.Join(", ", newCtor.ParameterList.Parameters)})";
-            }
-
-            // Collect fine-tune training data for methods
-            if (!skipFinetuneCollection && newMethodNode is MethodDeclarationSyntax)
-            {
-                _ = Task.Run(() => Services.FinetuneCollector.CollectAsync(
-                    solutionPath, filePath, typeName, targetMethod.Name, comment, parameterTypes));
             }
 
             return new UpdateMethodResult

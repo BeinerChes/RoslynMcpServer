@@ -157,7 +157,7 @@ public static partial class RoslynTools
         };
     }
 
-    private static object CreateErrorResponse(string message)
+    internal static object CreateErrorResponse(string message)
     {
         return new
         {

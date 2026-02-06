@@ -2,7 +2,7 @@
 
 An MCP server that gives Claude Code semantic understanding of C# code. Instead of treating `.cs` files as text, it uses the Roslyn compiler to parse, navigate, and modify code the way an IDE does — finding symbols by meaning, renaming across a solution, extracting methods with automatic parameter detection, and applying code fixes from diagnostics.
 
-It also includes **SharpTinyCoder**, a tiny local model that learns your codebase's patterns over time.
+It also includes an optional **SharpTinyCoder** plugin — a tiny local model that learns your codebase's patterns over time.
 
 ## What It Does
 
@@ -20,17 +20,29 @@ It also includes **SharpTinyCoder**, a tiny local model that learns your codebas
 
 ### Build from Source
 
+There are two build options:
+
+**Base install** (Roslyn tools only, no AI code generation):
 ```bash
 git clone https://github.com/BeinerChes/RoslynMcpServer
 cd RoslynMcpServer
-dotnet publish RoslynMcpServer.csproj -c Debug -o .roslyn-mcp
+dotnet publish src/RoslynMcpServer/RoslynMcpServer.csproj -c Debug -o .roslyn-mcp
+```
+
+**With SharpTinyCoder plugin** (AI code generation + LoRA fine-tuning):
+```bash
+git clone https://github.com/BeinerChes/RoslynMcpServer
+cd RoslynMcpServer
+dotnet publish src/RoslynMcpServer.CodeGen/RoslynMcpServer.CodeGen.csproj -c Debug -o .roslyn-mcp
 ```
 
 You **must** use `dotnet publish`, not `dotnet build`. Native CUDA DLLs for SharpTinyCoder are only copied during publish.
 
+The base install is ~313MB with zero CUDA/TorchSharp dependencies. The full install with AI plugin is ~4.9GB (includes CUDA native libraries and model files).
+
 ### Deploy to Your Solution
 
-The server runs **per-solution** — each solution you work on gets its own `.roslyn-mcp` folder containing the server binaries, model checkpoint, knowledge database, and training data.
+The server runs **per-solution** — each solution you work on gets its own `.roslyn-mcp` folder containing the server binaries, knowledge database, and optionally the model checkpoint and training data.
 
 ```bash
 # 1. Copy the published server into your solution's root
@@ -69,16 +81,17 @@ Returns version and capabilities. If this works, the server is running and your 
 ```
 YourSolution/
 ├── .roslyn-mcp/
-│   ├── RoslynMcpServer.dll    # Server binary
-│   ├── Models/
-│   │   ├── checkpoint.pt      # SharpTinyCoder model weights
-│   │   ├── tokenizer/         # Tokenizer files
+│   ├── RoslynMcpServer.dll          # Server binary
+│   ├── RoslynMcpServer.CodeGen.dll  # Optional: AI plugin
+│   ├── Models/                      # Only present with CodeGen plugin
+│   │   ├── checkpoint.pt            # SharpTinyCoder model weights
+│   │   ├── tokenizer/               # Tokenizer files
 │   │   └── finetune/
-│   │       ├── dataset/       # Pending training data (JSONL)
-│   │       └── archive/       # Archived training data after finetune
-│   ├── knowledge.db           # Per-solution knowledge base (SQLite)
-│   ├── logs/                  # Tool call logs
-│   └── reports/               # Usage reports
+│   │       ├── dataset/             # Pending training data (JSONL)
+│   │       └── archive/             # Archived training data after finetune
+│   ├── knowledge.db                 # Per-solution knowledge base (SQLite)
+│   ├── logs/                        # Tool call logs
+│   └── reports/                     # Usage reports
 ├── YourSolution.slnx
 ├── .mcp.json
 └── ...
@@ -112,7 +125,7 @@ FindSymbol(pattern: "Authenticate", symbolKind: "member")
 UpdateMethod(typeName: "Calculator", methodName: "Add", oldText: "a + b", newText: "checked(a + b)")
 ```
 
-**AddMember** — Add a method, property, or field to a class. With `auto: true`, the SharpTinyCoder model generates the body first — Claude reviews and corrects if needed.
+**AddMember** — Add a method, property, or field to a class. With `auto: true` (requires CodeGen plugin), the SharpTinyCoder model generates the body first — Claude reviews and corrects if needed.
 
 ```
 AddMember(typeName: "TaskBoard", memberCode: "public TaskItem GetTask(int id)", auto: true)
@@ -128,9 +141,11 @@ AddMember(typeName: "TaskBoard", memberCode: "public TaskItem GetTask(int id)", 
 
 For the complete tool reference, see [docs/tools/](docs/tools/).
 
-## SharpTinyCoder
+## SharpTinyCoder (Optional Plugin)
 
-The server includes a 4.3M parameter model that runs locally and learns your codebase's patterns. It's not a general-purpose code generator — it's a tiny pattern matcher that gets better at your project's specific conventions over time.
+The server optionally includes a 4.3M parameter model that runs locally and learns your codebase's patterns. It's not a general-purpose code generator — it's a tiny pattern matcher that gets better at your project's specific conventions over time.
+
+SharpTinyCoder is packaged as a separate plugin (`RoslynMcpServer.CodeGen`). Without it, all Roslyn analysis tools work normally — `auto: true` returns a clear error message, and the Finetune tool is not registered.
 
 ### How It Works
 
