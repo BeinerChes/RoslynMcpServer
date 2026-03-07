@@ -370,6 +370,7 @@ FodyWeavers.xsd
 /.claude/settings.local.json
 *.zip
 .claude/
-/src/.mcp.json
-/src/.roslyn-mcp
-/src/.cr/personal/FavoritesList/List.xml
+.mcp.json/
+.roslyn-mcp/
+/.roslyn-mcp-wsl
+/.mcp.json

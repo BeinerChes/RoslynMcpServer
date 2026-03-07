@@ -4,10 +4,9 @@
 
 UpdateMethod replaces a method's implementation with new source code while preserving the surrounding class structure. It uses Roslyn's semantic understanding to precisely locate the target method within a type, even in large files with multiple overloads, and performs surgical replacement without affecting other code.
 
-The tool supports three distinct modes:
+The tool supports two distinct modes:
 1. **Full replacement** - Replace the entire method including signature and body
 2. **Edit mode** - Make targeted text replacements within the method body (token-efficient for small changes)
-3. **Auto mode** - Regenerate the method body using the built-in SharpTinyCoder AI model
 
 ## Comparison with Native Claude Code Tools
 
@@ -148,21 +147,10 @@ The tool takes a type name and method name, uses Roslyn to load the solution's s
 ### Mode 2: Edit Mode (oldText/newText)
 Instead of providing complete method code, you specify a text fragment to find and its replacement. The tool retrieves the existing method body, performs string matching with normalized line endings, and validates the match is unique (or uses `replaceAll=true` for multiple occurrences). This mode is token-efficient for small changes like renaming a variable or fixing a single line.
 
-### Mode 3: Auto Mode
-When `auto=true` is set, the tool first retrieves the existing method to extract its signature (return type, name, parameters). It strips XML documentation comments and other trivia to get a clean signature, then passes it to HandleAutoGenerateAsync which:
-1. Loads the containing type's symbol information to extract field/property context
-2. Calls the SharpTinyCoder model (4.3M parameter transformer trained on C# code)
-3. Generates SharpOps intermediate representation (a simplified AST format)
-4. Compiles SharpOps back to C# syntax
-5. Validates the generated code parses without errors
-
-If generation fails or produces invalid syntax, a `NotImplementedException` stub is inserted. The response includes `autoGenerationFailed` and `generatedCode` fields so you can review the output. Auto mode skips finetune data collection since model output shouldn't become training data. When you correct wrong auto-generated code with a non-auto UpdateMethod call, that correction IS collected for model improvement.
-
 ### Common Workflow
 1. Use `GetTypeMembers` to explore a class structure
 2. Call `UpdateMethod` with type name + method name (no file path needed)
 3. For overloaded methods, add `parameterTypes` parameter
-4. For AI generation, start with `auto=true`, review `generatedCode`, fix if wrong
-5. Add `comment` parameter to update/add XML documentation
+4. Add `comment` parameter to update/add XML documentation
 
 The tool handles all the complexity of Roslyn workspace management, syntax tree manipulation, formatting preservation, and file I/O, exposing a simple name-based interface.

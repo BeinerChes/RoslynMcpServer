@@ -13,7 +13,7 @@ dotnet publish RoslynMcpServer.csproj -c Debug -o .roslyn-mcp
 
 Then reconnect MCP in Claude Code: `/mcp` → reconnect roslyn.
 
-You **must** use `dotnet publish` (not `dotnet build` + copy) — native CUDA DLLs are only copied during publish.
+You **must** use `dotnet publish` (not `dotnet build` + copy).
 
 ## Solution Structure
 
@@ -22,9 +22,6 @@ RoslynMcpServer.slnx
 ├── RoslynMcpServer/          # MCP server (entry point, tool handlers)
 ├── RoslynMcpServer.Graph/    # SQLite graph database, knowledge base
 ├── RoslynMcpServer.Tests/    # Tests
-├── SharpOps/                 # SharpOps IR compiler + model inference
-├── SharpOps.Torch/           # LoRA fine-tuning with TorchSharp (CUDA)
-├── SharpOps.Examples/        # Test project for model testing
 ├── Instructions/
 │   ├── Topics/               # GetInstructions content (tools, git, plan)
 │   ├── Hooks/                # Hook scripts shipped to users via --enable-hooks

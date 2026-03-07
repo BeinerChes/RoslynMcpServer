@@ -1,4 +1,3 @@
-using System.Reflection;
 using System.Text.Json;
 
 namespace RoslynMcpServer;
@@ -15,7 +14,6 @@ public static partial class RoslynTools
     };
 
     private static SolutionAnalyzerService? _analyzerService;
-    internal static ICodeGenPlugin? _codeGenPlugin;
 
     /// <summary>
     /// Auto-detected solution path. Set at startup, used by all tools.
@@ -76,42 +74,11 @@ public static partial class RoslynTools
         RegisterKnowledgeDeleteTool(server);
         RegisterKnowledgeGetTool(server);
 
-        // Try to load optional CodeGen plugin
-        LoadCodeGenPlugin(server);
-
         // Usage reporting
         RegisterUsageReportTool(server);
     }
 
-    private static void LoadCodeGenPlugin(McpServer server)
-    {
-        try
-        {
-            var pluginPath = Path.Combine(AppContext.BaseDirectory, "RoslynMcpServer.CodeGen.dll");
-            if (!File.Exists(pluginPath))
-            {
-                Console.Error.WriteLine("CodeGen plugin not found — AI code generation disabled.");
-                return;
-            }
-
-            var assembly = Assembly.LoadFrom(pluginPath);
-            var pluginType = assembly.GetTypes()
-                .FirstOrDefault(t => typeof(ICodeGenPlugin).IsAssignableFrom(t) && !t.IsInterface && !t.IsAbstract);
-
-            if (pluginType != null)
-            {
-                _codeGenPlugin = (ICodeGenPlugin)Activator.CreateInstance(pluginType)!;
-                _codeGenPlugin.RegisterTools(server);
-                Console.Error.WriteLine("SharpTinyCoder plugin loaded.");
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine($"Warning: Failed to load CodeGen plugin: {ex.Message}");
-        }
-    }
-
-    private static readonly string[] definitionArray11 = new[] { "message" };
+private static readonly string[] definitionArray11 = new[] { "message" };
 
     /// <summary>
     /// A simple echo tool for testing the MCP connection.

@@ -9,10 +9,6 @@
     <Version>1.0.8</Version>
   </PropertyGroup>
 
-  <ItemGroup>
-    <InternalsVisibleTo Include="RoslynMcpServer.CodeGen" />
-  </ItemGroup>
-
   <!-- Single-file publish settings -->
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>

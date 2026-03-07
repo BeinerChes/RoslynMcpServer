@@ -198,15 +198,6 @@ FindDeadCode(maxResults: 20)
         { "member": "CalculateAverage()", "kind": "Method", "line": 41 }
       ]
     },
-    "SharpOps\\Model\\SharpTinyCoderModel.cs": {
-      "ModelConfig": [
-        { "member": "PadTokenId", "kind": "Property", "line": 23 },
-        { "member": "BosTokenId", "kind": "Property", "line": 24 }
-      ],
-      "SharpTinyCoder": [
-        { "member": "Config", "kind": "Property", "line": 291 }
-      ]
-    }
   }
 }
 ```

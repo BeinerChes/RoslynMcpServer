@@ -161,7 +161,7 @@ public class McpServer
             logEntry.ResultSummary = TruncateForLog(result);
             Logging.ToolCallLogger.Log(logEntry);
 
-            return CreateSuccessResponse(id, result);
+            return CreateSuccessResponse(id, result ?? new { });
         }
         catch (Exception ex)
         {

@@ -1,9 +1,5 @@
 <Solution>
-  <Project Path="RoslynMcpServer.CodeGen\RoslynMcpServer.CodeGen.csproj" />
   <Project Path="RoslynMcpServer.Graph\RoslynMcpServer.Graph.csproj" />
   <Project Path="RoslynMcpServer.Tests\RoslynMcpServer.Tests.csproj" />
   <Project Path="RoslynMcpServer/RoslynMcpServer.csproj" />
-  <Project Path="SharpOps.Examples/SharpOps.Examples.csproj" />
-  <Project Path="SharpOps/SharpOps.csproj" />
-  <Project Path="SharpOps.Torch/SharpOps.Torch.csproj" />
 </Solution>

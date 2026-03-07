@@ -1,6 +1,3 @@
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Text.Json;
 
 namespace RoslynMcpServer;
@@ -17,7 +14,7 @@ public static partial class RoslynTools
             "UpdateMethod",
             new ToolDefinition
             {
-                Description = "Replaces a method's implementation with new source code. Uses Roslyn to precisely locate and replace the method while preserving surrounding code. Essential for making targeted changes to large classes.\n\nSupports three modes:\n1. Full replacement: provide `newSourceCode` with the complete method\n2. Edit mode: provide `oldText` + `newText` to make targeted edits within the method (token-efficient)\n3. Auto mode: set `auto=true` to regenerate the method body using the built-in SharpTinyCoder model",
+                Description = "Replaces a method's implementation with new source code. Uses Roslyn to precisely locate and replace the method while preserving surrounding code. Essential for making targeted changes to large classes.\n\nSupports two modes:\n1. Full replacement: provide `newSourceCode` with the complete method\n2. Edit mode: provide `oldText` + `newText` to make targeted edits within the method (token-efficient)",
                 InputSchema = new
                 {
                     type = "object",
@@ -62,11 +59,6 @@ public static partial class RoslynTools
                         {
                             type = "boolean",
                             description = "Replace all occurrences of oldText. Default: false (errors if multiple matches found)."
-                        },
-                        auto = new
-                        {
-                            type = "boolean",
-                            description = "When true, regenerates the method body using the built-in SharpTinyCoder model. No code input needed — just typeName + methodName. If generation fails, a NotImplementedException stub is inserted; use a non-auto UpdateMethod to provide your implementation."
                         }
                     },
                     required = new[] { "typeName", "methodName" }
@@ -90,7 +82,6 @@ public static partial class RoslynTools
                 var oldText = args?["oldText"]?.GetValue<string>();
                 var newText = args?["newText"]?.GetValue<string>();
                 var replaceAll = GetOptionalBool(args, "replaceAll", false);
-                var auto = GetOptionalBool(args, "auto", false);
 
                 if (string.IsNullOrWhiteSpace(typeName))
                     return CreateToolError("Error: typeName is required");
@@ -98,63 +89,17 @@ public static partial class RoslynTools
                 if (string.IsNullOrWhiteSpace(methodName))
                     return CreateToolError("Error: methodName is required");
 
-                // Validate: auto is mutually exclusive with newSourceCode/oldText/newText
-                if (auto && (!string.IsNullOrEmpty(newSourceCode) || oldText != null || newText != null))
-                    return CreateToolError("Error: auto=true cannot be combined with newSourceCode or oldText/newText. Auto mode regenerates the method body automatically.");
+                if (!string.IsNullOrEmpty(newSourceCode) && oldText != null)
+                    return CreateToolError("Error: cannot provide both newSourceCode and oldText/newText. Use one mode or the other.");
 
-                // Validate: either newSourceCode, oldText+newText, or auto
-                if (!auto)
-                {
-                    if (!string.IsNullOrEmpty(newSourceCode) && oldText != null)
-                        return CreateToolError("Error: cannot provide both newSourceCode and oldText/newText. Use one mode or the other.");
+                if (oldText != null && newText == null)
+                    return CreateToolError("Error: newText is required when oldText is provided (can be empty string for deletion).");
 
-                    if (oldText != null && newText == null)
-                        return CreateToolError("Error: newText is required when oldText is provided (can be empty string for deletion).");
+                if (oldText == null && newText != null)
+                    return CreateToolError("Error: oldText is required when newText is provided.");
 
-                    if (oldText == null && newText != null)
-                        return CreateToolError("Error: oldText is required when newText is provided.");
-
-                    if (string.IsNullOrEmpty(newSourceCode) && oldText == null)
-                        return CreateToolError("Error: provide either newSourceCode (full replacement), oldText+newText (edit mode), or auto=true.");
-                }
-
-                // Auto mode: get the existing method, extract signature, regenerate body
-                bool autoGenerationFailed = false;
-                string? generatedCode = null;
-                if (auto)
-                {
-                    if (_codeGenPlugin == null)
-                    {
-                        return CreateToolError("auto=true requires SharpTinyCoder plugin. Install RoslynMcpServer.CodeGen to enable AI code generation.");
-                    }
-
-                    var bodyResult = await SolutionAnalyzerService.GetMethodBodyAsync(
-                        solutionPath!, typeName, methodName, parameterTypes);
-
-                    if (!bodyResult.Success)
-                        return CreateToolError($"Error: {bodyResult.Error}");
-
-                    // Parse the method source to extract the full signature
-                    var tree = CSharpSyntaxTree.ParseText($"class _T {{ {bodyResult.SourceCode} }}");
-                    var parseRoot = await tree.GetRootAsync();
-                    var methodDecl = parseRoot.DescendantNodes().OfType<MethodDeclarationSyntax>().FirstOrDefault();
-
-                    if (methodDecl == null)
-                        return CreateToolError("Error: could not parse existing method to extract signature. Auto mode only supports regular methods (not constructors).");
-
-                    var signature = methodDecl.WithBody(null).WithExpressionBody(null)
-                        .WithSemicolonToken(default).WithLeadingTrivia().WithTrailingTrivia()
-                        .NormalizeWhitespace().ToFullString().TrimEnd();
-
-                    var autoResult = await _codeGenPlugin.HandleAutoGenerateAsync(solutionPath!, typeName, signature, comment);
-                    autoGenerationFailed = autoResult.Failed;
-                    newSourceCode = autoResult.FullMemberCode;
-
-                    if (!autoGenerationFailed)
-                    {
-                        generatedCode = autoResult.FullMemberCode;
-                    }
-                }
+                if (string.IsNullOrEmpty(newSourceCode) && oldText == null)
+                    return CreateToolError("Error: provide either newSourceCode (full replacement) or oldText+newText (edit mode).");
 
                 var result = await SolutionAnalyzerService.UpdateMethodAsync(
                     solutionPath!,
@@ -166,13 +111,6 @@ public static partial class RoslynTools
                     oldText,
                     newText,
                     replaceAll);
-
-                // Collect finetune data when not auto-generated and plugin is available
-                if (!auto && _codeGenPlugin != null && result.Success)
-                {
-                    _ = Task.Run(() => _codeGenPlugin.CollectFinetuneDataAsync(
-                        solutionPath!, result.FilePath!, typeName, result.MethodName!, comment, parameterTypes));
-                }
 
                 if (!result.Success)
                 {
@@ -189,23 +127,6 @@ public static partial class RoslynTools
 
                 // Compact success response
                 var relativePath = GetRelativePath(result.FilePath ?? "", solutionPath!);
-
-                if (auto)
-                {
-                    var autoResponse = new Dictionary<string, object?>
-                    {
-                        ["file"] = $"{relativePath}:{result.StartLine}-{result.EndLine}",
-                        ["oldSignature"] = result.OldSignature,
-                        ["newSignature"] = result.NewSignature,
-                        ["autoGenerated"] = true,
-                        ["autoGenerationFailed"] = autoGenerationFailed,
-                    };
-                    if (generatedCode != null)
-                    {
-                        autoResponse["generatedCode"] = generatedCode;
-                    }
-                    return CreateToolResponse(autoResponse, false);
-                }
 
                 var compactResult = new
                 {

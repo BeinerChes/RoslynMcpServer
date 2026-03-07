@@ -15,8 +15,7 @@ Native tools are fine for non-C# files (JSON, XML, markdown, .csproj, etc.), Glo
 **Modifying code:**
 - Edit method (full replace): `UpdateMethod(typeName, methodName, newSourceCode)`
 - Edit method (targeted): `UpdateMethod(typeName, methodName, oldText, newText)` — oldText must be unique within the method
-- Edit method (auto-generate): `UpdateMethod(typeName, methodName, auto: true)`
-- Add member: `AddMember(typeName, memberCode, auto: true)` — see auto-generation workflow below
+- Add member: `AddMember(typeName, memberCode)`
 - Add using: `AddUsing(typeName, usingDirective)` — sorted, idempotent
 - Remove unused usings: `RemoveUnnecessaryUsings(projectFilter?, fileFilter?)` — batch, entire solution
 - Create type: `AddType(projectName, typeName, folder?, typeKind?)`
@@ -40,38 +39,11 @@ Native tools are fine for non-C# files (JSON, XML, markdown, .csproj, etc.), Glo
 - Get instructions: `GetInstructions(topic)` — topics: `git`, `plan`, `tools`. Generates hook bypass tokens for git/plan/tools topics.
 - Usage analytics: `GetUsageReport(hours?, toolFilter?)` — aggregated tool usage stats. Server-side processing avoids loading large logs into context.
 
-## Auto-Generation Workflow
-
-When adding methods, ALWAYS try `auto: true` first:
-
-```
-AddMember(typeName, memberCode: "public int Add(int a, int b)", auto: true, comment: "Adds two integers")
-```
-
-Check the response:
-- `autoGenerationFailed: true` — model failed, call `UpdateMethod` with your implementation
-- `autoGenerationFailed: false` — read `generatedCode` carefully:
-  - Correct: done, move on
-  - Wrong: call `UpdateMethod` with correct code
-
-**Why this order matters:** `AddMember(auto: true)` does NOT collect training data. Your `UpdateMethod` correction DOES. Over time the model learns from corrections.
-
-Same workflow for regenerating existing methods:
-```
-UpdateMethod(typeName, methodName, auto: true, comment: "description")
-```
-
-For non-method members (fields, properties, events): use `auto: false` — model only generates method bodies.
-
-Pass `comment` on public methods — generates XML doc (`<summary>`, `<param>`, `<returns>`).
-
-After corrections accumulate: `Finetune()` — runs in background, model hot-reloads when done.
-
 ## Gotchas
 
 **Overloaded methods:** `GetMethodBody`, `UpdateMethod`, `DeleteMember` need `parameterTypes: "int, int"` to disambiguate. Without it, you get an error listing available overloads.
 
-**typeName is short name:** Use `"Calculator"` not `"SharpOps.Examples.Calculator"`. Roslyn searches across the solution.
+**typeName is short name:** Use `"Calculator"` not `"MyApp.Calculator"`. Roslyn searches across the solution.
 
 **UpdateMethod edit mode:** `oldText` must be unique within that method's source. If it matches multiple places, use a longer string or `replaceAll: true`.
 

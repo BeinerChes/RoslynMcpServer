@@ -2,8 +2,6 @@
 
 An MCP server that gives Claude Code semantic understanding of C# code. Instead of treating `.cs` files as text, it uses the Roslyn compiler to parse, navigate, and modify code the way an IDE does — finding symbols by meaning, renaming across a solution, extracting methods with automatic parameter detection, and applying code fixes from diagnostics.
 
-It also includes an optional **SharpTinyCoder** plugin — a tiny local model that learns your codebase's patterns over time.
-
 ## What It Does
 
 **Without Roslyn MCP**, Claude Code reads `.cs` files as text and edits them with string replacement. It searches for symbols with `grep`, which can't distinguish a method call from a comment. Renaming a method means finding every file that mentions it and hoping you don't miss one.
@@ -16,29 +14,15 @@ It also includes an optional **SharpTinyCoder** plugin — a tiny local model th
 
 - .NET 10 SDK
 - Claude Code CLI
-- Windows (GPU-accelerated fine-tuning requires CUDA; CPU inference works everywhere)
+- Windows
 
 ### Build from Source
 
-There are two build options:
-
-**Base install** (Roslyn tools only, no AI code generation):
 ```bash
 git clone https://github.com/BeinerChes/RoslynMcpServer
 cd RoslynMcpServer
 dotnet publish src/RoslynMcpServer/RoslynMcpServer.csproj -c Debug -o .roslyn-mcp
 ```
-
-**With SharpTinyCoder plugin** (AI code generation + LoRA fine-tuning):
-```bash
-git clone https://github.com/BeinerChes/RoslynMcpServer
-cd RoslynMcpServer
-dotnet publish src/RoslynMcpServer.CodeGen/RoslynMcpServer.CodeGen.csproj -c Debug -o .roslyn-mcp
-```
-
-You **must** use `dotnet publish`, not `dotnet build`. Native CUDA DLLs for SharpTinyCoder are only copied during publish.
-
-The base install is ~313MB with zero CUDA/TorchSharp dependencies. The full install with AI plugin is ~4.9GB (includes CUDA native libraries and model files).
 
 ### Deploy to Your Solution
 
@@ -82,13 +66,6 @@ Returns version and capabilities. If this works, the server is running and your 
 YourSolution/
 ├── .roslyn-mcp/
 │   ├── RoslynMcpServer.dll          # Server binary
-│   ├── RoslynMcpServer.CodeGen.dll  # Optional: AI plugin
-│   ├── Models/                      # Only present with CodeGen plugin
-│   │   ├── checkpoint.pt            # SharpTinyCoder model weights
-│   │   ├── tokenizer/               # Tokenizer files
-│   │   └── finetune/
-│   │       ├── dataset/             # Pending training data (JSONL)
-│   │       └── archive/             # Archived training data after finetune
 │   ├── knowledge.db                 # Per-solution knowledge base (SQLite)
 │   ├── logs/                        # Tool call logs
 │   └── reports/                     # Usage reports
@@ -97,7 +74,7 @@ YourSolution/
 └── ...
 ```
 
-Everything is local to the solution. The model learns patterns specific to *this* codebase, the knowledge base stores insights about *this* code, and training data reflects corrections made in *this* project.
+Everything is local to the solution. The knowledge base stores insights about *this* code.
 
 ## Tool Highlights
 
@@ -125,10 +102,10 @@ FindSymbol(pattern: "Authenticate", symbolKind: "member")
 UpdateMethod(typeName: "Calculator", methodName: "Add", oldText: "a + b", newText: "checked(a + b)")
 ```
 
-**AddMember** — Add a method, property, or field to a class. With `auto: true` (requires CodeGen plugin), the SharpTinyCoder model generates the body first — Claude reviews and corrects if needed.
+**AddMember** — Add a method, property, or field to a class.
 
 ```
-AddMember(typeName: "TaskBoard", memberCode: "public TaskItem GetTask(int id)", auto: true)
+AddMember(typeName: "TaskBoard", memberCode: "public TaskItem GetTask(int id)")
 ```
 
 **RenameSymbol** — Rename anything across the entire solution. All references updated atomically.
@@ -141,36 +118,13 @@ AddMember(typeName: "TaskBoard", memberCode: "public TaskItem GetTask(int id)", 
 
 For the complete tool reference, see [docs/tools/](docs/tools/).
 
-## SharpTinyCoder (Optional Plugin)
-
-The server optionally includes a 4.3M parameter model that runs locally and learns your codebase's patterns. It's not a general-purpose code generator — it's a tiny pattern matcher that gets better at your project's specific conventions over time.
-
-SharpTinyCoder is packaged as a separate plugin (`RoslynMcpServer.CodeGen`). Without it, all Roslyn analysis tools work normally — `auto: true` returns a clear error message, and the Finetune tool is not registered.
-
-### How It Works
-
-When Claude Code adds a method with `AddMember(auto: true)`:
-
-1. The model tries to generate the method body
-2. Claude Code reviews the result
-3. If wrong, Claude corrects it via `UpdateMethod` — the correction becomes training data
-4. If correct, move on
-
-Over time, training examples accumulate in `.roslyn-mcp/Models/finetune/dataset/`. Call `Finetune()` to run LoRA fine-tuning in the background. The model hot-reloads when training completes — no restart needed.
-
-The model uses **SharpOps**, a compact intermediate representation, not raw C#. A compiler translates SharpOps to C# after generation.
-
-In testing on a `TaskBoard` class: the base model scored 0/7. After one fine-tuning session on 7 corrections, it scored 7/7.
-
-For the full explanation, see [SharpOps/WORKFLOW.md](SharpOps/WORKFLOW.md).
-
 ## Hooks and Enforcement
 
 The project includes Claude Code [hooks](https://docs.anthropic.com/en/docs/claude-code/hooks) that enforce Roslyn tool usage over native text operations. Hooks are Python scripts in `.claude/hooks/` that run before tool calls and block them if conditions aren't met.
 
 ### Why Hooks?
 
-Without enforcement, Claude Code defaults to what it knows — `Read`, `Edit`, `Write`. These work, but they treat C# as text. The hooks ensure Claude uses the semantic tools instead, which produces better results and collects training data for SharpTinyCoder.
+Without enforcement, Claude Code defaults to what it knows — `Read`, `Edit`, `Write`. These work, but they treat C# as text. The hooks ensure Claude uses the semantic tools instead, which produces better results.
 
 ### Included Hooks
 
@@ -228,7 +182,7 @@ The hooks here enforce this project's workflow. For your own project, you might:
 
 | Skill | Invoke | What It Does |
 |-------|--------|-------------|
-| `/doc-tool` | `/doc-tool UpdateMethod` | Documents a Roslyn tool: tests native vs Roslyn approach on SharpOps.Examples, writes comparison doc, updates README. |
+| `/doc-tool` | `/doc-tool UpdateMethod` | Documents a Roslyn tool: tests native vs Roslyn approach, writes comparison doc, updates README. |
 | `/usage-report` | `/usage-report [hours]` | Generates tool usage analytics — call counts, success rates, performance metrics. |
 
 ### Writing Your Own Skills

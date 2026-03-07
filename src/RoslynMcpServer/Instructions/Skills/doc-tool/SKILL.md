@@ -1,6 +1,6 @@
 ---
 name: doc-tool
-description: Create comprehensive documentation for a Roslyn MCP tool. Tests native vs Roslyn approach on SharpOps.Examples, writes docs, updates tools.md and README.md, commits.
+description: Create comprehensive documentation for a Roslyn MCP tool. Tests native vs Roslyn approach on the test project, writes docs, updates tools.md and README.md, commits.
 model: claude-sonnet-4-5-20250929
 arguments: "<ToolName>"
 user-invocable: true
@@ -19,7 +19,7 @@ Each tool needs documentation comparing it against native Claude Code tools (Rea
 
 **CRITICAL RULES:**
 - Be FAIR in comparisons. Don't inflate native tool costs. Claude is smart - show the best native approach.
-- Use REAL testing on SharpOps.Examples.csproj, not estimates.
+- Use REAL testing on the test project.csproj, not estimates.
 - Test BOTH approaches (native first, then Roslyn) and measure actual results.
 - Working branch is `rc/1.0.8` (check with `git branch --show-current`).
 
@@ -39,8 +39,8 @@ Understand: parameters, behavior, what it returns, edge cases.
 
 ## Step 2: Design Test Scenario
 
-Choose a realistic task on SharpOps.Examples.csproj that the tool solves.
-Read the current state of SharpOps.Examples files to plan:
+Choose a realistic task on the test project.csproj that the tool solves.
+Read the current state of the test project files to plan:
 
 ```
 GetTypeMembers(typeName: "Calculator")
@@ -116,8 +116,8 @@ The tool handles:
 ## Real-World Example
 
 ### Scenario
-<describe the exact task tested on SharpOps.Examples>
-**Test project:** SharpOps.Examples.csproj (actual testing, not estimates)
+<describe the exact task tested on the test project>
+**Test project:** the test project.csproj (actual testing, not estimates)
 
 ### Approach 1: Using Native Tools
 <show the ACTUAL steps from Step 3>
