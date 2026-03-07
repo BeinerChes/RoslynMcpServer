@@ -10,16 +10,16 @@ public class GraphDatabaseTests : IAsyncLifetime
 {
     private GraphDatabase _db = null!;
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         _db = GraphDatabase.CreateInMemory();
         await _db.OpenAsync();
     }
 
-    public Task DisposeAsync()
+    public ValueTask DisposeAsync()
     {
         _db.Dispose();
-        return Task.CompletedTask;
+        return ValueTask.CompletedTask;
     }
 
     /// <summary>
@@ -55,16 +55,16 @@ public class GraphDatabaseSolutionTests : IAsyncLifetime
 {
     private GraphDatabase _db = null!;
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         _db = GraphDatabase.CreateInMemory();
         await _db.OpenAsync();
     }
 
-    public Task DisposeAsync()
+    public ValueTask DisposeAsync()
     {
         _db.Dispose();
-        return Task.CompletedTask;
+        return ValueTask.CompletedTask;
     }
 
     /// <summary>
@@ -182,17 +182,17 @@ public class GraphDatabaseSymbolTests : IAsyncLifetime
     private GraphDatabase _db = null!;
     private SolutionRecord _solution = null!;
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         _db = GraphDatabase.CreateInMemory();
         await _db.OpenAsync();
         _solution = await _db.GetOrCreateSolutionAsync(@"C:\test\MySolution.sln");
     }
 
-    public Task DisposeAsync()
+    public ValueTask DisposeAsync()
     {
         _db.Dispose();
-        return Task.CompletedTask;
+        return ValueTask.CompletedTask;
     }
 
     /// <summary>
@@ -358,17 +358,17 @@ public class GraphDatabaseEdgeTests : IAsyncLifetime
     private GraphDatabase _db = null!;
     private SolutionRecord _solution = null!;
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         _db = GraphDatabase.CreateInMemory();
         await _db.OpenAsync();
         _solution = await _db.GetOrCreateSolutionAsync(@"C:\test\MySolution.sln");
     }
 
-    public Task DisposeAsync()
+    public ValueTask DisposeAsync()
     {
         _db.Dispose();
-        return Task.CompletedTask;
+        return ValueTask.CompletedTask;
     }
 
     private async Task<SymbolRecord> CreateSymbolAsync(string name)
@@ -559,17 +559,17 @@ public class GraphDatabaseFileTests : IAsyncLifetime, IDisposable
         Directory.CreateDirectory(_tempDir);
     }
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         _db = GraphDatabase.CreateInMemory();
         await _db.OpenAsync();
         _solution = await _db.GetOrCreateSolutionAsync(@"C:\test\MySolution.sln");
     }
 
-    public Task DisposeAsync()
+    public ValueTask DisposeAsync()
     {
         _db.Dispose();
-        return Task.CompletedTask;
+        return ValueTask.CompletedTask;
     }
 
     public void Dispose()

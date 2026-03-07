@@ -12,7 +12,7 @@ public class DeleteMemberTests : IAsyncLifetime
     private string _sourceFilePath = "";
     private SolutionAnalyzerService _service = null!;
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         _service = new SolutionAnalyzerService();
 
@@ -95,7 +95,7 @@ public class DeleteMemberTests : IAsyncLifetime
         await Task.CompletedTask;
     }
 
-    public Task DisposeAsync()
+    public ValueTask DisposeAsync()
     {
         // Cleanup temp directory
         if (Directory.Exists(_tempDir))
@@ -103,7 +103,7 @@ public class DeleteMemberTests : IAsyncLifetime
             try { Directory.Delete(_tempDir, true); }
             catch { /* Ignore cleanup errors */ }
         }
-        return Task.CompletedTask;
+        return ValueTask.CompletedTask;
     }
 
     /// <summary>

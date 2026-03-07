@@ -11,7 +11,7 @@ public class UpdateMethodEditModeTests : IAsyncLifetime
     private string _projectPath = "";
     private string _sourceFilePath = "";
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         _tempDir = Path.Combine(Path.GetTempPath(), $"UpdateMethodEditTest_{Guid.NewGuid():N}");
         Directory.CreateDirectory(_tempDir);
@@ -36,14 +36,14 @@ public class UpdateMethodEditModeTests : IAsyncLifetime
             """);
     }
 
-    public Task DisposeAsync()
+    public ValueTask DisposeAsync()
     {
         if (Directory.Exists(_tempDir))
         {
             try { Directory.Delete(_tempDir, true); }
             catch { /* Ignore cleanup errors */ }
         }
-        return Task.CompletedTask;
+        return ValueTask.CompletedTask;
     }
 
     private async Task WriteTestClass(string source)

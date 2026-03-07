@@ -11,7 +11,7 @@ public class GraphSymbolSearchTests : IAsyncLifetime
     private GraphDatabase _db = null!;
     private SolutionRecord _solution = null!;
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         _db = GraphDatabase.CreateInMemory();
         await _db.OpenAsync();
@@ -63,10 +63,10 @@ public class GraphSymbolSearchTests : IAsyncLifetime
         });
     }
 
-    public Task DisposeAsync()
+    public ValueTask DisposeAsync()
     {
         _db.Dispose();
-        return Task.CompletedTask;
+        return ValueTask.CompletedTask;
     }
 
     /// <summary>
@@ -193,7 +193,7 @@ public class GraphConstructorSearchTests : IAsyncLifetime
     private GraphDatabase _db = null!;
     private SolutionRecord _solution = null!;
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         _db = GraphDatabase.CreateInMemory();
         await _db.OpenAsync();
@@ -234,10 +234,10 @@ public class GraphConstructorSearchTests : IAsyncLifetime
         });
     }
 
-    public Task DisposeAsync()
+    public ValueTask DisposeAsync()
     {
         _db.Dispose();
-        return Task.CompletedTask;
+        return ValueTask.CompletedTask;
     }
 
     /// <summary>

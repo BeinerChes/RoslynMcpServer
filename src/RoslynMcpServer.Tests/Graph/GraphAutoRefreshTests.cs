@@ -11,17 +11,17 @@ public class GraphAutoRefreshTests : IAsyncLifetime
     private GraphDatabase _db = null!;
     private SolutionRecord _solution = null!;
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         _db = GraphDatabase.CreateInMemory();
         await _db.OpenAsync();
         _solution = await _db.GetOrCreateSolutionAsync(@"C:\test\MySolution.sln");
     }
 
-    public Task DisposeAsync()
+    public ValueTask DisposeAsync()
     {
         _db.Dispose();
-        return Task.CompletedTask;
+        return ValueTask.CompletedTask;
     }
 
     /// <summary>
