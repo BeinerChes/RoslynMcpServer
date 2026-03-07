@@ -9,15 +9,6 @@
     <Version>1.0.8</Version>
   </PropertyGroup>
 
-  <!-- Single-file publish settings -->
-  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
-    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
-    <PublishSingleFile>true</PublishSingleFile>
-    <SelfContained>true</SelfContained>
-    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
-    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
-  </PropertyGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\RoslynMcpServer.Graph\RoslynMcpServer.Graph.csproj" />
   </ItemGroup>
