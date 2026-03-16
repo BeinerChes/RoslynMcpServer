@@ -120,40 +120,4 @@ public static partial class RoslynTools
         _ => MatchType.Contains
     };
 
-    /// <summary>
-    /// Gets symbol links from the knowledge database for a solution.
-    /// </summary>
-    private static async Task<HashSet<string>> GetKnowledgeSymbolLinksAsync(string solutionPath)
-    {
-        var symbolsWithKnowledge = new HashSet<string>();
-        try
-        {
-            var db = await GetKnowledgeDatabaseAsync(solutionPath);
-            var allEntries = await db.ListEntriesAsync(limit: 1000);
-            foreach (var entry in allEntries)
-            {
-                foreach (var link in entry.SymbolLinks)
-                {
-                    symbolsWithKnowledge.Add(link);
-                }
-            }
-        }
-        catch
-        {
-            // Knowledge lookup failure shouldn't break the main functionality
-        }
-        return symbolsWithKnowledge;
-    }
-
-    /// <summary>
-    /// Checks if a symbol has associated knowledge entries.
-    /// </summary>
-    private static bool HasKnowledgeEntry(string? qualifiedName, HashSet<string> knowledgeSymbols)
-    {
-        if (qualifiedName == null || knowledgeSymbols.Count == 0)
-            return false;
-
-        return knowledgeSymbols.Contains(qualifiedName) ||
-               knowledgeSymbols.Any(k => qualifiedName.StartsWith(k + ".") || k.StartsWith(qualifiedName + "."));
-    }
 }

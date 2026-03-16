@@ -115,16 +115,13 @@ public static partial class RoslynTools
             };
         }
 
-        var knowledgeSymbols = await GetKnowledgeSymbolLinksAsync(solutionPath);
         var solutionDir = Path.GetDirectoryName(solutionPath) ?? "";
 
-        // Format: "Namespace.Type.Member (Kind) path:line [K]"
+        // Format: "Namespace.Type.Member (Kind) path:line"
         var compactSymbols = result.Symbols.Select(s =>
         {
             var relativePath = GetRelativePath(s.FilePath ?? "", solutionPath);
-            var hasKnowledge = HasKnowledgeEntry(s.FullyQualifiedName, knowledgeSymbols);
-            var knowledgeFlag = hasKnowledge ? " [K]" : "";
-            return $"{s.FullyQualifiedName} ({s.Kind}) {relativePath}:{s.Line}{knowledgeFlag}";
+            return $"{s.FullyQualifiedName} ({s.Kind}) {relativePath}:{s.Line}";
         }).ToList();
 
         return new

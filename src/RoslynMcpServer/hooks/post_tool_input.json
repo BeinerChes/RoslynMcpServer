@@ -1,0 +1,38 @@
+{
+  "session_id": "78555147-8b12-44df-a351-9507142dcede",
+  "transcript_path": "C:\\Users\\cbein\\.claude\\projects\\D--repos-RoslynMcpServer-src\\78555147-8b12-44df-a351-9507142dcede.jsonl",
+  "cwd": "D:\\repos\\RoslynMcpServer\\src",
+  "permission_mode": "acceptEdits",
+  "hook_event_name": "PostToolUse",
+  "tool_name": "Edit",
+  "tool_input": {
+    "file_path": "D:/repos/RoslynMcpServer/src/.roslyn-mcp/hooks/rag_add.py",
+    "old_string": "\"\"\"Add an entry to rag.db via the server API (or directly if server is down).\"\"\"",
+    "new_string": "\"\"\"Add an entry to rag.db via the RAG server API.\"\"\"",
+    "replace_all": false
+  },
+  "tool_response": {
+    "filePath": "D:/repos/RoslynMcpServer/src/.roslyn-mcp/hooks/rag_add.py",
+    "oldString": "\"\"\"Add an entry to rag.db via the server API (or directly if server is down).\"\"\"",
+    "newString": "\"\"\"Add an entry to rag.db via the RAG server API.\"\"\"",
+    "originalFile": "\"\"\"Add an entry to rag.db via the server API (or directly if server is down).\"\"\"\n\nimport argparse\nimport json\nimport urllib.error\nimport urllib.request\n\nSERVER_URL = \"http://127.0.0.1:9781\"\n\n\ndef main():\n    parser = argparse.ArgumentParser(description=\"Add a knowledge entry to rag.db\")\n    parser.add_argument(\"content\", help=\"The text content to store\")\n    args = parser.parse_args()\n\n    data = json.dumps({\"content\": args.content}).encode()\n    req = urllib.request.Request(\n        f\"{SERVER_URL}/add\",\n        data=data,\n        headers={\"Content-Type\": \"application/json\"},\n    )\n    try:\n        with urllib.request.urlopen(req, timeout=5) as resp:\n            result = json.loads(resp.read())\n            print(result[\"message\"])\n    except urllib.error.URLError:\n        print(\"Server not running. Start it or send a prompt first.\")\n\n\nif __name__ == \"__main__\":\n    main()\n",
+    "structuredPatch": [
+      {
+        "oldStart": 1,
+        "oldLines": 4,
+        "newStart": 1,
+        "newLines": 4,
+        "lines": [
+          "-\"\"\"Add an entry to rag.db via the server API (or directly if server is down).\"\"\"",
+          "+\"\"\"Add an entry to rag.db via the RAG server API.\"\"\"",
+          " ",
+          " import argparse",
+          " import json"
+        ]
+      }
+    ],
+    "userModified": false,
+    "replaceAll": false
+  },
+  "tool_use_id": "toolu_01StQA2B8TD7Ny3ZXZaqCqfz"
+}

@@ -42,7 +42,12 @@
     <PackageReference Include="Microsoft.Build.Framework" ExcludeAssets="runtime" PrivateAssets="all" />
     <PackageReference Include="Microsoft.Build" ExcludeAssets="runtime" PrivateAssets="all" />
     <PackageReference Include="Microsoft.Build.Tasks.Core" ExcludeAssets="runtime" PrivateAssets="all" />
-    <PackageReference Include="SmartComponents.LocalEmbeddings" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="hooks\*">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
   <!-- Copy .NET Analyzers to output directory for self-contained deployment -->

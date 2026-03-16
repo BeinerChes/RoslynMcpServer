@@ -26,7 +26,7 @@ dotnet publish src/RoslynMcpServer/RoslynMcpServer.csproj -c Debug -o .roslyn-mc
 
 ### Deploy to Your Solution
 
-The server runs **per-solution** — each solution you work on gets its own `.roslyn-mcp` folder containing the server binaries, knowledge database, and optionally the model checkpoint and training data.
+The server runs **per-solution** — each solution you work on gets its own `.roslyn-mcp` folder containing the server binaries.
 
 ```bash
 # 1. Copy the published server into your solution's root
@@ -66,7 +66,14 @@ Returns version and capabilities. If this works, the server is running and your 
 YourSolution/
 ├── .roslyn-mcp/
 │   ├── RoslynMcpServer.dll          # Server binary
-│   ├── knowledge.db                 # Per-solution knowledge base (SQLite)
+│   ├── hooks/                       # RAG memory hooks + server
+│   │   ├── .venv/                   # Python venv (auto-created)
+│   │   ├── rag_server.py            # FastAPI server (embedding + search)
+│   │   ├── rag_mcp.py              # MCP server (tools for Claude)
+│   │   ├── rag.py                   # UserPromptSubmit hook
+│   │   ├── rag_stop.py             # Stop hook (saves Claude responses)
+│   │   ├── rag_post_tool.py        # PostToolUse hook (saves edit diffs)
+│   │   └── rag.db                   # RAG memory database (SQLite)
 │   ├── logs/                        # Tool call logs
 │   └── reports/                     # Usage reports
 ├── YourSolution.slnx
@@ -74,7 +81,7 @@ YourSolution/
 └── ...
 ```
 
-Everything is local to the solution. The knowledge base stores insights about *this* code.
+Everything is local to the solution.
 
 ## Tool Highlights
 
@@ -174,6 +181,84 @@ The hooks here enforce this project's workflow. For your own project, you might:
 - Modify the branch naming pattern in `enforce-branch-naming.py`
 - Write your own hooks for other conventions
 
+## RAG Memory (Cross-Session Context)
+
+Claude Code has no memory between sessions. RAG Memory fixes this — it automatically saves every prompt, response, and code edit, then surfaces relevant past work when you start a new session.
+
+### How It Works
+
+1. **You type a prompt** → hook saves it to `rag.db`, searches for similar past entries, injects matches into Claude's context
+2. **Claude responds** → hook saves the response
+3. **Claude edits code** → hook saves the diff
+4. **Next session** → relevant past work automatically appears before Claude processes your prompt
+
+Uses [all-MiniLM-L6-v2](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2) for embeddings, hybrid search (vector + FTS5 with Reciprocal Rank Fusion), and sentence-boundary chunking for long texts.
+
+### Setup
+
+```bash
+# 1. Install uv (if not already installed)
+pip install uv
+
+# 2. Create venv and install dependencies
+cd .roslyn-mcp/hooks
+uv venv .venv
+uv pip install --python .venv/Scripts/python.exe sentence-transformers fastapi uvicorn numpy mcp anyio
+```
+
+The server starts automatically on first prompt (cold start ~5s, then ~20ms per call). A separate console window shows live logs.
+
+### MCP Tools
+
+RAG also exposes MCP tools so Claude can fetch full context from memory:
+
+| Tool | Description |
+|------|-------------|
+| `rag_get(entry_id, max_tokens)` | Fetch full content of a memory entry |
+| `rag_search(query, top_k)` | Search memory manually |
+| `rag_add(content, role)` | Save a note to memory |
+
+Register in `.mcp.json`:
+
+```json
+{
+  "rag": {
+    "type": "stdio",
+    "command": ".roslyn-mcp/hooks/.venv/Scripts/python.exe",
+    "args": [".roslyn-mcp/hooks/rag_mcp.py"]
+  }
+}
+```
+
+### Hook Configuration
+
+Add to `.claude/settings.local.json`:
+
+```json
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [{ "type": "command", "command": ".roslyn-mcp/hooks/.venv/Scripts/python.exe .roslyn-mcp/hooks/rag.py" }]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [{ "type": "command", "command": ".roslyn-mcp/hooks/.venv/Scripts/python.exe .roslyn-mcp/hooks/rag_stop.py" }]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit",
+        "hooks": [{ "type": "command", "command": ".roslyn-mcp/hooks/.venv/Scripts/python.exe .roslyn-mcp/hooks/rag_post_tool.py" }]
+      }
+    ]
+  }
+}
+```
+
 ## Skills
 
 [Skills](https://docs.anthropic.com/en/docs/claude-code/skills) are reusable prompts stored in `.claude/skills/` that Claude Code can invoke with slash commands. They combine multiple tools into higher-level workflows.
@@ -221,7 +306,7 @@ This is one team's convention. Your project might use `feature/` branches and re
 
 ### Example: Session Management (topic: `plan`)
 
-The included `plan.md` defines when Claude should create GitHub issues, write plan files, and add to the knowledge base. It includes triggers like "tried the same fix twice? stop and write it down" and decision trees for choosing the right persistence tool.
+The included `plan.md` defines when Claude should create GitHub issues and write plan files. It includes triggers like "tried the same fix twice? stop and write it down" and decision trees for choosing the right persistence tool.
 
 ### Customizing for Your Project
 

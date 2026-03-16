@@ -7,7 +7,6 @@
 | TaskCreate | No (session only) | Multi-step tracking |
 | GitHub Issue | Yes | Work tracking |
 | Plan file | Yes | Complex/debugging work |
-| Knowledge base | Yes | Lessons, gotchas |
 
 ## Decision Tree
 
@@ -15,7 +14,6 @@
 3+ steps? → TaskCreate
 Committing? → Need issue number
 Tried same thing twice? → Write it down
-Learned something? → KnowledgeAdd() NOW
 Complex or multi-session? → Plan file
 ```
 
@@ -24,11 +22,6 @@ Complex or multi-session? → Plan file
 **Tried same fix twice** → You're looping. Write what you tried.
 
 **Lost track of goal** → Re-read issue, plan file, recent commits.
-
-**Learned something non-obvious** → Add to knowledge base immediately:
-```
-KnowledgeAdd(category: "lesson", title: "...", content: "...")
-```
 
 ## Plan File (when needed)
 
@@ -55,4 +48,3 @@ Location: `.claude/plans/issue-<number>.md`
 
 1. "What issue are we working on?"
 2. Check `.claude/plans/` for existing plan
-3. `KnowledgeSearch("<task>")` - someone may have documented this

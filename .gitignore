@@ -374,3 +374,5 @@ FodyWeavers.xsd
 .roslyn-mcp/
 /.roslyn-mcp-wsl
 /.mcp.json
+/src/RoslynMcpServer/hooks/.venv
+/src/RoslynMcpServer/hooks/rag.db

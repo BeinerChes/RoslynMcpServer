@@ -12,7 +12,6 @@
     <PackageReference Include="Microsoft.Data.Sqlite" />
     <PackageReference Include="Dapper" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" />
-    <PackageReference Include="SmartComponents.LocalEmbeddings" />
   </ItemGroup>
 
 </Project>

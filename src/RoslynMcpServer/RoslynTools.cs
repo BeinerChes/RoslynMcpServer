@@ -68,12 +68,6 @@ public static partial class RoslynTools
         RegisterFindDeadCodeTool(server);
         RegisterGetInstructionsTool(server);
 
-        // Knowledge base tools
-        RegisterKnowledgeAddTool(server);
-        RegisterKnowledgeSearchTool(server);
-        RegisterKnowledgeDeleteTool(server);
-        RegisterKnowledgeGetTool(server);
-
         // Usage reporting
         RegisterUsageReportTool(server);
     }
