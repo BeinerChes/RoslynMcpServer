@@ -202,8 +202,8 @@ pip install uv
 
 # 2. Create venv and install dependencies
 cd .roslyn-mcp/hooks
-uv venv .venv
-uv pip install --python .venv/Scripts/python.exe sentence-transformers fastapi uvicorn numpy mcp anyio
+python -m uv venv .venv
+python -m uv pip install --python .venv/Scripts/python.exe -r requirements.txt
 ```
 
 The server starts automatically on first prompt (cold start ~5s, then ~20ms per call). A separate console window shows live logs.

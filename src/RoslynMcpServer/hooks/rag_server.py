@@ -309,8 +309,10 @@ def _do_prompt(req: PromptRequest):
     entry_meta = {}  # result_id -> (role, content, parent_id)
 
     # Collect metadata from vector results
+    vector_sims = {}  # result_id -> cosine similarity (for display)
     for sim, result_id, role, content, parent_id in vector_scored:
         entry_meta[result_id] = (role, content, parent_id)
+        vector_sims[result_id] = sim
     # Collect metadata from FTS results (may need DB lookup)
     for result_id in fts_ranked:
         if result_id not in entry_meta:
@@ -334,7 +336,9 @@ def _do_prompt(req: PromptRequest):
             preview_content = parent_row[0] if parent_row else content
         else:
             preview_content = content
-        results.append({"score": round(score, 4), "id": result_id, "role": role, "content": truncate(preview_content)})
+        cosine = vector_sims.get(result_id, 0.0)
+        source = "vec+fts" if result_id in vector_sims and result_id in seen_parents_f else "vec" if result_id in vector_sims else "fts"
+        results.append({"score": round(score, 4), "cosine": round(cosine, 2), "source": source, "id": result_id, "role": role, "content": truncate(preview_content)})
 
     conn.close()
 
@@ -348,7 +352,11 @@ def _do_prompt(req: PromptRequest):
         for r in top:
             snip = ascii_safe(r["content"][:55]) + ("..." if len(r["content"]) > 55 else "")
             role_color = "\033[36m" if r["role"] == "user" else "\033[34m" if r["role"] == "claude" else "\033[35m"
-            print(f"    \033[32mmatch\033[0m  {r['score']:.2f}  {role_color}[{r['role']}]\033[0m  \"{snip}\"")
+            if r["source"] == "fts":
+                score_str = f"\033[90m[fts]\033[0m        "
+            else:
+                score_str = f"cos={r['cosine']:.2f} [{r['source']}]"
+            print(f"    \033[32mmatch\033[0m  {score_str}  {role_color}[{r['role']}]\033[0m  \"{snip}\"")
     else:
         print(f"    \033[90mno matches above {req.threshold}\033[0m")
 
