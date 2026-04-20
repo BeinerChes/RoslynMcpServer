@@ -30,9 +30,15 @@
       <IncludeAssets>analyzers</IncludeAssets>
     </PackageReference>
     <!-- Exclude MSBuild runtime assemblies - they're loaded by MSBuildLocator -->
-    <PackageReference Include="Microsoft.Build.Framework" ExcludeAssets="runtime" PrivateAssets="all" />
-    <PackageReference Include="Microsoft.Build" ExcludeAssets="runtime" PrivateAssets="all" />
-    <PackageReference Include="Microsoft.Build.Tasks.Core" ExcludeAssets="runtime" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.Build.Framework" ExcludeAssets="runtime" PrivateAssets="all">
+      <IncludeAssets>compile; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Build" ExcludeAssets="runtime" PrivateAssets="all">
+      <IncludeAssets>compile; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Build.Tasks.Core" ExcludeAssets="runtime" PrivateAssets="all">
+      <IncludeAssets>compile; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
     <PackageReference Include="SmartComponents.LocalEmbeddings" />
   </ItemGroup>
 

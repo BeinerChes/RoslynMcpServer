@@ -79,14 +79,18 @@ public class McpServer
         var id = request["id"];
         var method = request["method"]?.GetValue<string>();
         var @params = request["params"]?.AsObject();
+        var isNotification = id is null;
 
         if (method is null)
-            return CreateErrorResponse(id, -32600, "Invalid Request: method is required");
+            return isNotification ? null : CreateErrorResponse(id, -32600, "Invalid Request: method is required");
+
+        if (isNotification || method.StartsWith("notifications/", StringComparison.Ordinal))
+            return null;
 
         return method switch
         {
             "initialize" => HandleInitialize(id, @params),
-            "initialized" => null, // Notification, no response
+            "initialized" => null,
             "tools/list" => HandleToolsList(id),
             "tools/call" => await HandleToolCallAsync(id, @params),
             "ping" => CreateSuccessResponse(id, new { }),
